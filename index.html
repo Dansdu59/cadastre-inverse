@@ -131,36 +131,13 @@
     flex:1 1 auto;
     min-height:420px;
   }
-  #map{ flex:1 1 65%; }
-  #results-panel{
-    flex:0 0 340px;
-    border-left:1px solid var(--border);
-    background:#fff;
-    overflow-y:auto;
-  }
-  #results-panel .empty{
-    padding:18px;
-    color:var(--muted);
-    font-size:13.5px;
-  }
-  .result-item{
-    padding:10px 16px;
-    border-bottom:1px solid var(--border);
-    cursor:pointer;
-  }
-  .result-item:hover{ background:#fdf1ea; }
-  .result-item .idu{ font-weight:600; font-size:13.5px; }
-  .result-item .surf{ color:var(--accent-dark); font-size:13px; margin-top:2px; }
-  .result-item .links{ margin-top:4px; }
-  .result-item .links a{ font-size:12px; color:var(--accent-dark); text-decoration:none; margin-right:10px; }
-  .result-item .links a:hover{ text-decoration:underline; }
+  #map{ flex:1 1 auto; width:100%; }
   .leaflet-popup-content b{ display:block; margin-bottom:2px; }
   .leaflet-popup-content a{ color:var(--accent-dark); }
 
   @media (max-width: 780px){
-    main{ flex-direction:column; height:auto; }
-    #map{ height:55vh; }
-    #results-panel{ flex:none; border-left:none; border-top:1px solid var(--border); max-height:35vh; }
+    main{ height:auto; }
+    #map{ height:70vh; }
   }
 </style>
 </head>
@@ -193,10 +170,6 @@
 
 <main>
   <div id="map"></div>
-  <div id="results-panel">
-    <div class="empty" id="results-empty">Lancez une recherche pour voir les parcelles correspondantes ici.</div>
-    <div id="results-list"></div>
-  </div>
 </main>
 
 <script>
@@ -208,8 +181,6 @@
   const form = document.getElementById('search-form');
   const searchBtn = document.getElementById('search-btn');
   const statusBar = document.getElementById('status-bar');
-  const resultsEmpty = document.getElementById('results-empty');
-  const resultsList = document.getElementById('results-list');
 
   let selectedCommune = { code: '53130', nom: 'Laval', codePostal: '53000' };
   let debounceTimer = null;
@@ -393,30 +364,18 @@
 
   function clearResults(){
     if (resultsLayer) { map.removeLayer(resultsLayer); resultsLayer = null; }
-    resultsList.innerHTML = '';
-    resultsEmpty.style.display = 'block';
   }
 
-  function renderResults(matched, totalCount, min, max, communeNom){
+  function renderResults(matched){
     if (resultsLayer) { map.removeLayer(resultsLayer); resultsLayer = null; }
-    resultsList.innerHTML = '';
+    if (matched.length === 0) return;
 
-    if (matched.length === 0) {
-      resultsEmpty.textContent = 'Aucune parcelle entre ' + min + ' et ' + max + ' m² trouvée à ' + communeNom + ' (sur ' + totalCount + ' parcelles analysées).';
-      resultsEmpty.style.display = 'block';
-      return;
-    }
-    resultsEmpty.style.display = 'none';
-
-    const centerByIdu = {};
     const fc = { type: 'FeatureCollection', features: matched };
     resultsLayer = L.geoJSON(fc, {
       style: { color: '#c1440e', weight: 2, fillColor: '#f2a35c', fillOpacity: 0.45 },
       onEachFeature: (feature, layer) => {
         const idu = getIdu(feature.properties);
         const center = layer.getBounds().getCenter();
-        layer._parcelId = idu;
-        centerByIdu[idu] = center;
         layer.bindPopup(popupHtml(feature.properties, center, addressCache[idu]));
         layer.on('popupopen', () => {
           if (addressCache[idu]) return;
@@ -428,28 +387,6 @@
       }
     }).addTo(map);
     map.fitBounds(resultsLayer.getBounds(), { maxZoom: 18, padding: [20, 20] });
-
-    matched
-      .slice()
-      .sort((a, b) => (a.properties.contenance || 0) - (b.properties.contenance || 0))
-      .forEach(feature => {
-        const idu = getIdu(feature.properties);
-        const center = centerByIdu[idu];
-        const item = document.createElement('div');
-        item.className = 'result-item';
-        item.innerHTML = '<div class="idu">' + idu + '</div>' +
-          '<div class="surf">' + feature.properties.contenance + ' m²</div>' +
-          (center ? '<div class="links">' + mapsLinksHtml(center.lat, center.lng) + '</div>' : '');
-        item.addEventListener('click', () => {
-          resultsLayer.eachLayer(layer => {
-            if (layer._parcelId === idu || layer.feature === feature) {
-              map.fitBounds(layer.getBounds(), { maxZoom: 19 });
-              layer.openPopup();
-            }
-          });
-        });
-        resultsList.appendChild(item);
-      });
   }
 
   form.addEventListener('submit', async (e) => {
@@ -479,7 +416,7 @@
         matched.length + ' parcelle(s) entre ' + min + ' et ' + max + ' m² à ' + selectedCommune.nom +
         ' — sur ' + total + ' parcelles de la commune' + (source ? ' (source : ' + source + ')' : '') + '.'
       );
-      renderResults(matched, total, min, max, selectedCommune.nom);
+      renderResults(matched);
     } catch (err) {
       setStatus(err.message || 'Une erreur est survenue pendant la recherche.', 'error');
     } finally {
