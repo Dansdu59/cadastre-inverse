@@ -1,0 +1,492 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Recherche de parcelles cadastrales</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css" />
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<style>
+  :root{
+    --accent:#c1440e;
+    --accent-dark:#8f3208;
+    --ink:#1f2328;
+    --muted:#5b6570;
+    --border:#dde1e5;
+    --bg:#f7f8f9;
+  }
+  *{box-sizing:border-box;}
+  html, body{ height:100%; }
+  body{
+    margin:0;
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    color:var(--ink);
+    background:var(--bg);
+    display:flex;
+    flex-direction:column;
+  }
+  header, form, #status-bar{ flex:none; }
+  header{
+    background:#fff;
+    border-bottom:1px solid var(--border);
+    padding:18px 24px 16px;
+  }
+  header h1{
+    margin:0 0 4px;
+    font-size:20px;
+  }
+  header p{
+    margin:0;
+    color:var(--muted);
+    font-size:13.5px;
+  }
+  form{
+    background:#fff;
+    border-bottom:1px solid var(--border);
+    padding:16px 24px;
+    display:flex;
+    flex-wrap:wrap;
+    gap:14px;
+    align-items:flex-end;
+  }
+  .field{
+    display:flex;
+    flex-direction:column;
+    gap:4px;
+    position:relative;
+  }
+  .field label{
+    font-size:12px;
+    font-weight:600;
+    color:var(--muted);
+    text-transform:uppercase;
+    letter-spacing:.03em;
+  }
+  .field input{
+    padding:9px 10px;
+    border:1px solid var(--border);
+    border-radius:6px;
+    font-size:14px;
+    min-width:120px;
+  }
+  #commune-field{ width:260px; }
+  #commune-field input{ width:100%; }
+  .surface-field input{ width:110px; }
+  #search-btn{
+    background:var(--accent);
+    color:#fff;
+    border:none;
+    border-radius:6px;
+    padding:10px 18px;
+    font-size:14px;
+    font-weight:600;
+    cursor:pointer;
+    height:38px;
+  }
+  #search-btn:disabled{ background:#c9a08f; cursor:default; }
+  #search-btn:hover:not(:disabled){ background:var(--accent-dark); }
+  #suggestions{
+    position:absolute;
+    top:100%;
+    left:0;
+    right:0;
+    background:#fff;
+    border:1px solid var(--border);
+    border-radius:6px;
+    margin-top:4px;
+    max-height:220px;
+    overflow-y:auto;
+    z-index:1000;
+    box-shadow:0 6px 16px rgba(0,0,0,.1);
+    display:none;
+  }
+  #suggestions button{
+    display:block;
+    width:100%;
+    text-align:left;
+    padding:8px 10px;
+    border:none;
+    background:none;
+    cursor:pointer;
+    font-size:13.5px;
+    border-bottom:1px solid var(--border);
+  }
+  #suggestions button:last-child{ border-bottom:none; }
+  #suggestions button:hover{ background:#fdf1ea; }
+  #suggestions .cp{ color:var(--muted); font-size:12px; }
+
+  #status-bar{
+    padding:10px 24px;
+    font-size:13.5px;
+    color:var(--muted);
+    background:#fff;
+    border-bottom:1px solid var(--border);
+    min-height:18px;
+  }
+  #status-bar.error{ color:#b3261e; }
+  #status-bar.loading{ color:var(--accent-dark); }
+
+  main{
+    display:flex;
+    flex:1 1 auto;
+    min-height:420px;
+  }
+  #map{ flex:1 1 65%; }
+  #results-panel{
+    flex:0 0 340px;
+    border-left:1px solid var(--border);
+    background:#fff;
+    overflow-y:auto;
+  }
+  #results-panel .empty{
+    padding:18px;
+    color:var(--muted);
+    font-size:13.5px;
+  }
+  .result-item{
+    padding:10px 16px;
+    border-bottom:1px solid var(--border);
+    cursor:pointer;
+  }
+  .result-item:hover{ background:#fdf1ea; }
+  .result-item .idu{ font-weight:600; font-size:13.5px; }
+  .result-item .surf{ color:var(--accent-dark); font-size:13px; margin-top:2px; }
+  .result-item .links{ margin-top:4px; }
+  .result-item .links a{ font-size:12px; color:var(--accent-dark); text-decoration:none; margin-right:10px; }
+  .result-item .links a:hover{ text-decoration:underline; }
+  .leaflet-popup-content b{ display:block; margin-bottom:2px; }
+  .leaflet-popup-content a{ color:var(--accent-dark); }
+
+  @media (max-width: 780px){
+    main{ flex-direction:column; height:auto; }
+    #map{ height:55vh; }
+    #results-panel{ flex:none; border-left:none; border-top:1px solid var(--border); max-height:35vh; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Recherche de parcelles cadastrales</h1>
+  <p>Saisissez une commune française et une fourchette de surface pour localiser les parcelles correspondantes.
+     Données : cadastre.data.gouv.fr (Etalab) &amp; API Carto IGN, Base Adresse Nationale.</p>
+</header>
+
+<form id="search-form" autocomplete="off">
+  <div class="field" id="commune-field">
+    <label for="commune-input">Commune</label>
+    <input id="commune-input" type="text" placeholder="Ex : Laval" value="Laval" />
+    <div id="suggestions"></div>
+  </div>
+  <div class="field surface-field">
+    <label for="min-input">Surface min (m²)</label>
+    <input id="min-input" type="number" min="0" step="1" value="500" />
+  </div>
+  <div class="field surface-field">
+    <label for="max-input">Surface max (m²)</label>
+    <input id="max-input" type="number" min="0" step="1" value="1000" />
+  </div>
+  <button type="submit" id="search-btn">Rechercher</button>
+</form>
+
+<div id="status-bar"></div>
+
+<main>
+  <div id="map"></div>
+  <div id="results-panel">
+    <div class="empty" id="results-empty">Lancez une recherche pour voir les parcelles correspondantes ici.</div>
+    <div id="results-list"></div>
+  </div>
+</main>
+
+<script>
+(function(){
+  const communeInput = document.getElementById('commune-input');
+  const suggestionsBox = document.getElementById('suggestions');
+  const minInput = document.getElementById('min-input');
+  const maxInput = document.getElementById('max-input');
+  const form = document.getElementById('search-form');
+  const searchBtn = document.getElementById('search-btn');
+  const statusBar = document.getElementById('status-bar');
+  const resultsEmpty = document.getElementById('results-empty');
+  const resultsList = document.getElementById('results-list');
+
+  let selectedCommune = { code: '53130', nom: 'Laval', codePostal: '53000' };
+  let debounceTimer = null;
+  let resultsLayer = null;
+  const parcellesCache = {}; // clé "insee|min|max" -> { features, total, source }
+  const addressCache = {};   // évite de rechercher l'adresse plusieurs fois pour la même parcelle
+
+  // Identifiant de parcelle robuste : le proxy renvoie déjà "idu", mais on garde
+  // la reconstruction de secours au cas où.
+  function getIdu(props){
+    if (!props) return '';
+    if (props.idu) return String(props.idu).toUpperCase();
+    if (props.id && /^[0-9A-Za-z]{10,15}$/.test(String(props.id))) return String(props.id).toUpperCase();
+    const insee = props.code_insee || props.commune || '';
+    const prefixeRaw = (props.com_abs != null ? props.com_abs : (props.prefixe != null ? props.prefixe : '000'));
+    const section = (props.section || '').toString();
+    const numero = (props.numero || '').toString();
+    const prefixe = String(prefixeRaw).padStart(3, '0');
+    return (insee + prefixe + section.padStart(2, '0') + numero.padStart(4, '0')).toUpperCase();
+  }
+
+  const map = L.map('map').setView([48.0578, -0.7692], 13);
+
+  const planLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    maxZoom: 19,
+    attribution: '&copy; OpenStreetMap contributors'
+  }).addTo(map);
+
+  // Satellite / photo aérienne : IGN en priorité (meilleure résolution en France),
+  // Esri en secours si le flux IGN ne répond pas chez certains utilisateurs.
+  const satelliteIgnLayer = L.tileLayer(
+    'https://data.geopf.fr/wmts?SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0&LAYER=ORTHOIMAGERY.ORTHOPHOTOS&STYLE=normal&TILEMATRIXSET=PM&FORMAT=image/jpeg&TILEMATRIX={z}&TILEROW={y}&TILECOL={x}',
+    { maxZoom: 19, minZoom: 0, attribution: '&copy; IGN-F/Géoportail' }
+  );
+  const satelliteEsriLayer = L.tileLayer(
+    'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+    { maxZoom: 19, attribution: 'Tiles &copy; Esri' }
+  );
+
+  L.control.layers({
+    'Plan (OpenStreetMap)': planLayer,
+    'Satellite (IGN)': satelliteIgnLayer,
+    'Satellite (Esri)': satelliteEsriLayer
+  }).addTo(map);
+
+  function setStatus(msg, kind){
+    statusBar.textContent = msg || '';
+    statusBar.className = kind ? kind : '';
+  }
+
+  function setLoading(isLoading){
+    searchBtn.disabled = isLoading;
+    searchBtn.textContent = isLoading ? 'Recherche…' : 'Rechercher';
+  }
+
+  function fetchWithTimeout(url, ms){
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), ms);
+    return fetch(url, { signal: controller.signal }).finally(() => clearTimeout(timer));
+  }
+
+  // --- Autocomplete commune (API Geo, geo.api.gouv.fr — CORS ouvert, appel direct navigateur) ---
+  communeInput.addEventListener('input', () => {
+    selectedCommune = null;
+    const q = communeInput.value.trim();
+    clearTimeout(debounceTimer);
+    if (q.length < 2) { suggestionsBox.style.display = 'none'; return; }
+    debounceTimer = setTimeout(() => fetchCommuneSuggestions(q), 300);
+  });
+
+  document.addEventListener('click', (e) => {
+    if (!suggestionsBox.contains(e.target) && e.target !== communeInput) {
+      suggestionsBox.style.display = 'none';
+    }
+  });
+
+  async function fetchCommuneSuggestions(q){
+    try {
+      const url = 'https://geo.api.gouv.fr/communes?nom=' + encodeURIComponent(q) +
+        '&fields=nom,code,codesPostaux,departement,centre&boost=population&limit=12';
+      const res = await fetch(url);
+      if (!res.ok) return;
+      const data = await res.json();
+      renderSuggestions(data);
+    } catch (e) {
+      // silencieux : l'autocomplétion est "best effort"
+    }
+  }
+
+  function renderSuggestions(list){
+    suggestionsBox.innerHTML = '';
+    if (!list || list.length === 0) { suggestionsBox.style.display = 'none'; return; }
+    list.forEach(c => {
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      const cp = (c.codesPostaux && c.codesPostaux[0]) || '';
+      const dep = c.departement ? c.departement.nom : '';
+      btn.innerHTML = '<span>' + c.nom + '</span> <span class="cp">' + cp + (dep ? ' — ' + dep : '') + '</span>';
+      btn.addEventListener('click', () => {
+        selectedCommune = { code: c.code, nom: c.nom, codePostal: cp };
+        communeInput.value = c.nom + (cp ? ' (' + cp + ')' : '');
+        suggestionsBox.style.display = 'none';
+        if (c.centre && c.centre.coordinates) {
+          map.setView([c.centre.coordinates[1], c.centre.coordinates[0]], 13);
+        }
+      });
+      suggestionsBox.appendChild(btn);
+    });
+    suggestionsBox.style.display = 'block';
+  }
+
+  // --- Récupération des parcelles via le proxy serverless ---
+  // Le serveur interroge cadastre.data.gouv.fr (rapide, un fichier par commune) avec
+  // repli sur l'API Carto IGN, filtre par surface, et renvoie un GeoJSON allégé.
+  async function fetchParcelles(commune, min, max, onProgress){
+    const key = commune.code + '|' + min + '|' + max;
+    if (parcellesCache[key]) return parcellesCache[key];
+
+    onProgress && onProgress('Récupération des parcelles… (quelques secondes, plus long pour les grandes communes)');
+    const url = '/api/parcelles?insee=' + encodeURIComponent(commune.code) +
+      '&min=' + encodeURIComponent(min) + '&max=' + encodeURIComponent(max);
+
+    let res;
+    try {
+      res = await fetchWithTimeout(url, 90000);
+    } catch (e) {
+      throw new Error('Le serveur n\'a pas répondu à temps. Réessayez.');
+    }
+
+    let data = null;
+    try { data = await res.json(); } catch (e) { /* corps non JSON */ }
+
+    if (!res.ok) {
+      throw new Error((data && data.error) || ('Erreur serveur (' + res.status + ').'));
+    }
+
+    const result = {
+      features: (data && data.features) || [],
+      total: (data && data.total) || 0,
+      source: data && data.source
+    };
+    parcellesCache[key] = result;
+    return result;
+  }
+
+  // Adresse approximative de la parcelle, par géocodage inverse (Base Adresse Nationale, CORS ouvert).
+  async function fetchAddress(lat, lon){
+    try {
+      const url = 'https://api-adresse.data.gouv.fr/reverse/?lon=' + lon + '&lat=' + lat + '&limit=1';
+      const res = await fetchWithTimeout(url, 8000);
+      if (!res.ok) return null;
+      const data = await res.json();
+      const feat = data && data.features && data.features[0];
+      return feat ? feat.properties.label : null;
+    } catch (e) {
+      return null;
+    }
+  }
+
+  function mapsLinksHtml(lat, lon){
+    const la = lat.toFixed(6);
+    const lo = lon.toFixed(6);
+    const mapsUrl = 'https://www.google.com/maps/search/?api=1&query=' + la + ',' + lo;
+    const streetViewUrl = 'https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=' + la + ',' + lo;
+    return '<a href="' + mapsUrl + '" target="_blank" rel="noopener">Voir sur Google Maps ↗</a>' +
+      '<a href="' + streetViewUrl + '" target="_blank" rel="noopener">Street View ↗</a>';
+  }
+
+  function popupHtml(props, latlng, address){
+    const idu = getIdu(props);
+    const section = props.section || '';
+    const numero = props.numero || '';
+    const surf = (props.contenance != null) ? props.contenance : '?';
+    const addressLine = address || 'Recherche de l\'adresse…';
+    return '<b>' + idu + '</b>' +
+      'Section ' + section + ', n°' + numero + '<br/>' +
+      'Surface cadastrale : ' + surf + ' m²<br/>' +
+      'Adresse : ' + addressLine + '<br/>' +
+      mapsLinksHtml(latlng.lat, latlng.lng);
+  }
+
+  function clearResults(){
+    if (resultsLayer) { map.removeLayer(resultsLayer); resultsLayer = null; }
+    resultsList.innerHTML = '';
+    resultsEmpty.style.display = 'block';
+  }
+
+  function renderResults(matched, totalCount, min, max, communeNom){
+    if (resultsLayer) { map.removeLayer(resultsLayer); resultsLayer = null; }
+    resultsList.innerHTML = '';
+
+    if (matched.length === 0) {
+      resultsEmpty.textContent = 'Aucune parcelle entre ' + min + ' et ' + max + ' m² trouvée à ' + communeNom + ' (sur ' + totalCount + ' parcelles analysées).';
+      resultsEmpty.style.display = 'block';
+      return;
+    }
+    resultsEmpty.style.display = 'none';
+
+    const centerByIdu = {};
+    const fc = { type: 'FeatureCollection', features: matched };
+    resultsLayer = L.geoJSON(fc, {
+      style: { color: '#c1440e', weight: 2, fillColor: '#f2a35c', fillOpacity: 0.45 },
+      onEachFeature: (feature, layer) => {
+        const idu = getIdu(feature.properties);
+        const center = layer.getBounds().getCenter();
+        layer._parcelId = idu;
+        centerByIdu[idu] = center;
+        layer.bindPopup(popupHtml(feature.properties, center, addressCache[idu]));
+        layer.on('popupopen', () => {
+          if (addressCache[idu]) return;
+          fetchAddress(center.lat, center.lng).then(addr => {
+            addressCache[idu] = addr || 'Adresse non trouvée';
+            layer.setPopupContent(popupHtml(feature.properties, center, addressCache[idu]));
+          });
+        });
+      }
+    }).addTo(map);
+    map.fitBounds(resultsLayer.getBounds(), { maxZoom: 18, padding: [20, 20] });
+
+    matched
+      .slice()
+      .sort((a, b) => (a.properties.contenance || 0) - (b.properties.contenance || 0))
+      .forEach(feature => {
+        const idu = getIdu(feature.properties);
+        const center = centerByIdu[idu];
+        const item = document.createElement('div');
+        item.className = 'result-item';
+        item.innerHTML = '<div class="idu">' + idu + '</div>' +
+          '<div class="surf">' + feature.properties.contenance + ' m²</div>' +
+          (center ? '<div class="links">' + mapsLinksHtml(center.lat, center.lng) + '</div>' : '');
+        item.addEventListener('click', () => {
+          resultsLayer.eachLayer(layer => {
+            if (layer._parcelId === idu || layer.feature === feature) {
+              map.fitBounds(layer.getBounds(), { maxZoom: 19 });
+              layer.openPopup();
+            }
+          });
+        });
+        resultsList.appendChild(item);
+      });
+  }
+
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    setStatus('');
+    if (!selectedCommune) {
+      setStatus('Sélectionnez une commune dans la liste de suggestions.', 'error');
+      return;
+    }
+    const min = parseFloat(minInput.value);
+    const max = parseFloat(maxInput.value);
+    if (isNaN(min) || isNaN(max) || min < 0 || max < 0) {
+      setStatus('Merci de saisir des surfaces valides.', 'error');
+      return;
+    }
+    if (min > max) {
+      setStatus('La surface minimale doit être inférieure ou égale à la surface maximale.', 'error');
+      return;
+    }
+
+    setLoading(true);
+    clearResults();
+    try {
+      const { features: matched, total, source } =
+        await fetchParcelles(selectedCommune, min, max, (msg) => setStatus(msg, 'loading'));
+      setStatus(
+        matched.length + ' parcelle(s) entre ' + min + ' et ' + max + ' m² à ' + selectedCommune.nom +
+        ' — sur ' + total + ' parcelles de la commune' + (source ? ' (source : ' + source + ')' : '') + '.'
+      );
+      renderResults(matched, total, min, max, selectedCommune.nom);
+    } catch (err) {
+      setStatus(err.message || 'Une erreur est survenue pendant la recherche.', 'error');
+    } finally {
+      setLoading(false);
+    }
+  });
+})();
+</script>
+</body>
+</html>

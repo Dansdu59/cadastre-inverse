@@ -1,0 +1,14 @@
+{
+  "name": "cadastre-inverse",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Recherche de parcelles cadastrales par commune et fourchette de surface — front statique + proxy serverless (Vercel).",
+  "scripts": {
+    "dev": "vercel dev",
+    "deploy": "vercel --prod"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
