@@ -175,7 +175,6 @@
   .dvf-item .links a{ font-size:12px; color:var(--accent-dark); text-decoration:none; margin-right:10px; }
   .dvf-item .links a:hover{ text-decoration:underline; }
   .dvf-nature{ font-size:11px; color:var(--muted); }
-  .dvf-warn{ font-size:12px; color:#b3261e; }
 
   @media (max-width: 780px){
     main{ height:auto; }
@@ -902,16 +901,11 @@
     if (s.count_type !== s.count_radius) html += ' <span class="dvf-nature">(' + s.count_radius + ' toutes catégories)</span>';
     html += '</div>';
     const nPm2 = s.count_pm2 || 0;
-    const RELIABLE = 15; // en deçà, l'histogramme et les stats sont peu significatifs
     if (s.pm2_moyen != null){
       html += '<div style="margin-top:5px">€/m² ' + (s.pm2_base === 'terrain' ? '(terrain)' : '(bâti)') + ' — ' +
         'moyen <b>' + fm(s.pm2_moyen) + '</b> · médian <b>' + fm(s.pm2_median) + '</b><br/>' +
         'min ' + fm(s.pm2_min) + ' · max ' + fm(s.pm2_max) +
         '<br/><span class="dvf-nature">sur ' + nPm2 + ' comparable(s) retenu(s)</span></div>';
-      if (nPm2 < RELIABLE){
-        html += '<div style="margin-top:4px" class="dvf-warn">⚠ Échantillon faible (' + nPm2 + ' vente' +
-          (nPm2 > 1 ? 's' : '') + ') — chiffres indicatifs, sensibles aux valeurs extrêmes. Élargissez le rayon ou la période.</div>';
-      }
     } else {
       html += '<div style="margin-top:5px" class="dvf-nature">Pas assez de données €/m² pour ce filtre.</div>';
     }
