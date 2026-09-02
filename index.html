@@ -902,16 +902,12 @@
     if (s.count_type !== s.count_radius) html += ' <span class="dvf-nature">(' + s.count_radius + ' toutes catégories)</span>';
     html += '</div>';
     const nPm2 = s.count_pm2 || 0;
-    const RELIABLE = 15; // en deçà, quartiles et histogramme peu significatifs
+    const RELIABLE = 15; // en deçà, l'histogramme et les stats sont peu significatifs
     if (s.pm2_moyen != null){
-      let line = '€/m² ' + (s.pm2_base === 'terrain' ? '(terrain)' : '(bâti)') + ' — ' +
+      html += '<div style="margin-top:5px">€/m² ' + (s.pm2_base === 'terrain' ? '(terrain)' : '(bâti)') + ' — ' +
         'moyen <b>' + fm(s.pm2_moyen) + '</b> · médian <b>' + fm(s.pm2_median) + '</b><br/>' +
-        'min ' + fm(s.pm2_min) + ' · max ' + fm(s.pm2_max);
-      if (nPm2 >= RELIABLE && s.pm2_p25 != null){
-        line += ' · P25–P75 ' + s.pm2_p25.toLocaleString('fr-FR') + '–' + s.pm2_p75.toLocaleString('fr-FR') + ' €/m²';
-      }
-      line += '<br/><span class="dvf-nature">sur ' + nPm2 + ' comparable(s) retenu(s)</span>';
-      html += '<div style="margin-top:5px">' + line + '</div>';
+        'min ' + fm(s.pm2_min) + ' · max ' + fm(s.pm2_max) +
+        '<br/><span class="dvf-nature">sur ' + nPm2 + ' comparable(s) retenu(s)</span></div>';
       if (nPm2 < RELIABLE){
         html += '<div style="margin-top:4px" class="dvf-warn">⚠ Échantillon faible (' + nPm2 + ' vente' +
           (nPm2 > 1 ? 's' : '') + ') — chiffres indicatifs, sensibles aux valeurs extrêmes. Élargissez le rayon ou la période.</div>';
