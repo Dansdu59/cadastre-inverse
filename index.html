@@ -25,8 +25,14 @@
     --muted:#5b6570;
     --border:#dde1e5;
     --bg:#f7f8f9;
+    --maison:#c1440e;
+    --appart:#2563eb;
+    --terrain:#15803d;
+    --local:#7c3aed;
+    --autre:#64748b;
   }
   *{box-sizing:border-box;}
+  [hidden]{ display:none !important; }
   html, body{ height:100%; }
   body{
     margin:0;
@@ -36,21 +42,35 @@
     display:flex;
     flex-direction:column;
   }
-  header, form, #status-bar{ flex:none; }
+  header, #tabs, form, #status-bar{ flex:none; }
   header{
     background:#fff;
     border-bottom:1px solid var(--border);
-    padding:18px 24px 16px;
+    padding:18px 24px 14px;
   }
-  header h1{
-    margin:0 0 4px;
-    font-size:20px;
+  header h1{ margin:0 0 4px; font-size:20px; }
+  header p{ margin:0; color:var(--muted); font-size:13.5px; }
+
+  #tabs{
+    background:#fff;
+    border-bottom:1px solid var(--border);
+    padding:0 16px;
+    display:flex;
+    gap:4px;
   }
-  header p{
-    margin:0;
-    color:var(--muted);
+  #tabs button{
+    border:none;
+    background:none;
+    padding:11px 14px;
     font-size:13.5px;
+    font-weight:600;
+    color:var(--muted);
+    cursor:pointer;
+    border-bottom:2px solid transparent;
   }
+  #tabs button:hover{ color:var(--ink); }
+  #tabs button.active{ color:var(--accent-dark); border-bottom-color:var(--accent); }
+
   form{
     background:#fff;
     border-bottom:1px solid var(--border);
@@ -60,66 +80,34 @@
     gap:14px;
     align-items:flex-end;
   }
-  .field{
-    display:flex;
-    flex-direction:column;
-    gap:4px;
-    position:relative;
-  }
+  .ctrl-group{ display:flex; flex-wrap:wrap; gap:14px; align-items:flex-end; }
+  .field{ display:flex; flex-direction:column; gap:4px; position:relative; }
   .field label{
-    font-size:12px;
-    font-weight:600;
-    color:var(--muted);
-    text-transform:uppercase;
-    letter-spacing:.03em;
+    font-size:12px; font-weight:600; color:var(--muted);
+    text-transform:uppercase; letter-spacing:.03em;
   }
-  .field input{
-    padding:9px 10px;
-    border:1px solid var(--border);
-    border-radius:6px;
-    font-size:14px;
-    min-width:120px;
+  .field input, .field select{
+    padding:9px 10px; border:1px solid var(--border); border-radius:6px;
+    font-size:14px; min-width:120px; background:#fff;
   }
   #commune-field{ width:260px; }
   #commune-field input{ width:100%; }
   .surface-field input{ width:110px; }
   #search-btn{
-    background:var(--accent);
-    color:#fff;
-    border:none;
-    border-radius:6px;
-    padding:10px 18px;
-    font-size:14px;
-    font-weight:600;
-    cursor:pointer;
-    height:38px;
+    background:var(--accent); color:#fff; border:none; border-radius:6px;
+    padding:10px 18px; font-size:14px; font-weight:600; cursor:pointer; height:38px;
   }
   #search-btn:disabled{ background:#c9a08f; cursor:default; }
   #search-btn:hover:not(:disabled){ background:var(--accent-dark); }
   #suggestions{
-    position:absolute;
-    top:100%;
-    left:0;
-    right:0;
-    background:#fff;
-    border:1px solid var(--border);
-    border-radius:6px;
-    margin-top:4px;
-    max-height:220px;
-    overflow-y:auto;
-    z-index:1000;
-    box-shadow:0 6px 16px rgba(0,0,0,.1);
-    display:none;
+    position:absolute; top:100%; left:0; right:0; background:#fff;
+    border:1px solid var(--border); border-radius:6px; margin-top:4px;
+    max-height:220px; overflow-y:auto; z-index:1000;
+    box-shadow:0 6px 16px rgba(0,0,0,.1); display:none;
   }
   #suggestions button{
-    display:block;
-    width:100%;
-    text-align:left;
-    padding:8px 10px;
-    border:none;
-    background:none;
-    cursor:pointer;
-    font-size:13.5px;
+    display:block; width:100%; text-align:left; padding:8px 10px;
+    border:none; background:none; cursor:pointer; font-size:13.5px;
     border-bottom:1px solid var(--border);
   }
   #suggestions button:last-child{ border-bottom:none; }
@@ -127,28 +115,68 @@
   #suggestions .cp{ color:var(--muted); font-size:12px; }
 
   #status-bar{
-    padding:10px 24px;
-    font-size:13.5px;
-    color:var(--muted);
-    background:#fff;
-    border-bottom:1px solid var(--border);
-    min-height:18px;
+    padding:10px 24px; font-size:13.5px; color:var(--muted);
+    background:#fff; border-bottom:1px solid var(--border); min-height:18px;
   }
   #status-bar.error{ color:#b3261e; }
   #status-bar.loading{ color:var(--accent-dark); }
 
-  main{
-    display:flex;
-    flex:1 1 auto;
-    min-height:420px;
-  }
+  main{ display:flex; flex:1 1 auto; min-height:420px; position:relative; }
   #map{ flex:1 1 auto; width:100%; }
   .leaflet-popup-content b{ display:block; margin-bottom:2px; }
   .leaflet-popup-content a{ color:var(--accent-dark); }
 
+  /* Panneau des transactions DVF : superposé à la carte */
+  #dvf-panel{
+    position:absolute; top:12px; right:12px; bottom:12px; width:360px;
+    background:#fff; border:1px solid var(--border); border-radius:10px;
+    box-shadow:0 10px 30px rgba(0,0,0,.18);
+    display:flex; flex-direction:column; overflow:hidden; z-index:900;
+  }
+  #dvf-panel-head{
+    flex:none; display:flex; align-items:center; justify-content:space-between;
+    gap:8px; padding:10px 12px; border-bottom:1px solid var(--border); background:#fafbfc;
+  }
+  #dvf-panel-head strong{ font-size:13.5px; }
+  #dvf-panel-toggle{
+    border:none; background:none; cursor:pointer; font-size:14px;
+    color:var(--muted); padding:2px 6px; border-radius:4px;
+  }
+  #dvf-panel-toggle:hover{ background:#eef0f2; }
+  #dvf-body{ flex:1 1 auto; overflow-y:auto; }
+  #dvf-stats{
+    padding:10px 12px; font-size:12.5px; color:var(--muted);
+    border-bottom:1px solid var(--border); background:#fff;
+  }
+  #dvf-stats b{ color:var(--ink); }
+  .dvf-item{ padding:10px 12px; border-bottom:1px solid var(--border); cursor:pointer; }
+  .dvf-item:hover{ background:#f4f6f8; }
+  .dvf-r1{ display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+  .dvf-cat{
+    font-size:11px; font-weight:700; color:#fff; border-radius:4px;
+    padding:1px 6px; text-transform:uppercase; letter-spacing:.02em;
+  }
+  .dvf-cat.Maison{ background:var(--maison); }
+  .dvf-cat.Appartement{ background:var(--appart); }
+  .dvf-cat.Terrain{ background:var(--terrain); }
+  .dvf-cat.Local{ background:var(--local); }
+  .dvf-cat.Autre{ background:var(--autre); }
+  .dvf-price{ font-weight:700; font-size:14px; }
+  .dvf-date{ color:var(--muted); font-size:12px; margin-left:auto; }
+  .dvf-meta{ font-size:12.5px; color:var(--accent-dark); margin-top:3px; }
+  .dvf-adr{ font-size:12.5px; color:var(--muted); margin-top:2px; }
+  .dvf-item .links{ margin-top:4px; }
+  .dvf-item .links a{ font-size:12px; color:var(--accent-dark); text-decoration:none; margin-right:10px; }
+  .dvf-item .links a:hover{ text-decoration:underline; }
+  .dvf-nature{ font-size:11px; color:var(--muted); }
+
   @media (max-width: 780px){
     main{ height:auto; }
     #map{ height:70vh; }
+    #dvf-panel{
+      top:auto; left:0; right:0; bottom:0; width:auto;
+      max-height:52vh; border-radius:12px 12px 0 0;
+    }
   }
 </style>
 </head>
@@ -156,9 +184,15 @@
 
 <header>
   <h1>Recherche de parcelles cadastrales</h1>
-  <p>Saisissez une commune française et une fourchette de surface pour localiser les parcelles correspondantes.
-     Données : cadastre.data.gouv.fr (Etalab) &amp; API Carto IGN, Base Adresse Nationale.</p>
+  <p>Localisez les parcelles d'une commune par surface, ou consultez les dernières
+     transactions immobilières (DVF).
+     Données : cadastre.data.gouv.fr, API Carto IGN, DVF Etalab, Base Adresse Nationale.</p>
 </header>
+
+<div id="tabs">
+  <button type="button" data-tab="parcelles" class="active">Parcelles</button>
+  <button type="button" data-tab="dvf">Transactions (DVF)</button>
+</div>
 
 <form id="search-form" autocomplete="off">
   <div class="field" id="commune-field">
@@ -166,14 +200,30 @@
     <input id="commune-input" type="text" placeholder="Ex : Laval" value="Laval" />
     <div id="suggestions"></div>
   </div>
-  <div class="field surface-field">
-    <label for="min-input">Surface min (m²)</label>
-    <input id="min-input" type="number" min="0" step="1" value="500" />
+
+  <div class="ctrl-group" id="ctrl-parcelles">
+    <div class="field surface-field">
+      <label for="min-input">Surface min (m²)</label>
+      <input id="min-input" type="number" min="0" step="1" value="500" />
+    </div>
+    <div class="field surface-field">
+      <label for="max-input">Surface max (m²)</label>
+      <input id="max-input" type="number" min="0" step="1" value="1000" />
+    </div>
   </div>
-  <div class="field surface-field">
-    <label for="max-input">Surface max (m²)</label>
-    <input id="max-input" type="number" min="0" step="1" value="1000" />
+
+  <div class="ctrl-group" id="ctrl-dvf" hidden>
+    <div class="field">
+      <label for="dvf-months">Période</label>
+      <select id="dvf-months">
+        <option value="12">12 derniers mois</option>
+        <option value="24" selected>2 dernières années</option>
+        <option value="36">3 dernières années</option>
+        <option value="60">5 dernières années</option>
+      </select>
+    </div>
   </div>
+
   <button type="submit" id="search-btn">Rechercher</button>
 </form>
 
@@ -181,6 +231,17 @@
 
 <main>
   <div id="map"></div>
+
+  <aside id="dvf-panel" hidden>
+    <div id="dvf-panel-head">
+      <strong>Transactions immobilières (DVF)</strong>
+      <button type="button" id="dvf-panel-toggle" title="Réduire / agrandir">▾</button>
+    </div>
+    <div id="dvf-body">
+      <div id="dvf-stats"></div>
+      <div id="dvf-list"></div>
+    </div>
+  </aside>
 </main>
 
 <script>
@@ -189,18 +250,30 @@
   const suggestionsBox = document.getElementById('suggestions');
   const minInput = document.getElementById('min-input');
   const maxInput = document.getElementById('max-input');
+  const dvfMonths = document.getElementById('dvf-months');
   const form = document.getElementById('search-form');
   const searchBtn = document.getElementById('search-btn');
   const statusBar = document.getElementById('status-bar');
+  const tabsBar = document.getElementById('tabs');
+  const ctrlParcelles = document.getElementById('ctrl-parcelles');
+  const ctrlDvf = document.getElementById('ctrl-dvf');
+  const dvfPanel = document.getElementById('dvf-panel');
+  const dvfBody = document.getElementById('dvf-body');
+  const dvfStats = document.getElementById('dvf-stats');
+  const dvfList = document.getElementById('dvf-list');
+  const dvfToggle = document.getElementById('dvf-panel-toggle');
 
+  let activeTab = 'parcelles';
   let selectedCommune = { code: '53130', nom: 'Laval', codePostal: '53000' };
   let debounceTimer = null;
   let resultsLayer = null;
-  const parcellesCache = {}; // clé "insee|min|max" -> { features, total, source }
-  const addressCache = {};   // évite de rechercher l'adresse plusieurs fois pour la même parcelle
+  let dvfLayer = null;
+  let dvfHasRun = false;
+  const dvfMarkers = {}; // id mutation -> marker
+  const parcellesCache = {}; // "insee|min|max" -> { features, total, source }
+  const dvfCache = {};       // "insee|months" -> data
+  const addressCache = {};
 
-  // Identifiant de parcelle robuste : le proxy renvoie déjà "idu", mais on garde
-  // la reconstruction de secours au cas où.
   function getIdu(props){
     if (!props) return '';
     if (props.idu) return String(props.idu).toUpperCase();
@@ -216,12 +289,8 @@
   const map = L.map('map').setView([48.0578, -0.7692], 13);
 
   const planLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-    maxZoom: 19,
-    attribution: '&copy; OpenStreetMap contributors'
+    maxZoom: 19, attribution: '&copy; OpenStreetMap contributors'
   }).addTo(map);
-
-  // Satellite / photo aérienne : IGN en priorité (meilleure résolution en France),
-  // Esri en secours si le flux IGN ne répond pas chez certains utilisateurs.
   const satelliteIgnLayer = L.tileLayer(
     'https://data.geopf.fr/wmts?SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0&LAYER=ORTHOIMAGERY.ORTHOPHOTOS&STYLE=normal&TILEMATRIXSET=PM&FORMAT=image/jpeg&TILEMATRIX={z}&TILEROW={y}&TILECOL={x}',
     { maxZoom: 19, minZoom: 0, attribution: '&copy; IGN-F/Géoportail' }
@@ -230,7 +299,6 @@
     'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
     { maxZoom: 19, attribution: 'Tiles &copy; Esri' }
   );
-
   L.control.layers({
     'Plan (OpenStreetMap)': planLayer,
     'Satellite (IGN)': satelliteIgnLayer,
@@ -241,19 +309,66 @@
     statusBar.textContent = msg || '';
     statusBar.className = kind ? kind : '';
   }
-
+  function btnIdleLabel(){ return activeTab === 'dvf' ? 'Voir les transactions' : 'Rechercher'; }
   function setLoading(isLoading){
     searchBtn.disabled = isLoading;
-    searchBtn.textContent = isLoading ? 'Recherche…' : 'Rechercher';
+    searchBtn.textContent = isLoading ? 'Chargement…' : btnIdleLabel();
   }
-
   function fetchWithTimeout(url, ms){
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), ms);
     return fetch(url, { signal: controller.signal }).finally(() => clearTimeout(timer));
   }
+  function fmtEur(n){
+    if (n == null || isNaN(n)) return '—';
+    return Math.round(n).toLocaleString('fr-FR') + ' €';
+  }
+  function fmtDate(iso){
+    if (!iso) return '';
+    const d = new Date(iso + 'T00:00:00');
+    return isNaN(d) ? iso : d.toLocaleDateString('fr-FR');
+  }
+  function fmtMonthYear(iso){
+    if (!iso) return '';
+    const d = new Date(iso + 'T00:00:00');
+    return isNaN(d) ? iso : d.toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' });
+  }
 
-  // --- Autocomplete commune (API Geo, geo.api.gouv.fr — CORS ouvert, appel direct navigateur) ---
+  // --- Onglets ---
+  tabsBar.addEventListener('click', (e) => {
+    const btn = e.target.closest('button[data-tab]');
+    if (!btn) return;
+    switchTab(btn.dataset.tab);
+  });
+  function switchTab(tab){
+    if (tab === activeTab) return;
+    activeTab = tab;
+    [...tabsBar.querySelectorAll('button')].forEach(b => b.classList.toggle('active', b.dataset.tab === tab));
+    ctrlParcelles.hidden = tab !== 'parcelles';
+    ctrlDvf.hidden = tab !== 'dvf';
+    searchBtn.textContent = btnIdleLabel();
+    setStatus('');
+    syncLayers();
+  }
+  // N'affiche sur la carte que la couche de l'onglet actif.
+  function syncLayers(){
+    if (activeTab === 'dvf'){
+      if (resultsLayer && map.hasLayer(resultsLayer)) map.removeLayer(resultsLayer);
+      if (dvfLayer && !map.hasLayer(dvfLayer)) dvfLayer.addTo(map);
+      dvfPanel.hidden = !dvfHasRun;
+    } else {
+      if (dvfLayer && map.hasLayer(dvfLayer)) map.removeLayer(dvfLayer);
+      if (resultsLayer && !map.hasLayer(resultsLayer)) resultsLayer.addTo(map);
+      dvfPanel.hidden = true;
+    }
+  }
+  dvfToggle.addEventListener('click', () => {
+    const collapsed = dvfBody.hidden;
+    dvfBody.hidden = !collapsed;
+    dvfToggle.textContent = collapsed ? '▾' : '▸';
+  });
+
+  // --- Autocomplétion commune (geo.api.gouv.fr, CORS ouvert) ---
   communeInput.addEventListener('input', () => {
     selectedCommune = null;
     const q = communeInput.value.trim();
@@ -261,26 +376,20 @@
     if (q.length < 2) { suggestionsBox.style.display = 'none'; return; }
     debounceTimer = setTimeout(() => fetchCommuneSuggestions(q), 300);
   });
-
   document.addEventListener('click', (e) => {
     if (!suggestionsBox.contains(e.target) && e.target !== communeInput) {
       suggestionsBox.style.display = 'none';
     }
   });
-
   async function fetchCommuneSuggestions(q){
     try {
       const url = 'https://geo.api.gouv.fr/communes?nom=' + encodeURIComponent(q) +
         '&fields=nom,code,codesPostaux,departement,centre&boost=population&limit=12';
       const res = await fetch(url);
       if (!res.ok) return;
-      const data = await res.json();
-      renderSuggestions(data);
-    } catch (e) {
-      // silencieux : l'autocomplétion est "best effort"
-    }
+      renderSuggestions(await res.json());
+    } catch (e) { /* best effort */ }
   }
-
   function renderSuggestions(list){
     suggestionsBox.innerHTML = '';
     if (!list || list.length === 0) { suggestionsBox.style.display = 'none'; return; }
@@ -303,41 +412,24 @@
     suggestionsBox.style.display = 'block';
   }
 
-  // --- Récupération des parcelles via le proxy serverless ---
-  // Le serveur interroge cadastre.data.gouv.fr (rapide, un fichier par commune) avec
-  // repli sur l'API Carto IGN, filtre par surface, et renvoie un GeoJSON allégé.
+  // --- Parcelles (proxy /api/parcelles) ---
   async function fetchParcelles(commune, min, max, onProgress){
     const key = commune.code + '|' + min + '|' + max;
     if (parcellesCache[key]) return parcellesCache[key];
-
     onProgress && onProgress('Récupération des parcelles… (quelques secondes, plus long pour les grandes communes)');
     const url = '/api/parcelles?insee=' + encodeURIComponent(commune.code) +
       '&min=' + encodeURIComponent(min) + '&max=' + encodeURIComponent(max);
-
     let res;
-    try {
-      res = await fetchWithTimeout(url, 90000);
-    } catch (e) {
-      throw new Error('Le serveur n\'a pas répondu à temps. Réessayez.');
-    }
-
+    try { res = await fetchWithTimeout(url, 90000); }
+    catch (e) { throw new Error('Le serveur n\'a pas répondu à temps. Réessayez.'); }
     let data = null;
-    try { data = await res.json(); } catch (e) { /* corps non JSON */ }
-
-    if (!res.ok) {
-      throw new Error((data && data.error) || ('Erreur serveur (' + res.status + ').'));
-    }
-
-    const result = {
-      features: (data && data.features) || [],
-      total: (data && data.total) || 0,
-      source: data && data.source
-    };
+    try { data = await res.json(); } catch (e) {}
+    if (!res.ok) throw new Error((data && data.error) || ('Erreur serveur (' + res.status + ').'));
+    const result = { features: (data && data.features) || [], total: (data && data.total) || 0, source: data && data.source };
     parcellesCache[key] = result;
     return result;
   }
 
-  // Adresse approximative de la parcelle, par géocodage inverse (Base Adresse Nationale, CORS ouvert).
   async function fetchAddress(lat, lon){
     try {
       const url = 'https://api-adresse.data.gouv.fr/reverse/?lon=' + lon + '&lat=' + lat + '&limit=1';
@@ -346,41 +438,31 @@
       const data = await res.json();
       const feat = data && data.features && data.features[0];
       return feat ? feat.properties.label : null;
-    } catch (e) {
-      return null;
-    }
+    } catch (e) { return null; }
   }
 
   function mapsLinksHtml(lat, lon){
-    const la = lat.toFixed(6);
-    const lo = lon.toFixed(6);
+    const la = (+lat).toFixed(6), lo = (+lon).toFixed(6);
     const mapsUrl = 'https://www.google.com/maps/search/?api=1&query=' + la + ',' + lo;
     const streetViewUrl = 'https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=' + la + ',' + lo;
-    return '<a href="' + mapsUrl + '" target="_blank" rel="noopener">Voir sur Google Maps ↗</a>' +
+    return '<a href="' + mapsUrl + '" target="_blank" rel="noopener">Google Maps ↗</a>' +
       '<a href="' + streetViewUrl + '" target="_blank" rel="noopener">Street View ↗</a>';
   }
 
   function popupHtml(props, latlng, address){
     const idu = getIdu(props);
-    const section = props.section || '';
-    const numero = props.numero || '';
     const surf = (props.contenance != null) ? props.contenance : '?';
     const addressLine = address || 'Recherche de l\'adresse…';
     return '<b>' + idu + '</b>' +
-      'Section ' + section + ', n°' + numero + '<br/>' +
+      'Section ' + (props.section || '') + ', n°' + (props.numero || '') + '<br/>' +
       'Surface cadastrale : ' + surf + ' m²<br/>' +
       'Adresse : ' + addressLine + '<br/>' +
       mapsLinksHtml(latlng.lat, latlng.lng);
   }
 
-  function clearResults(){
-    if (resultsLayer) { map.removeLayer(resultsLayer); resultsLayer = null; }
-  }
-
   function renderResults(matched){
     if (resultsLayer) { map.removeLayer(resultsLayer); resultsLayer = null; }
     if (matched.length === 0) return;
-
     const fc = { type: 'FeatureCollection', features: matched };
     resultsLayer = L.geoJSON(fc, {
       style: { color: '#c1440e', weight: 2, fillColor: '#f2a35c', fillOpacity: 0.45 },
@@ -396,10 +478,119 @@
           });
         });
       }
-    }).addTo(map);
+    });
+    if (activeTab === 'parcelles') resultsLayer.addTo(map);
     map.fitBounds(resultsLayer.getBounds(), { maxZoom: 18, padding: [20, 20] });
   }
 
+  // --- DVF (proxy /api/dvf) ---
+  async function fetchDvf(commune, months, onProgress){
+    const key = commune.code + '|' + months;
+    if (dvfCache[key]) return dvfCache[key];
+    onProgress && onProgress('Récupération des transactions DVF… (quelques secondes)');
+    const url = '/api/dvf?insee=' + encodeURIComponent(commune.code) + '&months=' + encodeURIComponent(months);
+    let res;
+    try { res = await fetchWithTimeout(url, 90000); }
+    catch (e) { throw new Error('Le serveur n\'a pas répondu à temps. Réessayez.'); }
+    let data = null;
+    try { data = await res.json(); } catch (e) {}
+    if (!res.ok) throw new Error((data && data.error) || ('Erreur serveur (' + res.status + ').'));
+    dvfCache[key] = data;
+    return data;
+  }
+
+  function dvfPopupHtml(m){
+    const bits = [];
+    bits.push('<b>' + fmtEur(m.valeur) + '</b>');
+    bits.push(fmtDate(m.date) + ' — ' + m.categorie +
+      (m.nature && !/^Vente$/i.test(m.nature) ? ' <span class="dvf-nature">(' + m.nature + ')</span>' : ''));
+    const l2 = [];
+    if (m.bati_total) l2.push(m.bati_total + ' m² bâti' + (m.pieces ? ', ' + m.pieces + ' p.' : ''));
+    if (m.terrain_total) l2.push(m.terrain_total + ' m² terrain');
+    if (m.prix_m2) l2.push(m.prix_m2.toLocaleString('fr-FR') + ' €/m²');
+    if (l2.length) bits.push(l2.join(' · '));
+    if (m.adresse) bits.push(m.adresse);
+    if (m.lat != null && m.lon != null) bits.push(mapsLinksHtml(m.lat, m.lon));
+    return bits.join('<br/>');
+  }
+
+  function renderDvf(data){
+    if (dvfLayer) { map.removeLayer(dvfLayer); dvfLayer = null; }
+    for (const k in dvfMarkers) delete dvfMarkers[k];
+
+    const muts = (data && data.mutations) || [];
+    const s = (data && data.stats) || {};
+    dvfHasRun = true;
+
+    // Bandeau de stats
+    const parts = [];
+    parts.push('<b>' + (s.total || muts.length) + '</b> transaction(s)');
+    if (s.total && muts.length < s.total) parts.push('(' + muts.length + ' affichées)');
+    if (s.prix_median != null) parts.push('prix médian <b>' + fmtEur(s.prix_median) + '</b>');
+    if (s.prix_m2_median != null) parts.push('<b>' + s.prix_m2_median.toLocaleString('fr-FR') + ' €/m²</b> médian (maison/appart.)');
+    let statsHtml = parts.join(' · ');
+    if (s.data_through) statsHtml += '<br/>Données publiées jusqu\'à ' + fmtMonthYear(s.data_through) + '.';
+    dvfStats.innerHTML = statsHtml;
+
+    // Marqueurs
+    const markers = [];
+    const catColor = { Maison:'#c1440e', Appartement:'#2563eb', Terrain:'#15803d', Local:'#7c3aed', Autre:'#64748b' };
+    muts.forEach(m => {
+      if (m.lat == null || m.lon == null) return;
+      const mk = L.circleMarker([m.lat, m.lon], {
+        radius: 6, weight: 1, color: '#fff',
+        fillColor: catColor[m.categorie] || catColor.Autre, fillOpacity: 0.9
+      });
+      mk.bindPopup(dvfPopupHtml(m));
+      mk._mutId = m.id;
+      dvfMarkers[m.id] = mk;
+      markers.push(mk);
+    });
+    dvfLayer = L.layerGroup(markers);
+    if (activeTab === 'dvf') dvfLayer.addTo(map);
+    if (markers.length){
+      const grp = L.featureGroup(markers);
+      map.fitBounds(grp.getBounds(), { maxZoom: 16, padding: [30, 30] });
+    }
+
+    // Liste
+    dvfList.innerHTML = '';
+    if (!muts.length){
+      const empty = document.createElement('div');
+      empty.className = 'dvf-item';
+      empty.style.cursor = 'default';
+      empty.textContent = 'Aucune transaction sur cette période' +
+        (s.data_through ? ' (données DVF publiées jusqu\'à ' + fmtMonthYear(s.data_through) + ', avec ~6 mois de décalage).' : '.');
+      dvfList.appendChild(empty);
+      return;
+    }
+    muts.forEach(m => {
+      const item = document.createElement('div');
+      item.className = 'dvf-item';
+      const meta = [];
+      if (m.bati_total) meta.push(m.bati_total + ' m² bâti' + (m.pieces ? ', ' + m.pieces + ' p.' : ''));
+      if (m.terrain_total) meta.push(m.terrain_total + ' m² terrain');
+      if (m.prix_m2) meta.push(m.prix_m2.toLocaleString('fr-FR') + ' €/m²');
+      item.innerHTML =
+        '<div class="dvf-r1">' +
+          '<span class="dvf-cat ' + m.categorie + '">' + m.categorie + '</span>' +
+          '<span class="dvf-price">' + fmtEur(m.valeur) + '</span>' +
+          '<span class="dvf-date">' + fmtDate(m.date) + '</span>' +
+        '</div>' +
+        (meta.length ? '<div class="dvf-meta">' + meta.join(' · ') + '</div>' : '') +
+        (m.nature && !/^Vente$/i.test(m.nature) ? '<div class="dvf-nature">' + m.nature + '</div>' : '') +
+        (m.adresse ? '<div class="dvf-adr">' + m.adresse + '</div>' : '') +
+        (m.lat != null ? '<div class="links">' + mapsLinksHtml(m.lat, m.lon) + '</div>' : '');
+      item.addEventListener('click', (ev) => {
+        if (ev.target.tagName === 'A') return;
+        const mk = dvfMarkers[m.id];
+        if (mk){ map.setView(mk.getLatLng(), 17); mk.openPopup(); }
+      });
+      dvfList.appendChild(item);
+    });
+  }
+
+  // --- Soumission ---
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
     setStatus('');
@@ -407,6 +598,27 @@
       setStatus('Sélectionnez une commune dans la liste de suggestions.', 'error');
       return;
     }
+
+    if (activeTab === 'dvf'){
+      setLoading(true);
+      try {
+        const months = parseInt(dvfMonths.value, 10) || 24;
+        const data = await fetchDvf(selectedCommune, months, (msg) => setStatus(msg, 'loading'));
+        const n = (data.stats && data.stats.total) || (data.mutations || []).length;
+        setStatus(n + ' transaction(s) DVF à ' + selectedCommune.nom + ' depuis ' + fmtDate(data.from) + '.');
+        dvfPanel.hidden = false;
+        dvfBody.hidden = false;
+        dvfToggle.textContent = '▾';
+        renderDvf(data);
+      } catch (err) {
+        setStatus(err.message || 'Erreur pendant la récupération DVF.', 'error');
+      } finally {
+        setLoading(false);
+      }
+      return;
+    }
+
+    // Onglet parcelles
     const min = parseFloat(minInput.value);
     const max = parseFloat(maxInput.value);
     if (isNaN(min) || isNaN(max) || min < 0 || max < 0) {
@@ -417,9 +629,8 @@
       setStatus('La surface minimale doit être inférieure ou égale à la surface maximale.', 'error');
       return;
     }
-
     setLoading(true);
-    clearResults();
+    if (resultsLayer) { map.removeLayer(resultsLayer); resultsLayer = null; }
     try {
       const { features: matched, total, source } =
         await fetchParcelles(selectedCommune, min, max, (msg) => setStatus(msg, 'loading'));
@@ -435,9 +646,7 @@
     }
   });
 
-  // PWA : enregistrement du service worker (nécessaire pour l'installation
-  // « Ajouter à l'écran d'accueil » sur Android/Chrome). Pas de cache : l'app
-  // dépend de données live.
+  // PWA : service worker minimal (installation « écran d'accueil »). Aucun cache.
   if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => {
       navigator.serviceWorker.register('/sw.js').catch(() => {});
