@@ -8,6 +8,10 @@
     "api/dvf.js": {
       "maxDuration": 60,
       "memory": 1024
+    },
+    "api/dvf-around.js": {
+      "maxDuration": 60,
+      "memory": 1024
     }
   },
   "headers": [

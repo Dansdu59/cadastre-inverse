@@ -192,6 +192,7 @@
 <div id="tabs">
   <button type="button" data-tab="parcelles" class="active">Parcelles</button>
   <button type="button" data-tab="dvf">Transactions (DVF)</button>
+  <button type="button" data-tab="autour">Autour d'une parcelle</button>
 </div>
 
 <form id="search-form" autocomplete="off">
@@ -224,6 +225,47 @@
     </div>
   </div>
 
+  <div class="ctrl-group" id="ctrl-autour" hidden>
+    <div class="field surface-field">
+      <label for="au-min">Parcelles min (m²)</label>
+      <input id="au-min" type="number" min="0" step="1" value="500" />
+    </div>
+    <div class="field surface-field">
+      <label for="au-max">Parcelles max (m²)</label>
+      <input id="au-max" type="number" min="0" step="1" value="900" />
+    </div>
+    <div class="field">
+      <label for="au-radius">Rayon</label>
+      <select id="au-radius">
+        <option value="0.25">250 m</option>
+        <option value="0.5">500 m</option>
+        <option value="1" selected>1 km</option>
+        <option value="2">2 km</option>
+        <option value="3">3 km</option>
+        <option value="5">5 km</option>
+      </select>
+    </div>
+    <div class="field">
+      <label for="au-type">Type de bien</label>
+      <select id="au-type">
+        <option value="tous" selected>Tous</option>
+        <option value="maison">Maison</option>
+        <option value="appartement">Appartement</option>
+        <option value="terrain">Terrain</option>
+        <option value="local">Local</option>
+      </select>
+    </div>
+    <div class="field">
+      <label for="au-months">Période</label>
+      <select id="au-months">
+        <option value="12">12 mois</option>
+        <option value="24">2 ans</option>
+        <option value="36" selected>3 ans</option>
+        <option value="60">5 ans</option>
+      </select>
+    </div>
+  </div>
+
   <button type="submit" id="search-btn">Rechercher</button>
 </form>
 
@@ -234,7 +276,7 @@
 
   <aside id="dvf-panel" hidden>
     <div id="dvf-panel-head">
-      <strong>Transactions immobilières (DVF)</strong>
+      <strong id="dvf-panel-title">Transactions immobilières (DVF)</strong>
       <button type="button" id="dvf-panel-toggle" title="Réduire / agrandir">▾</button>
     </div>
     <div id="dvf-body">
@@ -251,17 +293,26 @@
   const minInput = document.getElementById('min-input');
   const maxInput = document.getElementById('max-input');
   const dvfMonths = document.getElementById('dvf-months');
+  const auMin = document.getElementById('au-min');
+  const auMax = document.getElementById('au-max');
+  const auRadius = document.getElementById('au-radius');
+  const auType = document.getElementById('au-type');
+  const auMonths = document.getElementById('au-months');
   const form = document.getElementById('search-form');
   const searchBtn = document.getElementById('search-btn');
   const statusBar = document.getElementById('status-bar');
   const tabsBar = document.getElementById('tabs');
   const ctrlParcelles = document.getElementById('ctrl-parcelles');
   const ctrlDvf = document.getElementById('ctrl-dvf');
+  const ctrlAutour = document.getElementById('ctrl-autour');
   const dvfPanel = document.getElementById('dvf-panel');
+  const dvfPanelTitle = document.getElementById('dvf-panel-title');
   const dvfBody = document.getElementById('dvf-body');
   const dvfStats = document.getElementById('dvf-stats');
   const dvfList = document.getElementById('dvf-list');
   const dvfToggle = document.getElementById('dvf-panel-toggle');
+
+  const CAT_COLOR = { Maison:'#c1440e', Appartement:'#2563eb', Terrain:'#15803d', Local:'#7c3aed', Autre:'#64748b' };
 
   let activeTab = 'parcelles';
   let selectedCommune = { code: '53130', nom: 'Laval', codePostal: '53000' };
@@ -273,6 +324,17 @@
   const parcellesCache = {}; // "insee|min|max" -> { features, total, source }
   const dvfCache = {};       // "insee|months" -> data
   const addressCache = {};
+
+  // Onglet « Autour d'une parcelle »
+  let auParcellesLayer = null;  // parcelles cliquables
+  let auVentesLayer = null;     // marqueurs des ventes
+  let auCircle = null;          // cercle du rayon
+  let auRefMarker = null;       // point de référence
+  let auRef = null;             // { lat, lon, idu }
+  let auHasRun = false;
+  const auVenteMarkers = {};    // id mutation -> marker
+  const communesAroundCache = {};
+  const autourCache = {};
 
   function getIdu(props){
     if (!props) return '';
@@ -309,10 +371,28 @@
     statusBar.textContent = msg || '';
     statusBar.className = kind ? kind : '';
   }
-  function btnIdleLabel(){ return activeTab === 'dvf' ? 'Voir les transactions' : 'Rechercher'; }
+  function btnIdleLabel(){
+    if (activeTab === 'dvf') return 'Voir les transactions';
+    if (activeTab === 'autour') return 'Charger les parcelles';
+    return 'Rechercher';
+  }
   function setLoading(isLoading){
     searchBtn.disabled = isLoading;
     searchBtn.textContent = isLoading ? 'Chargement…' : btnIdleLabel();
+  }
+  function fmtDist(m){
+    if (m == null) return '';
+    if (m < 1000) return Math.round(m) + ' m';
+    return (m / 1000).toFixed(m < 10000 ? 2 : 1).replace('.', ',') + ' km';
+  }
+  // Point à `distM` mètres d'un point, sur un cap donné (degrés).
+  function destPoint(lat, lon, bearingDeg, distM){
+    const R = 6371000, br = bearingDeg * Math.PI / 180, d = distM / R;
+    const la1 = lat * Math.PI / 180, lo1 = lon * Math.PI / 180;
+    const la2 = Math.asin(Math.sin(la1) * Math.cos(d) + Math.cos(la1) * Math.sin(d) * Math.cos(br));
+    const lo2 = lo1 + Math.atan2(Math.sin(br) * Math.sin(d) * Math.cos(la1),
+                                 Math.cos(d) - Math.sin(la1) * Math.sin(la2));
+    return [la2 * 180 / Math.PI, lo2 * 180 / Math.PI];
   }
   function fetchWithTimeout(url, ms){
     const controller = new AbortController();
@@ -346,21 +426,32 @@
     [...tabsBar.querySelectorAll('button')].forEach(b => b.classList.toggle('active', b.dataset.tab === tab));
     ctrlParcelles.hidden = tab !== 'parcelles';
     ctrlDvf.hidden = tab !== 'dvf';
+    ctrlAutour.hidden = tab !== 'autour';
     searchBtn.textContent = btnIdleLabel();
     setStatus('');
+    if (tab === 'autour' && !auRef){
+      setStatus('Cliquez un point de la carte pour analyser les ventes autour — ou chargez les parcelles pour en cliquer une précisément.');
+    }
     syncLayers();
   }
-  // N'affiche sur la carte que la couche de l'onglet actif.
+  // N'affiche sur la carte que les couches de l'onglet actif.
   function syncLayers(){
-    if (activeTab === 'dvf'){
-      if (resultsLayer && map.hasLayer(resultsLayer)) map.removeLayer(resultsLayer);
-      if (dvfLayer && !map.hasLayer(dvfLayer)) dvfLayer.addTo(map);
-      dvfPanel.hidden = !dvfHasRun;
-    } else {
-      if (dvfLayer && map.hasLayer(dvfLayer)) map.removeLayer(dvfLayer);
-      if (resultsLayer && !map.hasLayer(resultsLayer)) resultsLayer.addTo(map);
-      dvfPanel.hidden = true;
+    const byTab = {
+      parcelles: [resultsLayer],
+      dvf: [dvfLayer],
+      autour: [auParcellesLayer, auCircle, auVentesLayer, auRefMarker]
+    };
+    for (const t in byTab){
+      byTab[t].forEach(layer => {
+        if (!layer) return;
+        const show = (t === activeTab);
+        if (show && !map.hasLayer(layer)) layer.addTo(map);
+        if (!show && map.hasLayer(layer)) map.removeLayer(layer);
+      });
     }
+    dvfPanel.hidden = !((activeTab === 'dvf' && dvfHasRun) || (activeTab === 'autour' && auHasRun));
+    if (activeTab === 'dvf') dvfPanelTitle.textContent = 'Transactions immobilières (DVF)';
+    if (activeTab === 'autour') dvfPanelTitle.textContent = 'Ventes autour de la parcelle';
   }
   dvfToggle.addEventListener('click', () => {
     const collapsed = dvfBody.hidden;
@@ -590,12 +681,240 @@
     });
   }
 
+  // --- Onglet « Autour d'une parcelle » ---
+
+  // Charge des parcelles cliquables (comme l'onglet 1, sans les afficher en résultats).
+  async function loadAutourParcelles(){
+    const min = parseFloat(auMin.value); const max = parseFloat(auMax.value);
+    if (isNaN(min) || isNaN(max) || min < 0 || max < 0 || min > max){
+      setStatus('Surfaces invalides pour le chargement des parcelles.', 'error'); return;
+    }
+    setLoading(true);
+    try {
+      const { features } = await fetchParcelles(selectedCommune, min, max, (msg) => setStatus(msg, 'loading'));
+      renderAutourParcelles(features);
+      setStatus(features.length + ' parcelle(s) chargée(s) à ' + selectedCommune.nom +
+        ' — cliquez une parcelle (ou un point de la carte) pour analyser les ventes autour.');
+    } catch (err) {
+      setStatus(err.message || 'Erreur pendant le chargement des parcelles.', 'error');
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  function renderAutourParcelles(features){
+    if (auParcellesLayer){ map.removeLayer(auParcellesLayer); auParcellesLayer = null; }
+    if (!features || !features.length) return;
+    auParcellesLayer = L.geoJSON({ type:'FeatureCollection', features }, {
+      style: { color:'#8f3208', weight:1, fillColor:'#f2a35c', fillOpacity:0.12 },
+      onEachFeature: (f, layer) => {
+        layer.on('click', () => {
+          const c = layer.getBounds().getCenter();
+          setAutourRef(c.lat, c.lng, getIdu(f.properties));
+        });
+      }
+    }).addTo(map);
+    map.fitBounds(auParcellesLayer.getBounds(), { maxZoom: 17, padding: [20, 20] });
+  }
+
+  function setAutourRef(lat, lon, idu){
+    auRef = { lat, lon, idu: idu || null };
+    if (auRefMarker){ map.removeLayer(auRefMarker); auRefMarker = null; }
+    auRefMarker = L.marker([lat, lon], { title: idu || 'Point de référence' }).addTo(map);
+    runAutour();
+  }
+
+  // Communes dont le territoire touche le cercle (centre + 8 points du périmètre),
+  // via geo.api.gouv.fr (point -> commune). CORS ouvert, appel direct.
+  async function communesAround(lat, lon, radiusKm){
+    const key = lat.toFixed(3) + ',' + lon.toFixed(3) + ',' + radiusKm;
+    if (communesAroundCache[key]) return communesAroundCache[key];
+    const pts = [[lat, lon]];
+    for (let b = 0; b < 360; b += 45) pts.push(destPoint(lat, lon, b, radiusKm * 1000));
+    const codes = new Set();
+    await Promise.all(pts.map(async ([la, lo]) => {
+      try {
+        const r = await fetch('https://geo.api.gouv.fr/communes?lat=' + la + '&lon=' + lo + '&fields=code');
+        if (!r.ok) return;
+        const arr = await r.json();
+        if (arr && arr[0] && arr[0].code) codes.add(arr[0].code);
+      } catch (e) {}
+    }));
+    let list = [...codes];
+    if (!list.length && selectedCommune && selectedCommune.code) list = [selectedCommune.code];
+    if (list.length) communesAroundCache[key] = list;
+    return list;
+  }
+
+  async function fetchAutour(ref, radiusKm, months, type, communes){
+    const key = ref.lat.toFixed(5) + ',' + ref.lon.toFixed(5) + '|' + radiusKm + '|' + months + '|' + type + '|' + communes.join(',');
+    if (autourCache[key]) return autourCache[key];
+    const url = '/api/dvf-around?lat=' + ref.lat + '&lon=' + ref.lon +
+      '&radius=' + radiusKm + '&months=' + months + '&type=' + encodeURIComponent(type) +
+      '&communes=' + encodeURIComponent(communes.join(','));
+    let res;
+    try { res = await fetchWithTimeout(url, 90000); }
+    catch (e) { throw new Error('Le serveur n\'a pas répondu à temps. Réessayez.'); }
+    let data = null;
+    try { data = await res.json(); } catch (e) {}
+    if (!res.ok) throw new Error((data && data.error) || ('Erreur serveur (' + res.status + ').'));
+    autourCache[key] = data;
+    return data;
+  }
+
+  async function runAutour(){
+    if (!auRef) return;
+    const radiusKm = parseFloat(auRadius.value) || 1;
+    const months = parseInt(auMonths.value, 10) || 36;
+    const type = auType.value;
+
+    if (auCircle){ map.removeLayer(auCircle); auCircle = null; }
+    auCircle = L.circle([auRef.lat, auRef.lon], {
+      radius: radiusKm * 1000, color:'#c1440e', weight:1, fillColor:'#c1440e', fillOpacity:0.05
+    }).addTo(map);
+
+    searchBtn.disabled = true;
+    setStatus('Analyse des ventes autour…', 'loading');
+    try {
+      const communes = await communesAround(auRef.lat, auRef.lon, radiusKm);
+      if (!communes.length) throw new Error('Impossible de déterminer les communes autour de ce point.');
+      const data = await fetchAutour(auRef, radiusKm, months, type, communes);
+      auHasRun = true;
+      dvfPanel.hidden = false; dvfBody.hidden = false; dvfToggle.textContent = '▾';
+      dvfPanelTitle.textContent = 'Ventes autour de la parcelle';
+      renderAutour(data);
+      const s = data.synthese || {};
+      setStatus(
+        s.count_type + ' vente(s) ' + (type === 'tous' ? '' : '(' + type + ') ') +
+        'dans ' + radiusKm.toString().replace('.', ',') + ' km' +
+        (s.pm2_moyen != null ? ' — €/m² moyen ' + s.pm2_moyen.toLocaleString('fr-FR') : '') +
+        (auRef.idu ? ' · réf. ' + auRef.idu : '') + '.'
+      );
+    } catch (err) {
+      setStatus(err.message || 'Erreur pendant l\'analyse.', 'error');
+    } finally {
+      searchBtn.disabled = false;
+    }
+  }
+
+  function autourPopupHtml(m, type){
+    const bits = [];
+    bits.push('<b>' + fmtEur(m.valeur) + '</b>');
+    bits.push(fmtDate(m.date) + ' — ' + m.categorie +
+      (m.nature && !/^Vente$/i.test(m.nature) ? ' <span class="dvf-nature">(' + m.nature + ')</span>' : ''));
+    const l2 = [];
+    if (m.distance_m != null) l2.push('à ' + fmtDist(m.distance_m));
+    if (m.bati_total) l2.push(m.bati_total + ' m² bâti' + (m.pieces ? ', ' + m.pieces + ' p.' : ''));
+    if (m.terrain_total) l2.push(m.terrain_total + ' m² terrain');
+    const pm2 = (type === 'terrain') ? m.prix_m2_terrain : m.prix_m2;
+    if (pm2) l2.push(pm2.toLocaleString('fr-FR') + ' €/m²');
+    if (l2.length) bits.push(l2.join(' · '));
+    if (m.adresse) bits.push(m.adresse);
+    if (m.lat != null && m.lon != null) bits.push(mapsLinksHtml(m.lat, m.lon));
+    return bits.join('<br/>');
+  }
+
+  function renderAutour(data){
+    if (auVentesLayer){ map.removeLayer(auVentesLayer); auVentesLayer = null; }
+    for (const k in auVenteMarkers) delete auVenteMarkers[k];
+
+    const s = data.synthese || {};
+    const ventes = data.ventes || [];
+    const type = data.type || 'tous';
+    const fm = (n) => (n == null ? '—' : n.toLocaleString('fr-FR') + ' €/m²');
+
+    // Synthèse
+    let html = '<div><b>' + s.count_type + '</b> vente(s) ' +
+      (type === 'tous' ? '' : '(' + type + ') ') + 'dans ' + data.radius_km.toString().replace('.', ',') + ' km';
+    if (s.count_type !== s.count_radius) html += ' <span class="dvf-nature">(' + s.count_radius + ' toutes catégories)</span>';
+    html += '</div>';
+    if (s.pm2_moyen != null){
+      html += '<div style="margin-top:5px">€/m² ' + (s.pm2_base === 'terrain' ? '(terrain)' : '(bâti)') + ' — ' +
+        'moyen <b>' + fm(s.pm2_moyen) + '</b> · médian <b>' + fm(s.pm2_median) + '</b><br/>' +
+        'min ' + fm(s.pm2_min) + ' · max ' + fm(s.pm2_max) +
+        (s.pm2_p25 != null ? ' · P25–P75 ' + s.pm2_p25.toLocaleString('fr-FR') + '–' + s.pm2_p75.toLocaleString('fr-FR') + ' €/m²' : '') +
+        '<br/><span class="dvf-nature">sur ' + s.count_pm2 + ' comparable(s) retenu(s)</span></div>';
+    } else {
+      html += '<div style="margin-top:5px" class="dvf-nature">Pas assez de données €/m² pour ce filtre.</div>';
+    }
+    if (s.prix_median != null) html += '<div style="margin-top:5px">Prix de vente médian <b>' + fmtEur(s.prix_median) + '</b></div>';
+    if (data.data_through) html += '<div style="margin-top:5px" class="dvf-nature">Données DVF publiées jusqu\'à ' + fmtMonthYear(data.data_through) + '.</div>';
+    dvfStats.innerHTML = html;
+
+    // Marqueurs
+    const markers = [];
+    ventes.forEach(m => {
+      if (m.lat == null || m.lon == null) return;
+      const mk = L.circleMarker([m.lat, m.lon], {
+        radius: 6, weight: 1, color:'#fff',
+        fillColor: CAT_COLOR[m.categorie] || CAT_COLOR.Autre, fillOpacity: 0.9
+      });
+      mk.bindPopup(autourPopupHtml(m, type));
+      auVenteMarkers[m.id] = mk;
+      markers.push(mk);
+    });
+    auVentesLayer = L.layerGroup(markers);
+    if (activeTab === 'autour') auVentesLayer.addTo(map);
+    if (auCircle) map.fitBounds(auCircle.getBounds(), { padding: [20, 20] });
+
+    // Liste (triée par distance croissante, fournie par le serveur)
+    dvfList.innerHTML = '';
+    if (!ventes.length){
+      const empty = document.createElement('div');
+      empty.className = 'dvf-item'; empty.style.cursor = 'default';
+      empty.textContent = 'Aucune vente ' + (type === 'tous' ? '' : '(' + type + ') ') + 'dans ce rayon sur la période.';
+      dvfList.appendChild(empty);
+      return;
+    }
+    ventes.forEach(m => {
+      const item = document.createElement('div');
+      item.className = 'dvf-item';
+      const meta = [];
+      if (m.distance_m != null) meta.push('à ' + fmtDist(m.distance_m));
+      if (type === 'terrain'){ if (m.terrain_total) meta.push(m.terrain_total + ' m² terrain'); }
+      else if (m.bati_total) meta.push(m.bati_total + ' m² bâti' + (m.pieces ? ', ' + m.pieces + ' p.' : ''));
+      const pm2 = (type === 'terrain') ? m.prix_m2_terrain : m.prix_m2;
+      if (pm2) meta.push(pm2.toLocaleString('fr-FR') + ' €/m²');
+      item.innerHTML =
+        '<div class="dvf-r1">' +
+          '<span class="dvf-cat ' + m.categorie + '">' + m.categorie + '</span>' +
+          '<span class="dvf-price">' + fmtEur(m.valeur) + '</span>' +
+          '<span class="dvf-date">' + fmtDate(m.date) + '</span>' +
+        '</div>' +
+        (meta.length ? '<div class="dvf-meta">' + meta.join(' · ') + '</div>' : '') +
+        (m.nature && !/^Vente$/i.test(m.nature) ? '<div class="dvf-nature">' + m.nature + '</div>' : '') +
+        (m.adresse ? '<div class="dvf-adr">' + m.adresse + '</div>' : '') +
+        (m.lat != null ? '<div class="links">' + mapsLinksHtml(m.lat, m.lon) + '</div>' : '');
+      item.addEventListener('click', (ev) => {
+        if (ev.target.tagName === 'A') return;
+        const mk = auVenteMarkers[m.id];
+        if (mk){ map.setView(mk.getLatLng(), 17); mk.openPopup(); }
+      });
+      dvfList.appendChild(item);
+    });
+  }
+
+  // Recalcule quand on change rayon / type / période (si une référence est posée).
+  [auRadius, auType, auMonths].forEach(el => el.addEventListener('change', () => {
+    if (activeTab === 'autour' && auRef) runAutour();
+  }));
+  // Clic sur un point vide de la carte = référence libre (onglet Autour).
+  map.on('click', (e) => {
+    if (activeTab !== 'autour') return;
+    setAutourRef(e.latlng.lat, e.latlng.lng, null);
+  });
+
   // --- Soumission ---
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
     setStatus('');
     if (!selectedCommune) {
       setStatus('Sélectionnez une commune dans la liste de suggestions.', 'error');
+      return;
+    }
+
+    if (activeTab === 'autour'){
+      await loadAutourParcelles();
       return;
     }
 
