@@ -175,6 +175,7 @@
   .dvf-item .links a{ font-size:12px; color:var(--accent-dark); text-decoration:none; margin-right:10px; }
   .dvf-item .links a:hover{ text-decoration:underline; }
   .dvf-nature{ font-size:11px; color:var(--muted); }
+  .dvf-warn{ font-size:12px; color:#b3261e; }
 
   @media (max-width: 780px){
     main{ height:auto; }
@@ -408,7 +409,7 @@
     const vmin = values[0], vmax = values[values.length - 1];
     if (!(vmax > vmin)) return '';
     const W = 324, H = 100, padB = 18, padT = 6, padX = 2;
-    const n = Math.min(12, Math.max(6, Math.round(Math.sqrt(values.length))));
+    const n = Math.min(12, Math.max(5, Math.round(Math.sqrt(values.length))));
     const bw = (vmax - vmin) / n;
     const counts = new Array(n).fill(0);
     values.forEach(v => {
@@ -900,18 +901,29 @@
       (type === 'tous' ? '' : '(' + type + ') ') + 'dans ' + data.radius_km.toString().replace('.', ',') + ' km';
     if (s.count_type !== s.count_radius) html += ' <span class="dvf-nature">(' + s.count_radius + ' toutes catégories)</span>';
     html += '</div>';
+    const nPm2 = s.count_pm2 || 0;
+    const RELIABLE = 15; // en deçà, quartiles et histogramme peu significatifs
     if (s.pm2_moyen != null){
-      html += '<div style="margin-top:5px">€/m² ' + (s.pm2_base === 'terrain' ? '(terrain)' : '(bâti)') + ' — ' +
+      let line = '€/m² ' + (s.pm2_base === 'terrain' ? '(terrain)' : '(bâti)') + ' — ' +
         'moyen <b>' + fm(s.pm2_moyen) + '</b> · médian <b>' + fm(s.pm2_median) + '</b><br/>' +
-        'min ' + fm(s.pm2_min) + ' · max ' + fm(s.pm2_max) +
-        (s.pm2_p25 != null ? ' · P25–P75 ' + s.pm2_p25.toLocaleString('fr-FR') + '–' + s.pm2_p75.toLocaleString('fr-FR') + ' €/m²' : '') +
-        '<br/><span class="dvf-nature">sur ' + s.count_pm2 + ' comparable(s) retenu(s)</span></div>';
+        'min ' + fm(s.pm2_min) + ' · max ' + fm(s.pm2_max);
+      if (nPm2 >= RELIABLE && s.pm2_p25 != null){
+        line += ' · P25–P75 ' + s.pm2_p25.toLocaleString('fr-FR') + '–' + s.pm2_p75.toLocaleString('fr-FR') + ' €/m²';
+      }
+      line += '<br/><span class="dvf-nature">sur ' + nPm2 + ' comparable(s) retenu(s)</span>';
+      html += '<div style="margin-top:5px">' + line + '</div>';
+      if (nPm2 < RELIABLE){
+        html += '<div style="margin-top:4px" class="dvf-warn">⚠ Échantillon faible (' + nPm2 + ' vente' +
+          (nPm2 > 1 ? 's' : '') + ') — chiffres indicatifs, sensibles aux valeurs extrêmes. Élargissez le rayon ou la période.</div>';
+      }
     } else {
       html += '<div style="margin-top:5px" class="dvf-nature">Pas assez de données €/m² pour ce filtre.</div>';
     }
     if (s.prix_median != null) html += '<div style="margin-top:5px">Prix de vente médian <b>' + fmtEur(s.prix_median) + '</b></div>';
-    const hist = histogramSvg(s.pm2_values, s.pm2_median);
-    if (hist) html += '<div style="margin-top:2px">Distribution des €/m²' + hist + '</div>';
+    if (nPm2 >= 10){
+      const hist = histogramSvg(s.pm2_values, s.pm2_median);
+      if (hist) html += '<div style="margin-top:2px">Distribution des €/m²' + hist + '</div>';
+    }
     if (data.data_through) html += '<div style="margin-top:5px" class="dvf-nature">Données DVF publiées jusqu\'à ' + fmtMonthYear(data.data_through) + '.</div>';
     dvfStats.innerHTML = html;
 
