@@ -125,6 +125,7 @@ export default async function handler(req, res) {
       pm2_median: median(pm2),
       pm2_p25: percentile(pm2, 25),
       pm2_p75: percentile(pm2, 75),
+      pm2_values: pm2, // série nettoyée + triée, pour l'histogramme côté client
       prix_median: median(matching.map((m) => m.valeur)),
     };
 

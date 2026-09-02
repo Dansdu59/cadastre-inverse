@@ -99,6 +99,12 @@
   }
   #search-btn:disabled{ background:#c9a08f; cursor:default; }
   #search-btn:hover:not(:disabled){ background:var(--accent-dark); }
+  #reset-btn{
+    background:#fff; color:var(--muted); border:1px solid var(--border);
+    border-radius:6px; padding:10px 16px; font-size:14px; font-weight:600;
+    cursor:pointer; height:38px;
+  }
+  #reset-btn:hover{ background:#f4f6f8; color:var(--ink); }
   #suggestions{
     position:absolute; top:100%; left:0; right:0; background:#fff;
     border:1px solid var(--border); border-radius:6px; margin-top:4px;
@@ -267,6 +273,7 @@
   </div>
 
   <button type="submit" id="search-btn">Rechercher</button>
+  <button type="button" id="reset-btn" title="Effacer les résultats et la carte">Réinitialiser</button>
 </form>
 
 <div id="status-bar"></div>
@@ -394,6 +401,47 @@
                                  Math.cos(d) - Math.sin(la1) * Math.sin(la2));
     return [la2 * 180 / Math.PI, lo2 * 180 / Math.PI];
   }
+
+  // Petit histogramme SVG de la distribution des €/m² (série déjà nettoyée + triée).
+  function histogramSvg(values, medianVal){
+    if (!values || values.length < 5) return '';
+    const vmin = values[0], vmax = values[values.length - 1];
+    if (!(vmax > vmin)) return '';
+    const W = 324, H = 100, padB = 18, padT = 6, padX = 2;
+    const n = Math.min(12, Math.max(6, Math.round(Math.sqrt(values.length))));
+    const bw = (vmax - vmin) / n;
+    const counts = new Array(n).fill(0);
+    values.forEach(v => {
+      let i = Math.floor((v - vmin) / bw);
+      if (i >= n) i = n - 1; if (i < 0) i = 0;
+      counts[i]++;
+    });
+    const cmax = Math.max(1, ...counts);
+    const plotW = W - padX * 2, plotH = H - padB - padT;
+    const barW = plotW / n;
+    let bars = '';
+    for (let i = 0; i < n; i++){
+      const h = (counts[i] / cmax) * plotH;
+      const x = padX + i * barW;
+      const y = padT + (plotH - h);
+      const lo = Math.round(vmin + i * bw), hi = Math.round(vmin + (i + 1) * bw);
+      bars += '<rect x="' + (x + 1).toFixed(1) + '" y="' + y.toFixed(1) + '" width="' + (barW - 2).toFixed(1) +
+        '" height="' + h.toFixed(1) + '" fill="#c1440e" fill-opacity="0.75" rx="1">' +
+        '<title>' + lo.toLocaleString('fr-FR') + '–' + hi.toLocaleString('fr-FR') + ' €/m² : ' + counts[i] + ' vente(s)</title></rect>';
+    }
+    let med = '';
+    if (medianVal != null && medianVal >= vmin && medianVal <= vmax){
+      const mx = padX + ((medianVal - vmin) / (vmax - vmin)) * plotW;
+      med = '<line x1="' + mx.toFixed(1) + '" y1="' + padT + '" x2="' + mx.toFixed(1) + '" y2="' + (padT + plotH) +
+        '" stroke="#1f2328" stroke-width="1" stroke-dasharray="3 2"/>' +
+        '<text x="' + mx.toFixed(1) + '" y="' + (padT + 8) + '" font-size="9" fill="#1f2328" text-anchor="middle">méd.</text>';
+    }
+    const axis =
+      '<text x="' + padX + '" y="' + (H - 5) + '" font-size="9" fill="#5b6570">' + Math.round(vmin).toLocaleString('fr-FR') + '</text>' +
+      '<text x="' + (W - padX) + '" y="' + (H - 5) + '" font-size="9" fill="#5b6570" text-anchor="end">' + Math.round(vmax).toLocaleString('fr-FR') + ' €/m²</text>';
+    return '<svg viewBox="0 0 ' + W + ' ' + H + '" width="100%" height="' + H + '" style="display:block;margin-top:8px">' +
+      bars + med + axis + '</svg>';
+  }
   function fetchWithTimeout(url, ms){
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), ms);
@@ -458,6 +506,30 @@
     dvfBody.hidden = !collapsed;
     dvfToggle.textContent = collapsed ? '▾' : '▸';
   });
+
+  // Réinitialise : efface tout ce qui est affiché (couches, panneau, statut, référence).
+  function resetSearch(){
+    [resultsLayer, dvfLayer, auParcellesLayer, auVentesLayer, auCircle, auRefMarker].forEach(l => {
+      if (l && map.hasLayer(l)) map.removeLayer(l);
+    });
+    resultsLayer = dvfLayer = auParcellesLayer = auVentesLayer = auCircle = auRefMarker = null;
+    auRef = null;
+    dvfHasRun = false;
+    auHasRun = false;
+    for (const k in dvfMarkers) delete dvfMarkers[k];
+    for (const k in auVenteMarkers) delete auVenteMarkers[k];
+    map.closePopup();
+    dvfStats.innerHTML = '';
+    dvfList.innerHTML = '';
+    dvfBody.hidden = false;
+    dvfToggle.textContent = '▾';
+    dvfPanel.hidden = true;
+    setStatus('');
+    if (activeTab === 'autour'){
+      setStatus('Cliquez un point de la carte pour analyser les ventes autour — ou chargez les parcelles pour en cliquer une précisément.');
+    }
+  }
+  document.getElementById('reset-btn').addEventListener('click', resetSearch);
 
   // --- Autocomplétion commune (geo.api.gouv.fr, CORS ouvert) ---
   communeInput.addEventListener('input', () => {
@@ -838,6 +910,8 @@
       html += '<div style="margin-top:5px" class="dvf-nature">Pas assez de données €/m² pour ce filtre.</div>';
     }
     if (s.prix_median != null) html += '<div style="margin-top:5px">Prix de vente médian <b>' + fmtEur(s.prix_median) + '</b></div>';
+    const hist = histogramSvg(s.pm2_values, s.pm2_median);
+    if (hist) html += '<div style="margin-top:2px">Distribution des €/m²' + hist + '</div>';
     if (data.data_through) html += '<div style="margin-top:5px" class="dvf-nature">Données DVF publiées jusqu\'à ' + fmtMonthYear(data.data_through) + '.</div>';
     dvfStats.innerHTML = html;
 
