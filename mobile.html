@@ -76,6 +76,22 @@
   .field > label{ font-size:16px; font-weight:600; color:var(--ink); }   /* Règle 4 : pas de micro-label */
   .field .hint{ font-size:14px; color:var(--muted); }
 
+  /* Résumé de recherche compact (le formulaire se replie après recherche) */
+  .search-summary{
+    flex:none; width:100%;
+    display:flex; align-items:center; justify-content:space-between; gap:10px;
+    min-height:52px;
+    padding:10px max(16px, env(safe-area-inset-left)) 10px max(16px, env(safe-area-inset-right));
+    background:var(--card); border:0; border-bottom:1px solid var(--border);
+    font-size:16px; color:var(--ink); text-align:left; cursor:pointer;
+  }
+  .search-summary:active{ background:#f0f2f4; }
+  .search-summary .txt{ overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-weight:600; }
+  .search-summary .edit{
+    flex:none; font-size:15px; font-weight:700; color:var(--accent);
+    min-height:44px; display:inline-flex; align-items:center; gap:4px; padding:0 4px;
+  }
+
   /* Règle 1 (≥48px) + Règle 3 (font-size 16px → pas de zoom iOS) */
   input, select{
     width:100%;
@@ -241,6 +257,20 @@
     flex:1; display:flex; align-items:center; justify-content:center;
     padding:32px; text-align:center; color:var(--muted); font-size:15px;
   }
+
+  /* Bouton flottant pour rouvrir la liste quand le panneau est fermé */
+  .fab-list{
+    position:fixed; right:12px; z-index:1150;
+    bottom:calc(var(--nav-h) + var(--safe-bottom) + 12px);
+    min-height:44px; padding:0 18px;
+    display:inline-flex; align-items:center; gap:6px;
+    border:0; border-radius:24px;
+    background:var(--accent); color:#fff; font-size:15px; font-weight:700;
+    box-shadow:0 6px 18px rgba(0,0,0,.22);
+    cursor:pointer;
+    transition:transform .08s ease;
+  }
+  .fab-list:active{ transform:scale(.96); }
 </style>
 </head>
 <body>
@@ -275,11 +305,13 @@
     </div>
 
     <button class="btn btn-primary" id="go" type="submit">Rechercher</button>
-    <div class="btn-row">
-      <button class="btn btn-ghost" id="reset" type="button">Réinitialiser</button>
-      <button class="btn btn-ghost" id="show-results" type="button" hidden>Voir la liste</button>
-    </div>
+    <button class="btn btn-ghost" id="reset" type="button">Réinitialiser</button>
   </form>
+
+  <button type="button" class="search-summary" id="search-summary" hidden>
+    <span class="txt" id="summary-text"></span>
+    <span class="edit">✎ Modifier</span>
+  </button>
 
   <div class="status" id="status" role="status" aria-live="polite"></div>
 
@@ -297,6 +329,8 @@
   <div class="sheet-body" id="sheet-body"></div>
 </section>
 
+<button type="button" class="fab-list" id="fab-list" hidden>≡ Liste</button>
+
 <nav class="tabbar" id="tabbar" aria-label="Sections">
   <button type="button" data-tab="parcelles" aria-current="page"><span class="ic">▦</span>Parcelles</button>
   <button type="button" data-tab="dvf"><span class="ic">€</span>Transactions</button>
@@ -311,9 +345,11 @@
   const sminInput = $('smin');
   const smaxInput = $('smax');
   const form = $('form');
+  const searchSummary = $('search-summary');
+  const summaryText = $('summary-text');
   const goBtn = $('go');
   const resetBtn = $('reset');
-  const showResultsBtn = $('show-results');
+  const fabList = $('fab-list');
   const statusEl = $('status');
   const sheet = $('sheet');
   const sheetBody = $('sheet-body');
@@ -325,8 +361,29 @@
   let debounce = null;
   let layer = null;
   let activeTab = 'parcelles';
+  let searchCollapsed = false;   // le formulaire se replie après une recherche
   const cache = {};
   const addrCache = {};
+
+  // Règle 6 : ne pas laisser une grande zone de saisie manger l'écran une fois
+  // la recherche faite — on la remplace par un résumé compact, réouvrable.
+  function applySearchVisibility(){
+    const onParcelles = activeTab === 'parcelles';
+    form.hidden = !onParcelles || searchCollapsed;
+    searchSummary.hidden = !onParcelles || !searchCollapsed;
+  }
+  function collapseSearch(){
+    searchCollapsed = true;
+    summaryText.textContent = (selected ? selected.nom : '—') + '  ·  ' + sminInput.value + '–' + smaxInput.value + ' m²';
+    applySearchVisibility();
+    setTimeout(() => map.invalidateSize(), 140);
+  }
+  function expandSearch(){
+    searchCollapsed = false;
+    applySearchVisibility();
+    setTimeout(() => map.invalidateSize(), 140);
+  }
+  searchSummary.addEventListener('click', expandSearch);
 
   // Règle 7 : feedback dès le chargement, jamais d'écran blanc.
   function setStatus(msg, kind){
@@ -342,6 +399,7 @@
   const ign = L.tileLayer('https://data.geopf.fr/wmts?SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0&LAYER=ORTHOIMAGERY.ORTHOPHOTOS&STYLE=normal&TILEMATRIXSET=PM&FORMAT=image/jpeg&TILEMATRIX={z}&TILEROW={y}&TILECOL={x}',
     { maxZoom:19, attribution:'&copy; IGN-F/Géoportail' });
   L.control.layers({ 'Plan':plan, 'Satellite (IGN)':ign }).addTo(map);
+  map.attributionControl.setPosition('bottomleft');   // libère le coin bas-droit pour le bouton Liste
   setTimeout(() => map.invalidateSize(), 200);
 
   // ---- Autocomplétion commune (geo.api.gouv.fr, CORS ouvert) ----
@@ -473,10 +531,15 @@
     openSheet(true);
   }
 
-  function openSheet(){ sheet.classList.add('open'); showResultsBtn.hidden = !layer && sheetBody.children.length === 0; }
-  function closeSheet(){ sheet.classList.remove('open'); showResultsBtn.hidden = sheetBody.children.length === 0; }
+  function updateFab(){
+    const cards = sheetBody.querySelectorAll('.card').length;
+    fabList.hidden = !(activeTab === 'parcelles' && cards > 0 && !sheet.classList.contains('open'));
+    if (cards > 0) fabList.textContent = '≡ Liste (' + cards + ')';
+  }
+  function openSheet(){ sheet.classList.add('open'); updateFab(); }
+  function closeSheet(){ sheet.classList.remove('open'); updateFab(); }
   $('sheet-close').addEventListener('click', closeSheet);
-  showResultsBtn.addEventListener('click', () => sheet.classList.toggle('open'));
+  fabList.addEventListener('click', openSheet);
 
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
@@ -495,6 +558,7 @@
       setStatus(features.length + ' parcelle(s) entre ' + min + ' et ' + max + ' m² à ' + selected.nom +
         ' · ' + total + ' au total' + (source ? ' · ' + source : ''));
       render(features);
+      collapseSearch();
     }catch(err){
       setStatus(err.message || 'Erreur pendant la recherche.', 'error');
     }finally{
@@ -504,8 +568,9 @@
 
   resetBtn.addEventListener('click', () => {
     if (layer){ map.removeLayer(layer); layer = null; }
-    sheetBody.innerHTML = ''; closeSheet(); showResultsBtn.hidden = true;
-    setStatus('');
+    sheetBody.innerHTML = ''; closeSheet();
+    expandSearch();
+    setStatus('Prêt. Choisissez une commune et lancez la recherche.');
   });
 
   // ---- Onglets (barre basse) ----
@@ -516,7 +581,7 @@
     [...tabbar.children].forEach(x => x.removeAttribute('aria-current'));
     b.setAttribute('aria-current', 'page');
     const isParcelles = activeTab === 'parcelles';
-    form.hidden = !isParcelles;
+    applySearchVisibility();
     $('map').hidden = !isParcelles;
     statusEl.hidden = !isParcelles;
     placeholder.hidden = isParcelles;
@@ -528,6 +593,7 @@
     } else {
       setTimeout(() => map.invalidateSize(), 100);
     }
+    updateFab();
   });
 
   setStatus('Prêt. Choisissez une commune et lancez la recherche.');
