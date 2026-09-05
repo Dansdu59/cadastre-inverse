@@ -1,0 +1,537 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8" />
+<!-- Règle 2 & 3 : viewport-fit=cover pour les safe-areas, interactive-widget pour le clavier -->
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content" />
+<title>Parcelles — écran de test ergonomie</title>
+
+<link rel="icon" type="image/png" sizes="32x32" href="/favicon.png" />
+<link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+<meta name="theme-color" content="#ffffff" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="default" />
+
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css" />
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<style>
+  :root{
+    --accent:#c1440e;          /* 4.6:1 sur blanc → OK texte AA */
+    --accent-dark:#8f3208;
+    --ink:#1f2328;             /* ~15:1 */
+    --muted:#54606b;           /* ~5.9:1 → OK AA */
+    --border:#d7dbe0;
+    --bg:#f4f5f7;
+    --card:#ffffff;
+    --ok:#15803d;
+    --tap: 48px;               /* Règle 1 : cible tactile mini */
+    --nav-h: 58px;
+    --safe-top: env(safe-area-inset-top);
+    --safe-bottom: env(safe-area-inset-bottom);
+  }
+  *{ box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  [hidden]{ display:none !important; }
+  html,body{ height:100%; }
+  body{
+    margin:0;
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    /* Règle 4 : corps 16px, interligne 1.5 */
+    font-size:16px; line-height:1.5;
+    color:var(--ink);
+    background:var(--bg);
+    display:flex; flex-direction:column;
+    /* Règle 5 : geste de retour iOS non capturé (pas de touch handlers custom sur les bords) */
+    touch-action:manipulation;
+  }
+
+  /* ---------- En-tête (safe-area haut) ---------- */
+  .app-header{
+    flex:none;
+    background:var(--card);
+    border-bottom:1px solid var(--border);
+    padding:calc(12px + var(--safe-top)) 16px 12px;
+    padding-left:max(16px, env(safe-area-inset-left));
+    padding-right:max(16px, env(safe-area-inset-right));
+  }
+  .app-header h1{ margin:0; font-size:18px; }
+  .app-header p{ margin:2px 0 0; font-size:14px; color:var(--muted); }
+
+  /* ---------- Zone de contenu ---------- */
+  .screen{
+    flex:1 1 auto;
+    display:flex; flex-direction:column;
+    min-height:0;
+    /* laisse la place à la barre de navigation fixe */
+    padding-bottom:calc(var(--nav-h) + var(--safe-bottom));
+  }
+
+  form.search{
+    flex:none;
+    background:var(--card);
+    border-bottom:1px solid var(--border);
+    padding:14px max(16px, env(safe-area-inset-left)) 16px max(16px, env(safe-area-inset-right));
+    display:flex; flex-direction:column; gap:12px;
+  }
+  .field{ display:flex; flex-direction:column; gap:6px; position:relative; }
+  .field > label{ font-size:16px; font-weight:600; color:var(--ink); }   /* Règle 4 : pas de micro-label */
+  .field .hint{ font-size:14px; color:var(--muted); }
+
+  /* Règle 1 (≥48px) + Règle 3 (font-size 16px → pas de zoom iOS) */
+  input, select{
+    width:100%;
+    min-height:var(--tap);
+    font-size:16px;
+    padding:12px 14px;
+    border:1px solid var(--border);
+    border-radius:12px;
+    background:#fff;
+    color:var(--ink);
+    appearance:none;
+  }
+  input:focus, select:focus{
+    outline:2px solid var(--accent);
+    outline-offset:1px;
+    border-color:var(--accent);
+  }
+  .row{ display:flex; gap:12px; }
+  .row .field{ flex:1; }
+
+  /* Règle 1 : CTA pleine largeur, ≥48px (ici 52), feedback <100ms */
+  .btn{
+    min-height:52px;
+    display:inline-flex; align-items:center; justify-content:center;
+    gap:8px;
+    font-size:16px; font-weight:700;
+    border-radius:12px; border:1px solid transparent;
+    cursor:pointer; user-select:none;
+    transition:transform .08s ease, background-color .12s ease, opacity .12s ease;
+  }
+  .btn:active{ transform:scale(.98); }         /* Règle 5 : retour tactile immédiat */
+  .btn-primary{ background:var(--accent); color:#fff; }
+  .btn-primary:active{ background:var(--accent-dark); }
+  .btn-primary[disabled]{ background:#caa79a; cursor:default; }
+  .btn-ghost{ background:#fff; color:var(--ink); border-color:var(--border); }
+  .btn-ghost:active{ background:#eef0f2; }
+  .btn-row{ display:flex; gap:12px; }
+  .btn-row .btn{ flex:1; }
+
+  /* Suggestions : chaque ligne ≥48px, 8px de respiration */
+  .suggestions{
+    position:absolute; top:calc(100% + 6px); left:0; right:0; z-index:1200;
+    background:#fff; border:1px solid var(--border); border-radius:12px;
+    box-shadow:0 12px 28px rgba(0,0,0,.16);
+    max-height:46vh; overflow-y:auto;
+    -webkit-overflow-scrolling:touch;
+  }
+  .suggestions button{
+    display:flex; flex-direction:column; gap:2px;
+    width:100%; text-align:left;
+    min-height:var(--tap); padding:10px 14px;
+    border:0; border-bottom:1px solid var(--border); background:#fff;
+    font-size:16px; color:var(--ink); cursor:pointer;
+  }
+  .suggestions button:last-child{ border-bottom:0; }
+  .suggestions button:active{ background:#fdf1ea; }
+  .suggestions .sub{ font-size:14px; color:var(--muted); }
+
+  /* Bandeau d'état : jamais d'écran blanc silencieux (Règle 7) */
+  .status{
+    flex:none; min-height:22px;
+    padding:10px 16px;
+    font-size:14px; color:var(--muted);
+    background:var(--card); border-bottom:1px solid var(--border);
+    display:flex; align-items:center; gap:8px;
+  }
+  .status.error{ color:#b3261e; }
+  .status .spinner{
+    width:16px; height:16px; flex:none;
+    border:2px solid rgba(0,0,0,.15); border-top-color:var(--accent);
+    border-radius:50%; animation:spin .8s linear infinite;
+  }
+  @keyframes spin{ to{ transform:rotate(360deg); } }
+
+  #map{ flex:1 1 auto; min-height:200px; }
+
+  /* Contrôles Leaflet agrandis à ≥44px (Règle 1) — surspécifier pour battre le CSS Leaflet touch */
+  .leaflet-touch .leaflet-bar a,
+  .leaflet-bar a{
+    width:44px; height:44px; line-height:44px; font-size:22px;
+  }
+  .leaflet-touch .leaflet-control-layers-toggle,
+  .leaflet-control-layers-toggle{ width:44px; height:44px; background-size:22px 22px; }
+  .leaflet-bar a:first-child{ border-top-left-radius:10px; border-top-right-radius:10px; }
+  .leaflet-bar a:last-child{ border-bottom-left-radius:10px; border-bottom-right-radius:10px; }
+
+  /* ---------- Bottom-sheet des résultats (Règle 6) ---------- */
+  .sheet{
+    position:fixed; left:0; right:0;
+    bottom:calc(var(--nav-h) + var(--safe-bottom));
+    z-index:1100;
+    background:var(--card);
+    border-top-left-radius:16px; border-top-right-radius:16px;
+    box-shadow:0 -8px 28px rgba(0,0,0,.18);
+    display:flex; flex-direction:column;
+    max-height:58vh;
+    transform:translateY(calc(100% + var(--nav-h) + var(--safe-bottom)));
+    transition:transform .25s ease;    /* Règle 7 : 200-300ms */
+  }
+  .sheet.open{ transform:translateY(0); }
+  .sheet-grab{
+    align-self:center; width:40px; height:5px; border-radius:3px;
+    background:#c9ced3; margin:8px 0 4px;
+  }
+  .sheet-head{
+    display:flex; align-items:center; justify-content:space-between;
+    padding:6px 12px 10px 16px; border-bottom:1px solid var(--border);
+  }
+  .sheet-head strong{ font-size:16px; }
+  .sheet-close{
+    min-width:var(--tap); min-height:var(--tap);
+    display:flex; align-items:center; justify-content:center;
+    border:0; background:none; font-size:22px; color:var(--muted); cursor:pointer;
+    border-radius:10px;
+  }
+  .sheet-close:active{ background:#eef0f2; }
+  .sheet-body{ overflow-y:auto; -webkit-overflow-scrolling:touch; padding:8px 12px 16px; }
+
+  .card{
+    display:block; width:100%; text-align:left;
+    background:#fff; border:1px solid var(--border); border-radius:12px;
+    padding:12px 14px; margin:8px 0;         /* ≥48px de haut, 8px d'écart (Règle 1) */
+    cursor:pointer;
+    transition:transform .08s ease, background-color .12s ease;
+  }
+  .card:active{ transform:scale(.99); background:#fbf4f0; }
+  .card .idu{ font-weight:700; font-size:16px; }
+  .card .surf{ color:var(--accent-dark); font-size:15px; margin-top:2px; }
+  .card .links{ margin-top:8px; display:flex; gap:8px; flex-wrap:wrap; }
+  .card .links a{
+    font-size:14px; color:var(--accent-dark); text-decoration:none;
+    min-height:40px; display:inline-flex; align-items:center;
+    padding:0 6px; border-radius:8px; background:#f4ede9;
+  }
+  .card .links a:active{ background:#e9ddd6; }
+
+  .empty{ padding:22px 8px; text-align:center; color:var(--muted); font-size:15px; }
+
+  /* ---------- Barre de navigation basse (Règle 5) ---------- */
+  .tabbar{
+    position:fixed; left:0; right:0; bottom:0; z-index:1300;
+    display:flex;
+    background:var(--card);
+    border-top:1px solid var(--border);
+    padding-bottom:var(--safe-bottom);   /* home indicator */
+  }
+  .tabbar button{
+    flex:1;
+    min-height:var(--nav-h);
+    display:flex; flex-direction:column; align-items:center; justify-content:center;
+    gap:3px;
+    border:0; background:none; cursor:pointer;
+    color:var(--muted); font-size:12px; font-weight:600;
+  }
+  .tabbar button .ic{ font-size:22px; line-height:1; }
+  .tabbar button[aria-current="page"]{ color:var(--accent); }
+  .tabbar button:active{ background:#f0f2f4; }
+
+  .leaflet-popup-content{ font-size:15px; }
+  .leaflet-popup-content a{ color:var(--accent-dark); }
+
+  .placeholder{
+    flex:1; display:flex; align-items:center; justify-content:center;
+    padding:32px; text-align:center; color:var(--muted); font-size:15px;
+  }
+</style>
+</head>
+<body>
+
+<header class="app-header">
+  <h1>Parcelles cadastrales</h1>
+  <p>Écran de test — ergonomie mobile</p>
+</header>
+
+<div class="screen">
+  <form class="search" id="form" autocomplete="off" novalidate>
+    <div class="field" id="commune-field">
+      <label for="commune">Commune</label>
+      <!-- Règle 3 : type=search + clavier standard, pas de zoom (16px) -->
+      <input id="commune" type="search" enterkeyhint="search" autocomplete="off"
+             autocapitalize="words" placeholder="Ex : Laval" value="Laval" />
+      <div class="suggestions" id="suggestions" hidden></div>
+    </div>
+
+    <div class="row">
+      <div class="field">
+        <label for="smin">Surface min</label>
+        <!-- Règle 3 : clavier numérique -->
+        <input id="smin" type="text" inputmode="numeric" pattern="[0-9]*" enterkeyhint="search" value="500" />
+        <span class="hint">m²</span>
+      </div>
+      <div class="field">
+        <label for="smax">Surface max</label>
+        <input id="smax" type="text" inputmode="numeric" pattern="[0-9]*" enterkeyhint="search" value="1000" />
+        <span class="hint">m²</span>
+      </div>
+    </div>
+
+    <button class="btn btn-primary" id="go" type="submit">Rechercher</button>
+    <div class="btn-row">
+      <button class="btn btn-ghost" id="reset" type="button">Réinitialiser</button>
+      <button class="btn btn-ghost" id="show-results" type="button" hidden>Voir la liste</button>
+    </div>
+  </form>
+
+  <div class="status" id="status" role="status" aria-live="polite"></div>
+
+  <div id="map"></div>
+
+  <div class="placeholder" id="placeholder" hidden></div>
+</div>
+
+<section class="sheet" id="sheet" aria-label="Résultats">
+  <div class="sheet-grab"></div>
+  <div class="sheet-head">
+    <strong id="sheet-title">Résultats</strong>
+    <button class="sheet-close" id="sheet-close" aria-label="Fermer la liste">✕</button>
+  </div>
+  <div class="sheet-body" id="sheet-body"></div>
+</section>
+
+<nav class="tabbar" id="tabbar" aria-label="Sections">
+  <button type="button" data-tab="parcelles" aria-current="page"><span class="ic">▦</span>Parcelles</button>
+  <button type="button" data-tab="dvf"><span class="ic">€</span>Transactions</button>
+  <button type="button" data-tab="autour"><span class="ic">◎</span>Autour</button>
+</nav>
+
+<script>
+(function(){
+  const $ = (id) => document.getElementById(id);
+  const communeInput = $('commune');
+  const suggestions = $('suggestions');
+  const sminInput = $('smin');
+  const smaxInput = $('smax');
+  const form = $('form');
+  const goBtn = $('go');
+  const resetBtn = $('reset');
+  const showResultsBtn = $('show-results');
+  const statusEl = $('status');
+  const sheet = $('sheet');
+  const sheetBody = $('sheet-body');
+  const sheetTitle = $('sheet-title');
+  const placeholder = $('placeholder');
+  const tabbar = $('tabbar');
+
+  let selected = { code:'53130', nom:'Laval', cp:'53000' };
+  let debounce = null;
+  let layer = null;
+  let activeTab = 'parcelles';
+  const cache = {};
+  const addrCache = {};
+
+  // Règle 7 : feedback dès le chargement, jamais d'écran blanc.
+  function setStatus(msg, kind){
+    statusEl.className = 'status' + (kind ? ' ' + kind : '');
+    statusEl.innerHTML = (kind === 'loading' ? '<span class="spinner"></span>' : '') +
+      '<span>' + (msg || '') + '</span>';
+  }
+
+  const map = L.map('map', { zoomControl:true }).setView([48.0578, -0.7692], 13);
+  const plan = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    maxZoom:19, attribution:'&copy; OpenStreetMap'
+  }).addTo(map);
+  const ign = L.tileLayer('https://data.geopf.fr/wmts?SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0&LAYER=ORTHOIMAGERY.ORTHOPHOTOS&STYLE=normal&TILEMATRIXSET=PM&FORMAT=image/jpeg&TILEMATRIX={z}&TILEROW={y}&TILECOL={x}',
+    { maxZoom:19, attribution:'&copy; IGN-F/Géoportail' });
+  L.control.layers({ 'Plan':plan, 'Satellite (IGN)':ign }).addTo(map);
+  setTimeout(() => map.invalidateSize(), 200);
+
+  // ---- Autocomplétion commune (geo.api.gouv.fr, CORS ouvert) ----
+  communeInput.addEventListener('input', () => {
+    selected = null;
+    const q = communeInput.value.trim();
+    clearTimeout(debounce);
+    if (q.length < 2){ suggestions.hidden = true; return; }
+    debounce = setTimeout(() => fetchCommunes(q), 280);
+  });
+  communeInput.addEventListener('focus', () => {
+    // Règle 3 : garder le champ visible au-dessus du clavier
+    setTimeout(() => communeInput.scrollIntoView({ block:'center', behavior:'smooth' }), 250);
+  });
+  document.addEventListener('click', (e) => {
+    if (!suggestions.contains(e.target) && e.target !== communeInput) suggestions.hidden = true;
+  });
+
+  async function fetchCommunes(q){
+    try{
+      const r = await fetch('https://geo.api.gouv.fr/communes?nom=' + encodeURIComponent(q) +
+        '&fields=nom,code,codesPostaux,departement,centre&boost=population&limit=12');
+      if (!r.ok) return;
+      renderCommunes(await r.json());
+    }catch(e){}
+  }
+  function renderCommunes(list){
+    suggestions.innerHTML = '';
+    if (!list || !list.length){ suggestions.hidden = true; return; }
+    list.forEach(c => {
+      const cp = (c.codesPostaux && c.codesPostaux[0]) || '';
+      const dep = c.departement ? c.departement.nom : '';
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.innerHTML = '<span>' + c.nom + '</span><span class="sub">' + [cp, dep].filter(Boolean).join(' · ') + '</span>';
+      b.addEventListener('click', () => {
+        selected = { code:c.code, nom:c.nom, cp:cp };
+        communeInput.value = c.nom + (cp ? ' (' + cp + ')' : '');
+        suggestions.hidden = true;
+        if (c.centre && c.centre.coordinates) map.setView([c.centre.coordinates[1], c.centre.coordinates[0]], 13);
+      });
+      suggestions.appendChild(b);
+    });
+    suggestions.hidden = false;
+  }
+
+  // ---- Recherche parcelles (proxy same-origin) ----
+  function withTimeout(url, ms){
+    const c = new AbortController();
+    const t = setTimeout(() => c.abort(), ms);
+    return fetch(url, { signal:c.signal }).finally(() => clearTimeout(t));
+  }
+  async function fetchParcelles(min, max){
+    const key = selected.code + '|' + min + '|' + max;
+    if (cache[key]) return cache[key];
+    const url = '/api/parcelles?insee=' + encodeURIComponent(selected.code) +
+      '&min=' + encodeURIComponent(min) + '&max=' + encodeURIComponent(max);
+    const r = await withTimeout(url, 90000);
+    let d = null; try{ d = await r.json(); }catch(e){}
+    if (!r.ok) throw new Error((d && d.error) || ('Erreur serveur (' + r.status + ').'));
+    const out = { features:(d && d.features) || [], total:(d && d.total) || 0, source:d && d.source };
+    cache[key] = out;
+    return out;
+  }
+  async function reverseAddr(lat, lon){
+    try{
+      const r = await withTimeout('https://api-adresse.data.gouv.fr/reverse/?lon=' + lon + '&lat=' + lat + '&limit=1', 8000);
+      if (!r.ok) return null;
+      const d = await r.json();
+      return (d.features && d.features[0]) ? d.features[0].properties.label : null;
+    }catch(e){ return null; }
+  }
+  function mapsLinks(lat, lon){
+    const la = (+lat).toFixed(6), lo = (+lon).toFixed(6);
+    return '<a href="https://www.google.com/maps/search/?api=1&query=' + la + ',' + lo + '" target="_blank" rel="noopener">Maps ↗</a>' +
+      '<a href="https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=' + la + ',' + lo + '" target="_blank" rel="noopener">Street View ↗</a>';
+  }
+  function iduOf(p){ return (p && (p.idu || p.id)) ? String(p.idu || p.id).toUpperCase() : ''; }
+
+  function popupHtml(p, ll, addr){
+    return '<b>' + iduOf(p) + '</b><br/>Section ' + (p.section||'') + ' n°' + (p.numero||'') +
+      '<br/>' + (p.contenance != null ? p.contenance + ' m²' : '?') +
+      '<br/>' + (addr || 'Adresse…') + '<br/>' + mapsLinks(ll.lat, ll.lng);
+  }
+
+  function render(features){
+    if (layer){ map.removeLayer(layer); layer = null; }
+    sheetBody.innerHTML = '';
+    if (!features.length){
+      sheetBody.innerHTML = '<div class="empty">Aucune parcelle dans cette fourchette.</div>';
+      openSheet(true);
+      sheetTitle.textContent = 'Résultats (0)';
+      return;
+    }
+    const centers = {};
+    layer = L.geoJSON({ type:'FeatureCollection', features }, {
+      style:{ color:'#c1440e', weight:2, fillColor:'#f2a35c', fillOpacity:.45 },
+      onEachFeature:(f, lyr) => {
+        const idu = iduOf(f.properties);
+        const c = lyr.getBounds().getCenter();
+        centers[idu] = c; lyr._idu = idu;
+        lyr.bindPopup(popupHtml(f.properties, c, addrCache[idu]));
+        lyr.on('popupopen', () => {
+          if (addrCache[idu]) return;
+          reverseAddr(c.lat, c.lng).then(a => { addrCache[idu] = a || 'Adresse non trouvée';
+            lyr.setPopupContent(popupHtml(f.properties, c, addrCache[idu])); });
+        });
+      }
+    }).addTo(map);
+    map.fitBounds(layer.getBounds(), { maxZoom:18, padding:[24,24] });
+
+    features.slice().sort((a,b) => (a.properties.contenance||0) - (b.properties.contenance||0))
+      .forEach(f => {
+        const idu = iduOf(f.properties);
+        const c = centers[idu];
+        const el = document.createElement('button');
+        el.type = 'button'; el.className = 'card';
+        el.innerHTML = '<div class="idu">' + idu + '</div>' +
+          '<div class="surf">' + f.properties.contenance + ' m²</div>' +
+          (c ? '<div class="links">' + mapsLinks(c.lat, c.lng) + '</div>' : '');
+        el.addEventListener('click', (ev) => {
+          if (ev.target.tagName === 'A') return;
+          layer.eachLayer(l => { if (l._idu === idu){ map.fitBounds(l.getBounds(), { maxZoom:19 }); l.openPopup(); } });
+          closeSheet();
+        });
+        sheetBody.appendChild(el);
+      });
+    sheetTitle.textContent = 'Résultats (' + features.length + ')';
+    openSheet(true);
+  }
+
+  function openSheet(){ sheet.classList.add('open'); showResultsBtn.hidden = !layer && sheetBody.children.length === 0; }
+  function closeSheet(){ sheet.classList.remove('open'); showResultsBtn.hidden = sheetBody.children.length === 0; }
+  $('sheet-close').addEventListener('click', closeSheet);
+  showResultsBtn.addEventListener('click', () => sheet.classList.toggle('open'));
+
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    if (activeTab !== 'parcelles') return;
+    document.activeElement && document.activeElement.blur();   // referme le clavier
+    if (!selected){ setStatus('Choisissez une commune dans la liste.', 'error'); return; }
+    const min = parseInt(sminInput.value, 10);
+    const max = parseInt(smaxInput.value, 10);
+    if (isNaN(min) || isNaN(max) || min < 0 || max < 0){ setStatus('Surfaces invalides.', 'error'); return; }
+    if (min > max){ setStatus('Surface min > surface max.', 'error'); return; }
+
+    goBtn.disabled = true;
+    setStatus('Recherche des parcelles…', 'loading');   // Règle 7 : spinner dès le départ
+    try{
+      const { features, total, source } = await fetchParcelles(min, max);
+      setStatus(features.length + ' parcelle(s) entre ' + min + ' et ' + max + ' m² à ' + selected.nom +
+        ' · ' + total + ' au total' + (source ? ' · ' + source : ''));
+      render(features);
+    }catch(err){
+      setStatus(err.message || 'Erreur pendant la recherche.', 'error');
+    }finally{
+      goBtn.disabled = false;
+    }
+  });
+
+  resetBtn.addEventListener('click', () => {
+    if (layer){ map.removeLayer(layer); layer = null; }
+    sheetBody.innerHTML = ''; closeSheet(); showResultsBtn.hidden = true;
+    setStatus('');
+  });
+
+  // ---- Onglets (barre basse) ----
+  tabbar.addEventListener('click', (e) => {
+    const b = e.target.closest('button[data-tab]');
+    if (!b) return;
+    activeTab = b.dataset.tab;
+    [...tabbar.children].forEach(x => x.removeAttribute('aria-current'));
+    b.setAttribute('aria-current', 'page');
+    const isParcelles = activeTab === 'parcelles';
+    form.hidden = !isParcelles;
+    $('map').hidden = !isParcelles;
+    statusEl.hidden = !isParcelles;
+    placeholder.hidden = isParcelles;
+    if (!isParcelles){
+      closeSheet();
+      placeholder.textContent = activeTab === 'dvf'
+        ? 'Onglet Transactions — non inclus dans cette maquette de test. La version complète est sur l’app.'
+        : 'Onglet Autour — non inclus dans cette maquette de test. La version complète est sur l’app.';
+    } else {
+      setTimeout(() => map.invalidateSize(), 100);
+    }
+  });
+
+  setStatus('Prêt. Choisissez une commune et lancez la recherche.');
+})();
+</script>
+</body>
+</html>
