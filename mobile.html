@@ -16,18 +16,18 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <style>
   :root{
-    --accent:#c1440e;          /* 4.6:1 sur blanc → OK texte AA */
+    --accent:#c1440e;
     --accent-dark:#8f3208;
-    --ink:#1f2328;             /* ~15:1 */
-    --muted:#54606b;           /* ~5.9:1 → OK AA */
+    --ink:#1f2328;
+    --muted:#54606b;
     --border:#d7dbe0;
     --bg:#f4f5f7;
     --card:#ffffff;
-    --ok:#15803d;
-    --tap: 48px;               /* Règle 1 : cible tactile mini */
-    --nav-h: 58px;
-    --safe-top: env(safe-area-inset-top);
-    --safe-bottom: env(safe-area-inset-bottom);
+    --maison:#c1440e; --appart:#2563eb; --terrain:#15803d; --local:#7c3aed; --autre:#64748b;
+    --tap:48px;
+    --nav-h:58px;
+    --safe-top:env(safe-area-inset-top);
+    --safe-bottom:env(safe-area-inset-bottom);
   }
   *{ box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
   [hidden]{ display:none !important; }
@@ -35,216 +35,178 @@
   body{
     margin:0;
     font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
-    /* Règle 4 : corps 16px, interligne 1.5 */
     font-size:16px; line-height:1.5;
-    color:var(--ink);
-    background:var(--bg);
+    color:var(--ink); background:var(--bg);
     display:flex; flex-direction:column;
-    /* Règle 5 : geste de retour iOS non capturé (pas de touch handlers custom sur les bords) */
     touch-action:manipulation;
   }
 
-  /* ---------- En-tête (safe-area haut) ---------- */
   .app-header{
-    flex:none;
-    background:var(--card);
-    border-bottom:1px solid var(--border);
-    padding:calc(12px + var(--safe-top)) 16px 12px;
-    padding-left:max(16px, env(safe-area-inset-left));
-    padding-right:max(16px, env(safe-area-inset-right));
+    flex:none; background:var(--card); border-bottom:1px solid var(--border);
+    padding:calc(12px + var(--safe-top)) max(16px, env(safe-area-inset-left)) 12px max(16px, env(safe-area-inset-right));
   }
   .app-header h1{ margin:0; font-size:18px; }
   .app-header p{ margin:2px 0 0; font-size:14px; color:var(--muted); }
 
-  /* ---------- Zone de contenu ---------- */
   .screen{
-    flex:1 1 auto;
-    display:flex; flex-direction:column;
-    min-height:0;
-    /* laisse la place à la barre de navigation fixe */
+    flex:1 1 auto; display:flex; flex-direction:column; min-height:0;
     padding-bottom:calc(var(--nav-h) + var(--safe-bottom));
   }
 
-  form.search{
-    flex:none;
-    background:var(--card);
-    border-bottom:1px solid var(--border);
+  /* ---------- Zone de contrôles (repliable) ---------- */
+  form.controls{
+    flex:none; background:var(--card); border-bottom:1px solid var(--border);
     padding:14px max(16px, env(safe-area-inset-left)) 16px max(16px, env(safe-area-inset-right));
     display:flex; flex-direction:column; gap:12px;
   }
+  .grp{ display:flex; flex-direction:column; gap:12px; }
   .field{ display:flex; flex-direction:column; gap:6px; position:relative; }
-  .field > label{ font-size:16px; font-weight:600; color:var(--ink); }   /* Règle 4 : pas de micro-label */
+  .field > label{ font-size:16px; font-weight:600; color:var(--ink); }
   .field .hint{ font-size:14px; color:var(--muted); }
+  .tip{ font-size:14px; color:var(--muted); }
 
-  /* Résumé de recherche compact (le formulaire se replie après recherche) */
-  .search-summary{
-    flex:none; width:100%;
-    display:flex; align-items:center; justify-content:space-between; gap:10px;
-    min-height:52px;
-    padding:10px max(16px, env(safe-area-inset-left)) 10px max(16px, env(safe-area-inset-right));
-    background:var(--card); border:0; border-bottom:1px solid var(--border);
-    font-size:16px; color:var(--ink); text-align:left; cursor:pointer;
-  }
-  .search-summary:active{ background:#f0f2f4; }
-  .search-summary .txt{ overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-weight:600; }
-  .search-summary .edit{
-    flex:none; font-size:15px; font-weight:700; color:var(--accent);
-    min-height:44px; display:inline-flex; align-items:center; gap:4px; padding:0 4px;
-  }
-
-  /* Règle 1 (≥48px) + Règle 3 (font-size 16px → pas de zoom iOS) */
   input, select{
-    width:100%;
-    min-height:var(--tap);
-    font-size:16px;
-    padding:12px 14px;
-    border:1px solid var(--border);
-    border-radius:12px;
-    background:#fff;
-    color:var(--ink);
-    appearance:none;
+    width:100%; min-height:var(--tap); font-size:16px; padding:12px 14px;
+    border:1px solid var(--border); border-radius:12px; background:#fff; color:var(--ink); appearance:none;
   }
-  input:focus, select:focus{
-    outline:2px solid var(--accent);
-    outline-offset:1px;
-    border-color:var(--accent);
-  }
+  input:focus, select:focus{ outline:2px solid var(--accent); outline-offset:1px; border-color:var(--accent); }
   .row{ display:flex; gap:12px; }
   .row .field{ flex:1; }
 
-  /* Règle 1 : CTA pleine largeur, ≥48px (ici 52), feedback <100ms */
   .btn{
-    min-height:52px;
-    display:inline-flex; align-items:center; justify-content:center;
-    gap:8px;
-    font-size:16px; font-weight:700;
-    border-radius:12px; border:1px solid transparent;
+    min-height:52px; display:inline-flex; align-items:center; justify-content:center; gap:8px;
+    font-size:16px; font-weight:700; border-radius:12px; border:1px solid transparent;
     cursor:pointer; user-select:none;
     transition:transform .08s ease, background-color .12s ease, opacity .12s ease;
   }
-  .btn:active{ transform:scale(.98); }         /* Règle 5 : retour tactile immédiat */
+  .btn:active{ transform:scale(.98); }
   .btn-primary{ background:var(--accent); color:#fff; }
   .btn-primary:active{ background:var(--accent-dark); }
   .btn-primary[disabled]{ background:#caa79a; cursor:default; }
   .btn-ghost{ background:#fff; color:var(--ink); border-color:var(--border); }
   .btn-ghost:active{ background:#eef0f2; }
-  .btn-row{ display:flex; gap:12px; }
-  .btn-row .btn{ flex:1; }
 
-  /* Suggestions : chaque ligne ≥48px, 8px de respiration */
   .suggestions{
     position:absolute; top:calc(100% + 6px); left:0; right:0; z-index:1200;
     background:#fff; border:1px solid var(--border); border-radius:12px;
-    box-shadow:0 12px 28px rgba(0,0,0,.16);
-    max-height:46vh; overflow-y:auto;
-    -webkit-overflow-scrolling:touch;
+    box-shadow:0 12px 28px rgba(0,0,0,.16); max-height:46vh; overflow-y:auto; -webkit-overflow-scrolling:touch;
   }
   .suggestions button{
-    display:flex; flex-direction:column; gap:2px;
-    width:100%; text-align:left;
-    min-height:var(--tap); padding:10px 14px;
-    border:0; border-bottom:1px solid var(--border); background:#fff;
-    font-size:16px; color:var(--ink); cursor:pointer;
+    display:flex; flex-direction:column; gap:2px; width:100%; text-align:left;
+    min-height:var(--tap); padding:10px 14px; border:0; border-bottom:1px solid var(--border);
+    background:#fff; font-size:16px; color:var(--ink); cursor:pointer;
   }
   .suggestions button:last-child{ border-bottom:0; }
   .suggestions button:active{ background:#fdf1ea; }
   .suggestions .sub{ font-size:14px; color:var(--muted); }
 
-  /* Bandeau d'état : jamais d'écran blanc silencieux (Règle 7) */
+  /* Résumé compact des contrôles */
+  .summary{
+    flex:none; width:100%; display:flex; align-items:center; justify-content:space-between; gap:10px;
+    min-height:52px;
+    padding:10px max(16px, env(safe-area-inset-left)) 10px max(16px, env(safe-area-inset-right));
+    background:var(--card); border:0; border-bottom:1px solid var(--border);
+    font-size:16px; color:var(--ink); text-align:left; cursor:pointer;
+  }
+  .summary:active{ background:#f0f2f4; }
+  .summary .txt{ overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-weight:600; }
+  .summary .edit{
+    flex:none; font-size:15px; font-weight:700; color:var(--accent);
+    min-height:44px; display:inline-flex; align-items:center; gap:4px; padding:0 4px;
+  }
+
   .status{
-    flex:none; min-height:22px;
-    padding:10px 16px;
-    font-size:14px; color:var(--muted);
+    flex:none; min-height:22px; padding:10px 16px; font-size:14px; color:var(--muted);
     background:var(--card); border-bottom:1px solid var(--border);
     display:flex; align-items:center; gap:8px;
   }
   .status.error{ color:#b3261e; }
   .status .spinner{
-    width:16px; height:16px; flex:none;
-    border:2px solid rgba(0,0,0,.15); border-top-color:var(--accent);
+    width:16px; height:16px; flex:none; border:2px solid rgba(0,0,0,.15); border-top-color:var(--accent);
     border-radius:50%; animation:spin .8s linear infinite;
   }
   @keyframes spin{ to{ transform:rotate(360deg); } }
 
   #map{ flex:1 1 auto; min-height:200px; }
 
-  /* Contrôles Leaflet agrandis à ≥44px (Règle 1) — surspécifier pour battre le CSS Leaflet touch */
-  .leaflet-touch .leaflet-bar a,
-  .leaflet-bar a{
-    width:44px; height:44px; line-height:44px; font-size:22px;
-  }
-  .leaflet-touch .leaflet-control-layers-toggle,
-  .leaflet-control-layers-toggle{ width:44px; height:44px; background-size:22px 22px; }
+  .leaflet-touch .leaflet-bar a, .leaflet-bar a{ width:44px; height:44px; line-height:44px; font-size:22px; }
+  .leaflet-touch .leaflet-control-layers-toggle, .leaflet-control-layers-toggle{ width:44px; height:44px; background-size:22px 22px; }
   .leaflet-bar a:first-child{ border-top-left-radius:10px; border-top-right-radius:10px; }
   .leaflet-bar a:last-child{ border-bottom-left-radius:10px; border-bottom-right-radius:10px; }
 
-  /* ---------- Bottom-sheet des résultats (Règle 6) ---------- */
+  /* ---------- Bottom-sheet ---------- */
   .sheet{
-    position:fixed; left:0; right:0;
-    bottom:calc(var(--nav-h) + var(--safe-bottom));
-    z-index:1100;
-    background:var(--card);
-    border-top-left-radius:16px; border-top-right-radius:16px;
+    position:fixed; left:0; right:0; bottom:calc(var(--nav-h) + var(--safe-bottom)); z-index:1100;
+    background:var(--card); border-top-left-radius:16px; border-top-right-radius:16px;
     box-shadow:0 -8px 28px rgba(0,0,0,.18);
-    display:flex; flex-direction:column;
-    max-height:58vh;
+    display:flex; flex-direction:column; max-height:60vh;
     transform:translateY(calc(100% + var(--nav-h) + var(--safe-bottom)));
-    transition:transform .25s ease;    /* Règle 7 : 200-300ms */
+    transition:transform .25s ease;
   }
   .sheet.open{ transform:translateY(0); }
-  .sheet-grab{
-    align-self:center; width:40px; height:5px; border-radius:3px;
-    background:#c9ced3; margin:8px 0 4px;
-  }
+  .sheet-grab{ align-self:center; width:40px; height:5px; border-radius:3px; background:#c9ced3; margin:8px 0 4px; }
   .sheet-head{
     display:flex; align-items:center; justify-content:space-between;
     padding:6px 12px 10px 16px; border-bottom:1px solid var(--border);
   }
   .sheet-head strong{ font-size:16px; }
   .sheet-close{
-    min-width:var(--tap); min-height:var(--tap);
-    display:flex; align-items:center; justify-content:center;
-    border:0; background:none; font-size:22px; color:var(--muted); cursor:pointer;
-    border-radius:10px;
+    min-width:var(--tap); min-height:var(--tap); display:flex; align-items:center; justify-content:center;
+    border:0; background:none; font-size:22px; color:var(--muted); cursor:pointer; border-radius:10px;
   }
   .sheet-close:active{ background:#eef0f2; }
+  .sheet-stats{
+    flex:none; padding:12px 16px; border-bottom:1px solid var(--border);
+    font-size:14px; color:var(--muted); line-height:1.55;
+  }
+  .sheet-stats b{ color:var(--ink); }
+  .sheet-stats .hist{ margin-top:8px; }
   .sheet-body{ overflow-y:auto; -webkit-overflow-scrolling:touch; padding:8px 12px 16px; }
 
   .card{
-    display:block; width:100%; text-align:left;
-    background:#fff; border:1px solid var(--border); border-radius:12px;
-    padding:12px 14px; margin:8px 0;         /* ≥48px de haut, 8px d'écart (Règle 1) */
-    cursor:pointer;
+    display:block; width:100%; text-align:left; background:#fff; border:1px solid var(--border);
+    border-radius:12px; padding:12px 14px; margin:8px 0; cursor:pointer;
     transition:transform .08s ease, background-color .12s ease;
   }
   .card:active{ transform:scale(.99); background:#fbf4f0; }
+  .card .r1{ display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+  .card .cat{
+    font-size:11px; font-weight:800; color:#fff; border-radius:5px; padding:2px 7px;
+    text-transform:uppercase; letter-spacing:.02em;
+  }
+  .card .cat.Maison{ background:var(--maison); } .card .cat.Appartement{ background:var(--appart); }
+  .card .cat.Terrain{ background:var(--terrain); } .card .cat.Local{ background:var(--local); }
+  .card .cat.Autre{ background:var(--autre); }
   .card .idu{ font-weight:700; font-size:16px; }
+  .card .price{ font-weight:800; font-size:16px; }
+  .card .date{ color:var(--muted); font-size:14px; margin-left:auto; }
   .card .surf{ color:var(--accent-dark); font-size:15px; margin-top:2px; }
+  .card .meta{ font-size:14px; color:var(--accent-dark); margin-top:3px; }
+  .card .adr{ font-size:14px; color:var(--muted); margin-top:2px; }
+  .card .nat{ font-size:12px; color:var(--muted); margin-top:2px; }
   .card .links{ margin-top:8px; display:flex; gap:8px; flex-wrap:wrap; }
   .card .links a{
-    font-size:14px; color:var(--accent-dark); text-decoration:none;
-    min-height:40px; display:inline-flex; align-items:center;
-    padding:0 6px; border-radius:8px; background:#f4ede9;
+    font-size:14px; color:var(--accent-dark); text-decoration:none; min-height:40px;
+    display:inline-flex; align-items:center; padding:0 8px; border-radius:8px; background:#f4ede9;
   }
   .card .links a:active{ background:#e9ddd6; }
-
   .empty{ padding:22px 8px; text-align:center; color:var(--muted); font-size:15px; }
 
-  /* ---------- Barre de navigation basse (Règle 5) ---------- */
+  .fab-list{
+    position:fixed; right:12px; z-index:1150; bottom:calc(var(--nav-h) + var(--safe-bottom) + 12px);
+    min-height:44px; padding:0 18px; display:inline-flex; align-items:center; gap:6px;
+    border:0; border-radius:24px; background:var(--accent); color:#fff; font-size:15px; font-weight:700;
+    box-shadow:0 6px 18px rgba(0,0,0,.22); cursor:pointer; transition:transform .08s ease;
+  }
+  .fab-list:active{ transform:scale(.96); }
+
   .tabbar{
-    position:fixed; left:0; right:0; bottom:0; z-index:1300;
-    display:flex;
-    background:var(--card);
-    border-top:1px solid var(--border);
-    padding-bottom:var(--safe-bottom);   /* home indicator */
+    position:fixed; left:0; right:0; bottom:0; z-index:1300; display:flex;
+    background:var(--card); border-top:1px solid var(--border); padding-bottom:var(--safe-bottom);
   }
   .tabbar button{
-    flex:1;
-    min-height:var(--nav-h);
-    display:flex; flex-direction:column; align-items:center; justify-content:center;
-    gap:3px;
-    border:0; background:none; cursor:pointer;
-    color:var(--muted); font-size:12px; font-weight:600;
+    flex:1; min-height:var(--nav-h); display:flex; flex-direction:column; align-items:center; justify-content:center;
+    gap:3px; border:0; background:none; cursor:pointer; color:var(--muted); font-size:12px; font-weight:600;
   }
   .tabbar button .ic{ font-size:22px; line-height:1; }
   .tabbar button[aria-current="page"]{ color:var(--accent); }
@@ -252,55 +214,99 @@
 
   .leaflet-popup-content{ font-size:15px; }
   .leaflet-popup-content a{ color:var(--accent-dark); }
-
-  .placeholder{
-    flex:1; display:flex; align-items:center; justify-content:center;
-    padding:32px; text-align:center; color:var(--muted); font-size:15px;
-  }
-
-  /* Bouton flottant pour rouvrir la liste quand le panneau est fermé */
-  .fab-list{
-    position:fixed; right:12px; z-index:1150;
-    bottom:calc(var(--nav-h) + var(--safe-bottom) + 12px);
-    min-height:44px; padding:0 18px;
-    display:inline-flex; align-items:center; gap:6px;
-    border:0; border-radius:24px;
-    background:var(--accent); color:#fff; font-size:15px; font-weight:700;
-    box-shadow:0 6px 18px rgba(0,0,0,.22);
-    cursor:pointer;
-    transition:transform .08s ease;
-  }
-  .fab-list:active{ transform:scale(.96); }
 </style>
 </head>
 <body>
 
 <header class="app-header">
-  <h1>Parcelles cadastrales</h1>
+  <h1 id="app-title">Parcelles cadastrales</h1>
   <p>Écran de test — ergonomie mobile</p>
 </header>
 
 <div class="screen">
-  <form class="search" id="form" autocomplete="off" novalidate>
+  <form class="controls" id="controls" autocomplete="off" novalidate>
     <div class="field" id="commune-field">
       <label for="commune">Commune</label>
-      <!-- Règle 3 : type=search + clavier standard, pas de zoom (16px) -->
-      <input id="commune" type="search" enterkeyhint="search" autocomplete="off"
-             autocapitalize="words" placeholder="Ex : Laval" value="Laval" />
+      <input id="commune" type="search" enterkeyhint="search" autocomplete="off" autocapitalize="words"
+             placeholder="Ex : Laval" value="Laval" />
       <div class="suggestions" id="suggestions" hidden></div>
     </div>
 
-    <div class="row">
+    <!-- PARCELLES -->
+    <div class="grp" id="grp-parcelles">
+      <div class="row">
+        <div class="field">
+          <label for="p-min">Surface min</label>
+          <input id="p-min" type="text" inputmode="numeric" pattern="[0-9]*" enterkeyhint="search" value="500" />
+          <span class="hint">m²</span>
+        </div>
+        <div class="field">
+          <label for="p-max">Surface max</label>
+          <input id="p-max" type="text" inputmode="numeric" pattern="[0-9]*" enterkeyhint="search" value="1000" />
+          <span class="hint">m²</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- DVF -->
+    <div class="grp" id="grp-dvf" hidden>
       <div class="field">
-        <label for="smin">Surface min</label>
-        <!-- Règle 3 : clavier numérique -->
-        <input id="smin" type="text" inputmode="numeric" pattern="[0-9]*" enterkeyhint="search" value="500" />
-        <span class="hint">m²</span>
+        <label for="d-months">Période</label>
+        <select id="d-months">
+          <option value="12">12 derniers mois</option>
+          <option value="24" selected>2 dernières années</option>
+          <option value="36">3 dernières années</option>
+          <option value="60">5 dernières années</option>
+        </select>
+      </div>
+    </div>
+
+    <!-- AUTOUR -->
+    <div class="grp" id="grp-autour" hidden>
+      <p class="tip">Touchez la carte pour choisir un point, ou chargez les parcelles pour en toucher une précisément.</p>
+      <div class="row">
+        <div class="field">
+          <label for="a-radius">Rayon</label>
+          <select id="a-radius">
+            <option value="0.25">250 m</option>
+            <option value="0.5">500 m</option>
+            <option value="1" selected>1 km</option>
+            <option value="2">2 km</option>
+            <option value="3">3 km</option>
+            <option value="5">5 km</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="a-type">Type de bien</label>
+          <select id="a-type">
+            <option value="tous" selected>Tous</option>
+            <option value="maison">Maison</option>
+            <option value="appartement">Appartement</option>
+            <option value="terrain">Terrain</option>
+            <option value="local">Local</option>
+          </select>
+        </div>
       </div>
       <div class="field">
-        <label for="smax">Surface max</label>
-        <input id="smax" type="text" inputmode="numeric" pattern="[0-9]*" enterkeyhint="search" value="1000" />
-        <span class="hint">m²</span>
+        <label for="a-months">Période</label>
+        <select id="a-months">
+          <option value="12">12 mois</option>
+          <option value="24">2 ans</option>
+          <option value="36" selected>3 ans</option>
+          <option value="60">5 ans</option>
+        </select>
+      </div>
+      <div class="row">
+        <div class="field">
+          <label for="a-min">Parcelles min</label>
+          <input id="a-min" type="text" inputmode="numeric" pattern="[0-9]*" value="500" />
+          <span class="hint">m²</span>
+        </div>
+        <div class="field">
+          <label for="a-max">Parcelles max</label>
+          <input id="a-max" type="text" inputmode="numeric" pattern="[0-9]*" value="900" />
+          <span class="hint">m²</span>
+        </div>
       </div>
     </div>
 
@@ -308,7 +314,7 @@
     <button class="btn btn-ghost" id="reset" type="button">Réinitialiser</button>
   </form>
 
-  <button type="button" class="search-summary" id="search-summary" hidden>
+  <button type="button" class="summary" id="summary" hidden>
     <span class="txt" id="summary-text"></span>
     <span class="edit">✎ Modifier</span>
   </button>
@@ -316,8 +322,6 @@
   <div class="status" id="status" role="status" aria-live="polite"></div>
 
   <div id="map"></div>
-
-  <div class="placeholder" id="placeholder" hidden></div>
 </div>
 
 <section class="sheet" id="sheet" aria-label="Résultats">
@@ -326,6 +330,7 @@
     <strong id="sheet-title">Résultats</strong>
     <button class="sheet-close" id="sheet-close" aria-label="Fermer la liste">✕</button>
   </div>
+  <div class="sheet-stats" id="sheet-stats" hidden></div>
   <div class="sheet-body" id="sheet-body"></div>
 </section>
 
@@ -340,69 +345,139 @@
 <script>
 (function(){
   const $ = (id) => document.getElementById(id);
-  const communeInput = $('commune');
-  const suggestions = $('suggestions');
-  const sminInput = $('smin');
-  const smaxInput = $('smax');
-  const form = $('form');
-  const searchSummary = $('search-summary');
-  const summaryText = $('summary-text');
-  const goBtn = $('go');
-  const resetBtn = $('reset');
-  const fabList = $('fab-list');
+  const communeInput = $('commune'), suggestions = $('suggestions');
+  const controls = $('controls'), summary = $('summary'), summaryText = $('summary-text');
+  const grpParcelles = $('grp-parcelles'), grpDvf = $('grp-dvf'), grpAutour = $('grp-autour');
+  const goBtn = $('go'), resetBtn = $('reset');
   const statusEl = $('status');
-  const sheet = $('sheet');
-  const sheetBody = $('sheet-body');
-  const sheetTitle = $('sheet-title');
-  const placeholder = $('placeholder');
-  const tabbar = $('tabbar');
+  const sheet = $('sheet'), sheetBody = $('sheet-body'), sheetStats = $('sheet-stats'), sheetTitle = $('sheet-title');
+  const fabList = $('fab-list'), tabbar = $('tabbar'), appTitle = $('app-title');
 
+  const pMin = $('p-min'), pMax = $('p-max');
+  const dMonths = $('d-months');
+  const aRadius = $('a-radius'), aType = $('a-type'), aMonths = $('a-months'), aMin = $('a-min'), aMax = $('a-max');
+
+  const CAT = { Maison:'#c1440e', Appartement:'#2563eb', Terrain:'#15803d', Local:'#7c3aed', Autre:'#64748b' };
+  const TITLES = { parcelles:'Parcelles cadastrales', dvf:'Transactions immobilières', autour:'Autour d’une parcelle' };
+  const SHEET_TITLES = { parcelles:'Parcelles', dvf:'Transactions (DVF)', autour:'Ventes autour du point' };
+
+  let activeTab = 'parcelles';
   let selected = { code:'53130', nom:'Laval', cp:'53000' };
   let debounce = null;
-  let layer = null;
-  let activeTab = 'parcelles';
-  let searchCollapsed = false;   // le formulaire se replie après une recherche
-  const cache = {};
-  const addrCache = {};
 
-  // Règle 6 : ne pas laisser une grande zone de saisie manger l'écran une fois
-  // la recherche faite — on la remplace par un résumé compact, réouvrable.
-  function applySearchVisibility(){
-    const onParcelles = activeTab === 'parcelles';
-    form.hidden = !onParcelles || searchCollapsed;
-    searchSummary.hidden = !onParcelles || !searchCollapsed;
-  }
-  function collapseSearch(){
-    searchCollapsed = true;
-    summaryText.textContent = (selected ? selected.nom : '—') + '  ·  ' + sminInput.value + '–' + smaxInput.value + ' m²';
-    applySearchVisibility();
-    setTimeout(() => map.invalidateSize(), 140);
-  }
-  function expandSearch(){
-    searchCollapsed = false;
-    applySearchVisibility();
-    setTimeout(() => map.invalidateSize(), 140);
-  }
-  searchSummary.addEventListener('click', expandSearch);
+  // état par onglet
+  const st = {
+    parcelles:{ layer:null, data:null, collapsed:false },
+    dvf:{ layer:null, data:null, collapsed:false },
+    autour:{ layer:null, ventes:null, circle:null, refMarker:null, ref:null, parcLayer:null, data:null, collapsed:false }
+  };
+  const cacheP = {}, cacheD = {}, cacheA = {}, communesCache = {}, addrCache = {};
 
-  // Règle 7 : feedback dès le chargement, jamais d'écran blanc.
+  // ---------- utilitaires ----------
   function setStatus(msg, kind){
     statusEl.className = 'status' + (kind ? ' ' + kind : '');
-    statusEl.innerHTML = (kind === 'loading' ? '<span class="spinner"></span>' : '') +
-      '<span>' + (msg || '') + '</span>';
+    statusEl.innerHTML = (kind === 'loading' ? '<span class="spinner"></span>' : '') + '<span>' + (msg || '') + '</span>';
+  }
+  function withTimeout(url, ms){
+    const c = new AbortController(); const t = setTimeout(() => c.abort(), ms);
+    return fetch(url, { signal:c.signal }).finally(() => clearTimeout(t));
+  }
+  const fmtEur = (n) => (n == null || isNaN(n)) ? '—' : Math.round(n).toLocaleString('fr-FR') + ' €';
+  const fmtNum = (n) => (n == null) ? '—' : Number(n).toLocaleString('fr-FR');
+  function fmtDate(iso){ if (!iso) return ''; const d = new Date(iso + 'T00:00:00'); return isNaN(d) ? iso : d.toLocaleDateString('fr-FR'); }
+  function fmtMonthYear(iso){ if (!iso) return ''; const d = new Date(iso + 'T00:00:00'); return isNaN(d) ? iso : d.toLocaleDateString('fr-FR', { month:'long', year:'numeric' }); }
+  function fmtDist(m){ if (m == null) return ''; return m < 1000 ? Math.round(m) + ' m' : (m/1000).toFixed(m < 10000 ? 2 : 1).replace('.', ',') + ' km'; }
+  function iduOf(p){ return (p && (p.idu || p.id)) ? String(p.idu || p.id).toUpperCase() : ''; }
+  function selText(sel){ return sel.options[sel.selectedIndex].text; }
+  function destPoint(lat, lon, brg, distM){
+    const R = 6371000, b = brg * Math.PI/180, d = distM/R;
+    const la1 = lat*Math.PI/180, lo1 = lon*Math.PI/180;
+    const la2 = Math.asin(Math.sin(la1)*Math.cos(d) + Math.cos(la1)*Math.sin(d)*Math.cos(b));
+    const lo2 = lo1 + Math.atan2(Math.sin(b)*Math.sin(d)*Math.cos(la1), Math.cos(d) - Math.sin(la1)*Math.sin(la2));
+    return [la2*180/Math.PI, lo2*180/Math.PI];
+  }
+  function mapsLinks(lat, lon){
+    const la = (+lat).toFixed(6), lo = (+lon).toFixed(6);
+    return '<a href="https://www.google.com/maps/search/?api=1&query=' + la + ',' + lo + '" target="_blank" rel="noopener">Maps ↗</a>' +
+      '<a href="https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=' + la + ',' + lo + '" target="_blank" rel="noopener">Street View ↗</a>';
+  }
+  function histogramSvg(values, medianVal){
+    if (!values || values.length < 10) return '';
+    const vmin = values[0], vmax = values[values.length - 1];
+    if (!(vmax > vmin)) return '';
+    const W = 320, H = 96, padB = 18, padT = 6, padX = 2;
+    const n = Math.min(12, Math.max(5, Math.round(Math.sqrt(values.length))));
+    const bw = (vmax - vmin) / n, counts = new Array(n).fill(0);
+    values.forEach(v => { let i = Math.floor((v - vmin) / bw); if (i >= n) i = n-1; if (i < 0) i = 0; counts[i]++; });
+    const cmax = Math.max(1, ...counts), plotW = W - padX*2, plotH = H - padB - padT, barW = plotW / n;
+    let bars = '';
+    for (let i = 0; i < n; i++){
+      const h = (counts[i]/cmax)*plotH, x = padX + i*barW, y = padT + (plotH - h);
+      const lo = Math.round(vmin + i*bw), hi = Math.round(vmin + (i+1)*bw);
+      bars += '<rect x="' + (x+1).toFixed(1) + '" y="' + y.toFixed(1) + '" width="' + (barW-2).toFixed(1) +
+        '" height="' + h.toFixed(1) + '" fill="#c1440e" fill-opacity="0.78" rx="1"><title>' +
+        lo.toLocaleString('fr-FR') + '–' + hi.toLocaleString('fr-FR') + ' €/m² : ' + counts[i] + '</title></rect>';
+    }
+    let med = '';
+    if (medianVal != null && medianVal >= vmin && medianVal <= vmax){
+      const mx = padX + ((medianVal - vmin)/(vmax - vmin))*plotW;
+      med = '<line x1="' + mx.toFixed(1) + '" y1="' + padT + '" x2="' + mx.toFixed(1) + '" y2="' + (padT+plotH) +
+        '" stroke="#1f2328" stroke-width="1" stroke-dasharray="3 2"/><text x="' + mx.toFixed(1) + '" y="' + (padT+8) +
+        '" font-size="9" fill="#1f2328" text-anchor="middle">méd.</text>';
+    }
+    const axis = '<text x="' + padX + '" y="' + (H-5) + '" font-size="9" fill="#54606b">' + Math.round(vmin).toLocaleString('fr-FR') +
+      '</text><text x="' + (W-padX) + '" y="' + (H-5) + '" font-size="9" fill="#54606b" text-anchor="end">' +
+      Math.round(vmax).toLocaleString('fr-FR') + ' €/m²</text>';
+    return '<svg class="hist" viewBox="0 0 ' + W + ' ' + H + '" width="100%" height="' + H + '">' + bars + med + axis + '</svg>';
   }
 
+  // ---------- carte ----------
   const map = L.map('map', { zoomControl:true }).setView([48.0578, -0.7692], 13);
-  const plan = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-    maxZoom:19, attribution:'&copy; OpenStreetMap'
-  }).addTo(map);
-  const ign = L.tileLayer('https://data.geopf.fr/wmts?SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0&LAYER=ORTHOIMAGERY.ORTHOPHOTOS&STYLE=normal&TILEMATRIXSET=PM&FORMAT=image/jpeg&TILEMATRIX={z}&TILEROW={y}&TILECOL={x}',
-    { maxZoom:19, attribution:'&copy; IGN-F/Géoportail' });
+  const plan = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom:19, attribution:'&copy; OpenStreetMap' }).addTo(map);
+  const ign = L.tileLayer('https://data.geopf.fr/wmts?SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0&LAYER=ORTHOIMAGERY.ORTHOPHOTOS&STYLE=normal&TILEMATRIXSET=PM&FORMAT=image/jpeg&TILEMATRIX={z}&TILEROW={y}&TILECOL={x}', { maxZoom:19, attribution:'&copy; IGN-F/Géoportail' });
   L.control.layers({ 'Plan':plan, 'Satellite (IGN)':ign }).addTo(map);
-  map.attributionControl.setPosition('bottomleft');   // libère le coin bas-droit pour le bouton Liste
+  map.attributionControl.setPosition('bottomleft');
   setTimeout(() => map.invalidateSize(), 200);
 
-  // ---- Autocomplétion commune (geo.api.gouv.fr, CORS ouvert) ----
+  map.on('click', (e) => {
+    if (activeTab !== 'autour') return;
+    setAutourRef(e.latlng.lat, e.latlng.lng, null);
+  });
+
+  // ---------- repli / expansion des contrôles ----------
+  function activeGrp(){ return activeTab === 'dvf' ? grpDvf : activeTab === 'autour' ? grpAutour : grpParcelles; }
+  function summaryFor(){
+    if (activeTab === 'dvf') return (selected ? selected.nom : '—') + '  ·  ' + selText(dMonths);
+    if (activeTab === 'autour'){
+      const ref = st.autour.ref ? 'point choisi' : (selected ? selected.nom : '—');
+      return ref + '  ·  ' + selText(aRadius) + '  ·  ' + selText(aType);
+    }
+    return (selected ? selected.nom : '—') + '  ·  ' + pMin.value + '–' + pMax.value + ' m²';
+  }
+  function applyControlsVisibility(){
+    const collapsed = st[activeTab].collapsed;
+    controls.hidden = collapsed;
+    summary.hidden = !collapsed;
+    grpParcelles.hidden = activeTab !== 'parcelles';
+    grpDvf.hidden = activeTab !== 'dvf';
+    grpAutour.hidden = activeTab !== 'autour';
+  }
+  function collapseControls(){ st[activeTab].collapsed = true; summaryText.textContent = summaryFor(); applyControlsVisibility(); setTimeout(() => map.invalidateSize(), 140); }
+  function expandControls(){ st[activeTab].collapsed = false; applyControlsVisibility(); setTimeout(() => map.invalidateSize(), 140); }
+  summary.addEventListener('click', expandControls);
+
+  // ---------- bottom-sheet + FAB ----------
+  function updateFab(){
+    const cards = sheetBody.querySelectorAll('.card').length;
+    fabList.hidden = !(cards > 0 && !sheet.classList.contains('open'));
+    if (cards > 0) fabList.textContent = '≡ Liste (' + cards + ')';
+  }
+  function openSheet(){ sheet.classList.add('open'); updateFab(); }
+  function closeSheet(){ sheet.classList.remove('open'); updateFab(); }
+  $('sheet-close').addEventListener('click', closeSheet);
+  fabList.addEventListener('click', openSheet);
+
+  // ---------- autocomplétion commune ----------
   communeInput.addEventListener('input', () => {
     selected = null;
     const q = communeInput.value.trim();
@@ -410,30 +485,22 @@
     if (q.length < 2){ suggestions.hidden = true; return; }
     debounce = setTimeout(() => fetchCommunes(q), 280);
   });
-  communeInput.addEventListener('focus', () => {
-    // Règle 3 : garder le champ visible au-dessus du clavier
-    setTimeout(() => communeInput.scrollIntoView({ block:'center', behavior:'smooth' }), 250);
-  });
-  document.addEventListener('click', (e) => {
-    if (!suggestions.contains(e.target) && e.target !== communeInput) suggestions.hidden = true;
-  });
-
+  [communeInput, pMin, pMax, aMin, aMax].forEach(el => el.addEventListener('focus', () => {
+    setTimeout(() => el.scrollIntoView({ block:'center', behavior:'smooth' }), 250);
+  }));
+  document.addEventListener('click', (e) => { if (!suggestions.contains(e.target) && e.target !== communeInput) suggestions.hidden = true; });
   async function fetchCommunes(q){
     try{
-      const r = await fetch('https://geo.api.gouv.fr/communes?nom=' + encodeURIComponent(q) +
-        '&fields=nom,code,codesPostaux,departement,centre&boost=population&limit=12');
-      if (!r.ok) return;
-      renderCommunes(await r.json());
+      const r = await fetch('https://geo.api.gouv.fr/communes?nom=' + encodeURIComponent(q) + '&fields=nom,code,codesPostaux,departement,centre&boost=population&limit=12');
+      if (r.ok) renderCommunes(await r.json());
     }catch(e){}
   }
   function renderCommunes(list){
     suggestions.innerHTML = '';
     if (!list || !list.length){ suggestions.hidden = true; return; }
     list.forEach(c => {
-      const cp = (c.codesPostaux && c.codesPostaux[0]) || '';
-      const dep = c.departement ? c.departement.nom : '';
-      const b = document.createElement('button');
-      b.type = 'button';
+      const cp = (c.codesPostaux && c.codesPostaux[0]) || '', dep = c.departement ? c.departement.nom : '';
+      const b = document.createElement('button'); b.type = 'button';
       b.innerHTML = '<span>' + c.nom + '</span><span class="sub">' + [cp, dep].filter(Boolean).join(' · ') + '</span>';
       b.addEventListener('click', () => {
         selected = { code:c.code, nom:c.nom, cp:cp };
@@ -446,24 +513,7 @@
     suggestions.hidden = false;
   }
 
-  // ---- Recherche parcelles (proxy same-origin) ----
-  function withTimeout(url, ms){
-    const c = new AbortController();
-    const t = setTimeout(() => c.abort(), ms);
-    return fetch(url, { signal:c.signal }).finally(() => clearTimeout(t));
-  }
-  async function fetchParcelles(min, max){
-    const key = selected.code + '|' + min + '|' + max;
-    if (cache[key]) return cache[key];
-    const url = '/api/parcelles?insee=' + encodeURIComponent(selected.code) +
-      '&min=' + encodeURIComponent(min) + '&max=' + encodeURIComponent(max);
-    const r = await withTimeout(url, 90000);
-    let d = null; try{ d = await r.json(); }catch(e){}
-    if (!r.ok) throw new Error((d && d.error) || ('Erreur serveur (' + r.status + ').'));
-    const out = { features:(d && d.features) || [], total:(d && d.total) || 0, source:d && d.source };
-    cache[key] = out;
-    return out;
-  }
+  // ---------- réseau ----------
   async function reverseAddr(lat, lon){
     try{
       const r = await withTimeout('https://api-adresse.data.gouv.fr/reverse/?lon=' + lon + '&lat=' + lat + '&limit=1', 8000);
@@ -472,129 +522,361 @@
       return (d.features && d.features[0]) ? d.features[0].properties.label : null;
     }catch(e){ return null; }
   }
-  function mapsLinks(lat, lon){
-    const la = (+lat).toFixed(6), lo = (+lon).toFixed(6);
-    return '<a href="https://www.google.com/maps/search/?api=1&query=' + la + ',' + lo + '" target="_blank" rel="noopener">Maps ↗</a>' +
-      '<a href="https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=' + la + ',' + lo + '" target="_blank" rel="noopener">Street View ↗</a>';
+  async function fetchParcelles(min, max){
+    const key = selected.code + '|' + min + '|' + max;
+    if (cacheP[key]) return cacheP[key];
+    const r = await withTimeout('/api/parcelles?insee=' + encodeURIComponent(selected.code) + '&min=' + min + '&max=' + max, 90000);
+    let d = null; try{ d = await r.json(); }catch(e){}
+    if (!r.ok) throw new Error((d && d.error) || ('Erreur serveur (' + r.status + ').'));
+    return (cacheP[key] = { features:(d && d.features) || [], total:(d && d.total) || 0, source:d && d.source });
   }
-  function iduOf(p){ return (p && (p.idu || p.id)) ? String(p.idu || p.id).toUpperCase() : ''; }
+  async function fetchDvf(months){
+    const key = selected.code + '|' + months;
+    if (cacheD[key]) return cacheD[key];
+    const r = await withTimeout('/api/dvf?insee=' + encodeURIComponent(selected.code) + '&months=' + months, 90000);
+    let d = null; try{ d = await r.json(); }catch(e){}
+    if (!r.ok) throw new Error((d && d.error) || ('Erreur serveur (' + r.status + ').'));
+    return (cacheD[key] = d);
+  }
+  async function communesAround(lat, lon, radiusKm){
+    const key = lat.toFixed(3) + ',' + lon.toFixed(3) + ',' + radiusKm;
+    if (communesCache[key]) return communesCache[key];
+    const pts = [[lat, lon]];
+    for (let b = 0; b < 360; b += 45) pts.push(destPoint(lat, lon, b, radiusKm * 1000));
+    const codes = new Set();
+    await Promise.all(pts.map(async ([la, lo]) => {
+      try{
+        const r = await fetch('https://geo.api.gouv.fr/communes?lat=' + la + '&lon=' + lo + '&fields=code');
+        if (!r.ok) return;
+        const arr = await r.json();
+        if (arr && arr[0] && arr[0].code) codes.add(arr[0].code);
+      }catch(e){}
+    }));
+    let list = [...codes];
+    if (!list.length && selected && selected.code) list = [selected.code];
+    if (list.length) communesCache[key] = list;
+    return list;
+  }
+  async function fetchAround(ref, radiusKm, months, type, communes){
+    const key = ref.lat.toFixed(5) + ',' + ref.lon.toFixed(5) + '|' + radiusKm + '|' + months + '|' + type + '|' + communes.join(',');
+    if (cacheA[key]) return cacheA[key];
+    const url = '/api/dvf-around?lat=' + ref.lat + '&lon=' + ref.lon + '&radius=' + radiusKm + '&months=' + months +
+      '&type=' + encodeURIComponent(type) + '&communes=' + encodeURIComponent(communes.join(','));
+    const r = await withTimeout(url, 90000);
+    let d = null; try{ d = await r.json(); }catch(e){}
+    if (!r.ok) throw new Error((d && d.error) || ('Erreur serveur (' + r.status + ').'));
+    return (cacheA[key] = d);
+  }
 
-  function popupHtml(p, ll, addr){
+  // ---------- rendu : PARCELLES ----------
+  function popupParcelle(p, ll, addr){
     return '<b>' + iduOf(p) + '</b><br/>Section ' + (p.section||'') + ' n°' + (p.numero||'') +
-      '<br/>' + (p.contenance != null ? p.contenance + ' m²' : '?') +
-      '<br/>' + (addr || 'Adresse…') + '<br/>' + mapsLinks(ll.lat, ll.lng);
+      '<br/>' + (p.contenance != null ? p.contenance + ' m²' : '?') + '<br/>' + (addr || 'Adresse…') +
+      '<br/>' + mapsLinks(ll.lat, ll.lng);
   }
-
-  function render(features){
-    if (layer){ map.removeLayer(layer); layer = null; }
+  function renderParcelles(features){
+    clearLayer('parcelles');
+    sheetStats.hidden = true; sheetStats.innerHTML = '';
     sheetBody.innerHTML = '';
-    if (!features.length){
-      sheetBody.innerHTML = '<div class="empty">Aucune parcelle dans cette fourchette.</div>';
-      openSheet(true);
-      sheetTitle.textContent = 'Résultats (0)';
-      return;
-    }
+    if (!features.length){ sheetBody.innerHTML = '<div class="empty">Aucune parcelle dans cette fourchette.</div>'; sheetTitle.textContent = 'Parcelles (0)'; openSheet(); return; }
     const centers = {};
-    layer = L.geoJSON({ type:'FeatureCollection', features }, {
+    st.parcelles.layer = L.geoJSON({ type:'FeatureCollection', features }, {
       style:{ color:'#c1440e', weight:2, fillColor:'#f2a35c', fillOpacity:.45 },
       onEachFeature:(f, lyr) => {
-        const idu = iduOf(f.properties);
-        const c = lyr.getBounds().getCenter();
+        const idu = iduOf(f.properties), c = lyr.getBounds().getCenter();
         centers[idu] = c; lyr._idu = idu;
-        lyr.bindPopup(popupHtml(f.properties, c, addrCache[idu]));
+        lyr.bindPopup(popupParcelle(f.properties, c, addrCache[idu]));
         lyr.on('popupopen', () => {
           if (addrCache[idu]) return;
-          reverseAddr(c.lat, c.lng).then(a => { addrCache[idu] = a || 'Adresse non trouvée';
-            lyr.setPopupContent(popupHtml(f.properties, c, addrCache[idu])); });
+          reverseAddr(c.lat, c.lng).then(a => { addrCache[idu] = a || 'Adresse non trouvée'; lyr.setPopupContent(popupParcelle(f.properties, c, addrCache[idu])); });
         });
       }
-    }).addTo(map);
-    map.fitBounds(layer.getBounds(), { maxZoom:18, padding:[24,24] });
-
-    features.slice().sort((a,b) => (a.properties.contenance||0) - (b.properties.contenance||0))
-      .forEach(f => {
-        const idu = iduOf(f.properties);
-        const c = centers[idu];
-        const el = document.createElement('button');
-        el.type = 'button'; el.className = 'card';
-        el.innerHTML = '<div class="idu">' + idu + '</div>' +
-          '<div class="surf">' + f.properties.contenance + ' m²</div>' +
-          (c ? '<div class="links">' + mapsLinks(c.lat, c.lng) + '</div>' : '');
-        el.addEventListener('click', (ev) => {
-          if (ev.target.tagName === 'A') return;
-          layer.eachLayer(l => { if (l._idu === idu){ map.fitBounds(l.getBounds(), { maxZoom:19 }); l.openPopup(); } });
-          closeSheet();
-        });
-        sheetBody.appendChild(el);
+    });
+    if (activeTab === 'parcelles') st.parcelles.layer.addTo(map);
+    map.fitBounds(st.parcelles.layer.getBounds(), { maxZoom:18, padding:[24,24] });
+    features.slice().sort((a,b) => (a.properties.contenance||0) - (b.properties.contenance||0)).forEach(f => {
+      const idu = iduOf(f.properties), c = centers[idu];
+      const el = document.createElement('button'); el.type = 'button'; el.className = 'card';
+      el.innerHTML = '<div class="idu">' + idu + '</div><div class="surf">' + f.properties.contenance + ' m²</div>' +
+        (c ? '<div class="links">' + mapsLinks(c.lat, c.lng) + '</div>' : '');
+      el.addEventListener('click', (ev) => {
+        if (ev.target.tagName === 'A') return;
+        st.parcelles.layer.eachLayer(l => { if (l._idu === idu){ map.fitBounds(l.getBounds(), { maxZoom:19 }); l.openPopup(); } });
+        closeSheet();
       });
-    sheetTitle.textContent = 'Résultats (' + features.length + ')';
-    openSheet(true);
+      sheetBody.appendChild(el);
+    });
+    sheetTitle.textContent = 'Parcelles (' + features.length + ')';
+    openSheet();
   }
 
-  function updateFab(){
-    const cards = sheetBody.querySelectorAll('.card').length;
-    fabList.hidden = !(activeTab === 'parcelles' && cards > 0 && !sheet.classList.contains('open'));
-    if (cards > 0) fabList.textContent = '≡ Liste (' + cards + ')';
+  // ---------- rendu : DVF ----------
+  function popupDvf(m){
+    const l2 = [];
+    if (m.bati_total) l2.push(m.bati_total + ' m² bâti' + (m.pieces ? ', ' + m.pieces + ' p.' : ''));
+    if (m.terrain_total) l2.push(m.terrain_total + ' m² terrain');
+    if (m.prix_m2) l2.push(fmtNum(m.prix_m2) + ' €/m²');
+    return '<b>' + fmtEur(m.valeur) + '</b><br/>' + fmtDate(m.date) + ' — ' + m.categorie +
+      (l2.length ? '<br/>' + l2.join(' · ') : '') + (m.adresse ? '<br/>' + m.adresse : '') +
+      (m.lat != null ? '<br/>' + mapsLinks(m.lat, m.lon) : '');
   }
-  function openSheet(){ sheet.classList.add('open'); updateFab(); }
-  function closeSheet(){ sheet.classList.remove('open'); updateFab(); }
-  $('sheet-close').addEventListener('click', closeSheet);
-  fabList.addEventListener('click', openSheet);
+  function dvfCard(m, type){
+    const el = document.createElement('button'); el.type = 'button'; el.className = 'card';
+    const meta = [];
+    if (m.distance_m != null) meta.push('à ' + fmtDist(m.distance_m));
+    if (type === 'terrain'){ if (m.terrain_total) meta.push(m.terrain_total + ' m² terrain'); }
+    else if (m.bati_total) meta.push(m.bati_total + ' m² bâti' + (m.pieces ? ', ' + m.pieces + ' p.' : ''));
+    const pm2 = (type === 'terrain') ? m.prix_m2_terrain : m.prix_m2;
+    if (pm2) meta.push(fmtNum(pm2) + ' €/m²');
+    el.innerHTML =
+      '<div class="r1"><span class="cat ' + m.categorie + '">' + m.categorie + '</span>' +
+        '<span class="price">' + fmtEur(m.valeur) + '</span><span class="date">' + fmtDate(m.date) + '</span></div>' +
+      (meta.length ? '<div class="meta">' + meta.join(' · ') + '</div>' : '') +
+      (m.nature && !/^Vente$/i.test(m.nature) ? '<div class="nat">' + m.nature + '</div>' : '') +
+      (m.adresse ? '<div class="adr">' + m.adresse + '</div>' : '') +
+      (m.lat != null ? '<div class="links">' + mapsLinks(m.lat, m.lon) + '</div>' : '');
+    return el;
+  }
+  function renderDvf(data){
+    clearLayer('dvf');
+    const muts = (data && data.mutations) || [], s = (data && data.stats) || {};
+    st.dvf.data = data;
+    const parts = ['<b>' + (s.total || muts.length) + '</b> transaction(s)'];
+    if (s.total && muts.length < s.total) parts.push('(' + muts.length + ' affichées)');
+    if (s.prix_median != null) parts.push('prix médian <b>' + fmtEur(s.prix_median) + '</b>');
+    if (s.prix_m2_median != null) parts.push('<b>' + fmtNum(s.prix_m2_median) + ' €/m²</b> médian (maison/appart.)');
+    let html = parts.join(' · ');
+    if (s.data_through) html += '<br/>Données publiées jusqu’à ' + fmtMonthYear(s.data_through) + '.';
+    sheetStats.innerHTML = html; sheetStats.hidden = false;
 
-  form.addEventListener('submit', async (e) => {
-    e.preventDefault();
-    if (activeTab !== 'parcelles') return;
-    document.activeElement && document.activeElement.blur();   // referme le clavier
-    if (!selected){ setStatus('Choisissez une commune dans la liste.', 'error'); return; }
-    const min = parseInt(sminInput.value, 10);
-    const max = parseInt(smaxInput.value, 10);
-    if (isNaN(min) || isNaN(max) || min < 0 || max < 0){ setStatus('Surfaces invalides.', 'error'); return; }
-    if (min > max){ setStatus('Surface min > surface max.', 'error'); return; }
+    const markers = [];
+    muts.forEach(m => {
+      if (m.lat == null || m.lon == null) return;
+      const mk = L.circleMarker([m.lat, m.lon], { radius:6, weight:1, color:'#fff', fillColor:CAT[m.categorie] || CAT.Autre, fillOpacity:.9 });
+      mk.bindPopup(popupDvf(m)); mk._id = m.id; markers.push(mk);
+    });
+    st.dvf.layer = L.layerGroup(markers);
+    if (activeTab === 'dvf') st.dvf.layer.addTo(map);
+    if (markers.length) map.fitBounds(L.featureGroup(markers).getBounds(), { maxZoom:16, padding:[30,30] });
 
+    sheetBody.innerHTML = '';
+    if (!muts.length){ sheetBody.innerHTML = '<div class="empty">Aucune transaction sur cette période.</div>'; }
+    muts.forEach(m => {
+      const el = dvfCard(m, 'tous');
+      el.addEventListener('click', (ev) => {
+        if (ev.target.tagName === 'A') return;
+        const mk = st.dvf.layer && st.dvf.layer.getLayers().find(x => x._id === m.id);
+        if (mk){ map.setView(mk.getLatLng(), 17); mk.openPopup(); closeSheet(); }
+      });
+      sheetBody.appendChild(el);
+    });
+    sheetTitle.textContent = 'Transactions (' + muts.length + ')';
+    openSheet();
+  }
+
+  // ---------- rendu : AUTOUR ----------
+  function renderAutourParcelles(features){
+    if (st.autour.parcLayer){ map.removeLayer(st.autour.parcLayer); st.autour.parcLayer = null; }
+    if (!features.length) return;
+    st.autour.parcLayer = L.geoJSON({ type:'FeatureCollection', features }, {
+      style:{ color:'#8f3208', weight:1, fillColor:'#f2a35c', fillOpacity:.12 },
+      onEachFeature:(f, lyr) => lyr.on('click', () => { const c = lyr.getBounds().getCenter(); setAutourRef(c.lat, c.lng, iduOf(f.properties)); })
+    });
+    if (activeTab === 'autour') st.autour.parcLayer.addTo(map);
+    map.fitBounds(st.autour.parcLayer.getBounds(), { maxZoom:17, padding:[20,20] });
+  }
+  function setAutourRef(lat, lon, idu){
+    st.autour.ref = { lat, lon, idu:idu || null };
+    if (st.autour.refMarker){ map.removeLayer(st.autour.refMarker); }
+    st.autour.refMarker = L.marker([lat, lon]).addTo(map);
+    runAutour();
+  }
+  function popupAround(m, type){
+    const l2 = [];
+    if (m.distance_m != null) l2.push('à ' + fmtDist(m.distance_m));
+    if (m.bati_total) l2.push(m.bati_total + ' m² bâti' + (m.pieces ? ', ' + m.pieces + ' p.' : ''));
+    if (m.terrain_total) l2.push(m.terrain_total + ' m² terrain');
+    const pm2 = (type === 'terrain') ? m.prix_m2_terrain : m.prix_m2;
+    if (pm2) l2.push(fmtNum(pm2) + ' €/m²');
+    return '<b>' + fmtEur(m.valeur) + '</b><br/>' + fmtDate(m.date) + ' — ' + m.categorie +
+      (l2.length ? '<br/>' + l2.join(' · ') : '') + (m.adresse ? '<br/>' + m.adresse : '') +
+      (m.lat != null ? '<br/>' + mapsLinks(m.lat, m.lon) : '');
+  }
+  async function runAutour(){
+    if (!st.autour.ref) return;
+    const radiusKm = parseFloat(aRadius.value) || 1, months = parseInt(aMonths.value, 10) || 36, type = aType.value;
+    if (st.autour.circle){ map.removeLayer(st.autour.circle); }
+    st.autour.circle = L.circle([st.autour.ref.lat, st.autour.ref.lon], { radius:radiusKm*1000, color:'#c1440e', weight:1, fillColor:'#c1440e', fillOpacity:.05 }).addTo(map);
     goBtn.disabled = true;
-    setStatus('Recherche des parcelles…', 'loading');   // Règle 7 : spinner dès le départ
+    setStatus('Analyse des ventes autour…', 'loading');
     try{
-      const { features, total, source } = await fetchParcelles(min, max);
-      setStatus(features.length + ' parcelle(s) entre ' + min + ' et ' + max + ' m² à ' + selected.nom +
-        ' · ' + total + ' au total' + (source ? ' · ' + source : ''));
-      render(features);
-      collapseSearch();
-    }catch(err){
-      setStatus(err.message || 'Erreur pendant la recherche.', 'error');
-    }finally{
-      goBtn.disabled = false;
+      const communes = await communesAround(st.autour.ref.lat, st.autour.ref.lon, radiusKm);
+      if (!communes.length) throw new Error('Communes indéterminées autour de ce point.');
+      const data = await fetchAround(st.autour.ref, radiusKm, months, type, communes);
+      st.autour.data = data;
+      renderAround(data);
+      const s = data.synthese || {};
+      setStatus(s.count_type + ' vente(s) ' + (type === 'tous' ? '' : '(' + type + ') ') + 'dans ' + String(radiusKm).replace('.', ',') + ' km' +
+        (s.pm2_moyen != null ? ' · €/m² moyen ' + fmtNum(s.pm2_moyen) : ''));
+      collapseControls();
+    }catch(err){ setStatus(err.message || 'Erreur pendant l’analyse.', 'error'); }
+    finally{ goBtn.disabled = false; }
+  }
+  function renderAround(data){
+    clearLayer('autourVentes');
+    const s = data.synthese || {}, ventes = data.ventes || [], type = data.type || 'tous';
+    const fm = (n) => (n == null) ? '—' : fmtNum(n) + ' €/m²';
+    let html = '<div><b>' + s.count_type + '</b> vente(s) ' + (type === 'tous' ? '' : '(' + type + ') ') + 'dans ' + String(data.radius_km).replace('.', ',') + ' km';
+    if (s.count_type !== s.count_radius) html += ' <span style="color:var(--muted)">(' + s.count_radius + ' toutes catégories)</span>';
+    html += '</div>';
+    if (s.pm2_moyen != null){
+      html += '<div style="margin-top:5px">€/m² ' + (s.pm2_base === 'terrain' ? '(terrain)' : '(bâti)') + ' — moyen <b>' + fm(s.pm2_moyen) +
+        '</b> · médian <b>' + fm(s.pm2_median) + '</b><br/>min ' + fm(s.pm2_min) + ' · max ' + fm(s.pm2_max) +
+        '<br/><span style="color:var(--muted)">sur ' + s.count_pm2 + ' comparable(s)</span></div>';
+    } else {
+      html += '<div style="margin-top:5px;color:var(--muted)">Pas assez de données €/m² pour ce filtre.</div>';
+    }
+    if (s.prix_median != null) html += '<div style="margin-top:5px">Prix de vente médian <b>' + fmtEur(s.prix_median) + '</b></div>';
+    const hg = histogramSvg(s.pm2_values, s.pm2_median);
+    if (hg) html += '<div style="margin-top:6px">Distribution des €/m²' + hg + '</div>';
+    if (data.data_through) html += '<div style="margin-top:5px;color:var(--muted)">Données DVF jusqu’à ' + fmtMonthYear(data.data_through) + '.</div>';
+    sheetStats.innerHTML = html; sheetStats.hidden = false;
+
+    const markers = [];
+    ventes.forEach(m => {
+      if (m.lat == null || m.lon == null) return;
+      const mk = L.circleMarker([m.lat, m.lon], { radius:6, weight:1, color:'#fff', fillColor:CAT[m.categorie] || CAT.Autre, fillOpacity:.9 });
+      mk.bindPopup(popupAround(m, type)); mk._id = m.id; markers.push(mk);
+    });
+    st.autour.ventes = L.layerGroup(markers);
+    if (activeTab === 'autour') st.autour.ventes.addTo(map);
+    if (st.autour.circle) map.fitBounds(st.autour.circle.getBounds(), { padding:[20,20] });
+
+    sheetBody.innerHTML = '';
+    if (!ventes.length){ sheetBody.innerHTML = '<div class="empty">Aucune vente ' + (type === 'tous' ? '' : '(' + type + ') ') + 'dans ce rayon.</div>'; }
+    ventes.forEach(m => {
+      const el = dvfCard(m, type);
+      el.addEventListener('click', (ev) => {
+        if (ev.target.tagName === 'A') return;
+        const mk = st.autour.ventes && st.autour.ventes.getLayers().find(x => x._id === m.id);
+        if (mk){ map.setView(mk.getLatLng(), 17); mk.openPopup(); closeSheet(); }
+      });
+      sheetBody.appendChild(el);
+    });
+    sheetTitle.textContent = 'Ventes autour (' + ventes.length + ')';
+    openSheet();
+  }
+
+  // ---------- gestion des couches par onglet ----------
+  function clearLayer(which){
+    if (which === 'parcelles' && st.parcelles.layer){ map.removeLayer(st.parcelles.layer); st.parcelles.layer = null; }
+    if (which === 'dvf' && st.dvf.layer){ map.removeLayer(st.dvf.layer); st.dvf.layer = null; }
+    if (which === 'autourVentes' && st.autour.ventes){ map.removeLayer(st.autour.ventes); st.autour.ventes = null; }
+  }
+  function layersFor(tab){
+    if (tab === 'parcelles') return [st.parcelles.layer];
+    if (tab === 'dvf') return [st.dvf.layer];
+    return [st.autour.parcLayer, st.autour.circle, st.autour.ventes, st.autour.refMarker];
+  }
+  function syncLayers(){
+    ['parcelles','dvf','autour'].forEach(tab => layersFor(tab).forEach(l => {
+      if (!l) return;
+      const show = tab === activeTab;
+      if (show && !map.hasLayer(l)) l.addTo(map);
+      if (!show && map.hasLayer(l)) map.removeLayer(l);
+    }));
+  }
+  function restoreSheetForTab(){
+    sheetBody.innerHTML = ''; sheetStats.innerHTML = ''; sheetStats.hidden = true;
+    if (activeTab === 'parcelles' && Array.isArray(st.parcelles.data)) renderParcelles(st.parcelles.data);
+    else if (activeTab === 'dvf' && st.dvf.data) renderDvf(st.dvf.data);
+    else if (activeTab === 'autour' && st.autour.data) renderAround(st.autour.data);
+    else { closeSheet(); updateFab(); }
+  }
+
+  // ---------- onglets ----------
+  tabbar.addEventListener('click', (e) => {
+    const b = e.target.closest('button[data-tab]');
+    if (!b || b.dataset.tab === activeTab) return;
+    activeTab = b.dataset.tab;
+    [...tabbar.children].forEach(x => x.removeAttribute('aria-current'));
+    b.setAttribute('aria-current', 'page');
+    appTitle.textContent = TITLES[activeTab];
+    goBtn.textContent = activeTab === 'dvf' ? 'Voir les transactions' : activeTab === 'autour' ? 'Charger les parcelles' : 'Rechercher';
+    applyControlsVisibility();
+    syncLayers();
+    restoreSheetForTab();
+    if (activeTab === 'autour' && !st.autour.ref && !st.autour.collapsed)
+      setStatus('Touchez la carte pour choisir un point de référence.');
+    else if (!st[activeTab].data && !st.parcelles.layer)
+      setStatus('Prêt.');
+    setTimeout(() => map.invalidateSize(), 120);
+  });
+
+  // ---------- soumission ----------
+  controls.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    document.activeElement && document.activeElement.blur();
+    suggestions.hidden = true;
+    if (!selected){ setStatus('Choisissez une commune dans la liste.', 'error'); return; }
+
+    if (activeTab === 'parcelles'){
+      const min = parseInt(pMin.value, 10), max = parseInt(pMax.value, 10);
+      if (isNaN(min) || isNaN(max) || min < 0 || max < 0){ setStatus('Surfaces invalides.', 'error'); return; }
+      if (min > max){ setStatus('Surface min > surface max.', 'error'); return; }
+      goBtn.disabled = true; setStatus('Recherche des parcelles…', 'loading');
+      try{
+        const { features, total, source } = await fetchParcelles(min, max);
+        st.parcelles.data = features;
+        setStatus(features.length + ' parcelle(s) entre ' + min + ' et ' + max + ' m² à ' + selected.nom + ' · ' + total + ' au total' + (source ? ' · ' + source : ''));
+        renderParcelles(features);
+        collapseControls();
+      }catch(err){ setStatus(err.message || 'Erreur.', 'error'); }
+      finally{ goBtn.disabled = false; }
+      return;
+    }
+
+    if (activeTab === 'dvf'){
+      goBtn.disabled = true; setStatus('Récupération des transactions DVF…', 'loading');
+      try{
+        const months = parseInt(dMonths.value, 10) || 24;
+        const data = await fetchDvf(months);
+        const n = (data.stats && data.stats.total) || (data.mutations || []).length;
+        setStatus(n + ' transaction(s) DVF à ' + selected.nom + ' depuis ' + fmtDate(data.from) + '.');
+        renderDvf(data);
+        collapseControls();
+      }catch(err){ setStatus(err.message || 'Erreur DVF.', 'error'); }
+      finally{ goBtn.disabled = false; }
+      return;
+    }
+
+    if (activeTab === 'autour'){
+      const min = parseInt(aMin.value, 10) || 0, max = parseInt(aMax.value, 10) || 999999;
+      if (min > max){ setStatus('Surfaces invalides.', 'error'); return; }
+      goBtn.disabled = true; setStatus('Chargement des parcelles…', 'loading');
+      try{
+        const { features } = await fetchParcelles(min, max);
+        renderAutourParcelles(features);
+        setStatus(features.length + ' parcelle(s) chargée(s) — touchez-en une, ou touchez un point de la carte.');
+      }catch(err){ setStatus(err.message || 'Erreur.', 'error'); }
+      finally{ goBtn.disabled = false; }
     }
   });
 
   resetBtn.addEventListener('click', () => {
-    if (layer){ map.removeLayer(layer); layer = null; }
-    sheetBody.innerHTML = ''; closeSheet();
-    expandSearch();
-    setStatus('Prêt. Choisissez une commune et lancez la recherche.');
+    ['parcelles','dvf','autour'].forEach(t => { layersFor(t).forEach(l => { if (l && map.hasLayer(l)) map.removeLayer(l); }); });
+    st.parcelles = { layer:null, data:null, collapsed:false };
+    st.dvf = { layer:null, data:null, collapsed:false };
+    st.autour = { layer:null, ventes:null, circle:null, refMarker:null, ref:null, parcLayer:null, data:null, collapsed:false };
+    sheetBody.innerHTML = ''; sheetStats.innerHTML = ''; sheetStats.hidden = true;
+    closeSheet();
+    applyControlsVisibility();
+    setStatus('Réinitialisé. Lancez une recherche.');
   });
 
-  // ---- Onglets (barre basse) ----
-  tabbar.addEventListener('click', (e) => {
-    const b = e.target.closest('button[data-tab]');
-    if (!b) return;
-    activeTab = b.dataset.tab;
-    [...tabbar.children].forEach(x => x.removeAttribute('aria-current'));
-    b.setAttribute('aria-current', 'page');
-    const isParcelles = activeTab === 'parcelles';
-    applySearchVisibility();
-    $('map').hidden = !isParcelles;
-    statusEl.hidden = !isParcelles;
-    placeholder.hidden = isParcelles;
-    if (!isParcelles){
-      closeSheet();
-      placeholder.textContent = activeTab === 'dvf'
-        ? 'Onglet Transactions — non inclus dans cette maquette de test. La version complète est sur l’app.'
-        : 'Onglet Autour — non inclus dans cette maquette de test. La version complète est sur l’app.';
-    } else {
-      setTimeout(() => map.invalidateSize(), 100);
-    }
-    updateFab();
-  });
+  aRadius.addEventListener('change', () => { if (activeTab === 'autour' && st.autour.ref) runAutour(); });
+  aType.addEventListener('change', () => { if (activeTab === 'autour' && st.autour.ref) runAutour(); });
+  aMonths.addEventListener('change', () => { if (activeTab === 'autour' && st.autour.ref) runAutour(); });
 
   setStatus('Prêt. Choisissez une commune et lancez la recherche.');
 })();
