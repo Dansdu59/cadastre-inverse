@@ -585,6 +585,12 @@
       return ref + '  ·  ' + selText(aRadius) + '  ·  ' + selText(aType);
     }
     if (activeTab === 'heatmap') return (selected ? selected.nom : '—') + '  ·  ' + selText(hLayer) + '  ·  ' + selText(hRadius);
+    if (activeTab === 'plu'){
+      const bits = [];
+      if (st.plu.hasZones) bits.push('zonage');
+      if (st.plu.matched.length) bits.push(st.plu.matched.length + ' parcelles');
+      return (selected ? selected.nom : '—') + '  ·  PLU' + (bits.length ? ' (' + bits.join(' + ') + ')' : '');
+    }
     return (selected ? selected.nom : '—') + '  ·  ' + pMin.value + '–' + pMax.value + ' m²';
   }
   function applyControlsVisibility(){
@@ -1301,6 +1307,12 @@
   });
 
   // ================= Onglet « PLU » (zonage + parcelles non bâties U/AU) =================
+  // Après action : on replie les contrôles pour dégager la carte (comme les autres
+  // onglets). Si plus rien n'est affiché, on ré-ouvre les contrôles.
+  function pluSyncCollapse(){
+    if (st.plu.hasZones || st.plu.matched.length) collapseControls();
+    else expandControls();
+  }
   function pluGpuLink(){
     if (st.plu.gpuUrl) return st.plu.gpuUrl;
     const c = map.getCenter();
@@ -1372,6 +1384,7 @@
       setStatus('Zonage PLU masqué.');
       if (st.plu.matched.length) renderPluSheet(); else { sheetStats.hidden = true; sheetStats.innerHTML = ''; closeSheet(); }
       updateFab();
+      pluSyncCollapse();
       return;
     }
     if (!selected){ setStatus('Choisissez une commune dans la liste.', 'error'); return; }
@@ -1384,7 +1397,7 @@
       if (!d.hasPlu){
         st.plu.hasZones = false; renderPluSheet();
         setStatus('⚠ ' + (d.message || 'Aucun zonage numérisé pour cette commune.'), 'error');
-        updateFab(); return;
+        updateFab(); pluSyncCollapse(); return;
       }
       st.plu.zonesLayer = L.geoJSON({ type:'FeatureCollection', features: d.features }, {
         style: (f) => { const c = PLU_COL[f.properties.cat] || PLU_COL.autre; return { color:c, weight:1, fillColor:c, fillOpacity:0.22 }; },
@@ -1396,6 +1409,7 @@
       goBtn.textContent = 'Masquer le zonage PLU';
       renderPluSheet();
       setStatus(d.count + ' zone(s) PLU à ' + (d.nom || selected.nom) + (d.partial ? ' (zonage allégé U/AU)' : '') + '.');
+      pluSyncCollapse();
     }catch(err){ setStatus(err.message || 'Erreur PLU.', 'error'); }
     finally{ goBtn.disabled = false; }
   }
@@ -1407,6 +1421,7 @@
       pluLibresBtn.textContent = 'Parcelles non bâties'; pluLibresBtn.setAttribute('aria-pressed', 'false');
       if (st.plu.hasZones) renderPluSheet(); else { sheetStats.hidden = true; sheetStats.innerHTML = ''; sheetBody.innerHTML = ''; closeSheet(); }
       setStatus('Parcelles non bâties masquées.'); updateFab();
+      pluSyncCollapse();
       return;
     }
     if (!selected){ setStatus('Choisissez une commune dans la liste.', 'error'); return; }
@@ -1438,6 +1453,7 @@
       renderPluSheet();
       setStatus(d.matched + ' parcelle(s) non bâtie(s) ≥ ' + fmtNum(min) + ' m² en zone ' + cats.join('/') + ' à ' + (d.nom || selected.nom) +
         ' — sur ' + fmtNum(d.examined) + ' ≥ seuil (' + fmtNum(d.built) + ' bâties écartées)' + (d.truncated ? ' · liste tronquée' : '') + '.');
+      pluSyncCollapse();
     }catch(err){ setStatus(err.message || 'Erreur.', 'error'); }
     finally{ pluLibresBtn.disabled = false; }
   }
