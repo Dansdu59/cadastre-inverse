@@ -233,6 +233,12 @@
   .plu-legend .gpu{ margin-top:8px; padding-top:8px; border-top:1px solid var(--border); }
   .plu-legend .gpu a, .linkbtn{ font-size:13px; font-weight:700; color:var(--accent); text-decoration:none; }
   .linkbtn{ border:0; background:none; cursor:pointer; padding:0; }
+  .plu-mini{ flex:none; display:flex; gap:18px; flex-wrap:wrap; align-items:center;
+    background:var(--card); border-bottom:1px solid var(--border);
+    padding:10px max(16px, env(safe-area-inset-left)) 10px max(16px, env(safe-area-inset-right)); }
+  .plu-mini label{ display:flex; gap:7px; align-items:center; font-size:15px; font-weight:600; cursor:pointer; }
+  .plu-mini input[type=checkbox]{ -webkit-appearance:auto; appearance:auto; accent-color:var(--accent);
+    width:22px; height:22px; min-height:0; min-width:0; padding:0; margin:0; border:0; border-radius:0; }
   .tabbar button[aria-current="page"]{ color:var(--accent); }
   .tabbar button:active{ background:#f0f2f4; }
 
@@ -427,6 +433,11 @@
     <span class="edit">✎ Modifier</span>
   </button>
 
+  <div class="plu-mini" id="plu-mini" hidden>
+    <label><input type="checkbox" id="plu-t-zones" /> Zonage PLU</label>
+    <label><input type="checkbox" id="plu-t-libres" /> Parcelles non bâties</label>
+  </div>
+
   <div class="status" id="status" role="status" aria-live="polite"></div>
 
   <div id="map"></div>
@@ -499,7 +510,8 @@
     dvf:{ layer:null, data:null, collapsed:false },
     autour:{ layer:null, ventes:null, circle:null, refMarker:null, ref:null, parcLayer:null, data:null, collapsed:false },
     heatmap:{ layer:null, data:null, dataThrough:null, collapsed:false, userSetRadius:false },
-    plu:{ zonesLayer:null, libresLayer:null, hasZones:false, gpuUrl:null, matched:[], meta:null, collapsed:false }
+    plu:{ zonesLayer:null, libresLayer:null, zonesShown:false, libresShown:false, gpuUrl:null,
+          zonesCount:0, zonesNom:'', zonesPartial:false, matched:[], meta:null, collapsed:false }
   };
   const cacheP = {}, cacheD = {}, cacheA = {}, communesCache = {}, addrCache = {};
 
@@ -587,8 +599,8 @@
     if (activeTab === 'heatmap') return (selected ? selected.nom : '—') + '  ·  ' + selText(hLayer) + '  ·  ' + selText(hRadius);
     if (activeTab === 'plu'){
       const bits = [];
-      if (st.plu.hasZones) bits.push('zonage');
-      if (st.plu.matched.length) bits.push(st.plu.matched.length + ' parcelles');
+      if (st.plu.zonesShown) bits.push('zonage');
+      if (st.plu.libresShown) bits.push((st.plu.meta ? st.plu.meta.matched : st.plu.matched.length) + ' parcelles');
       return (selected ? selected.nom : '—') + '  ·  PLU' + (bits.length ? ' (' + bits.join(' + ') + ')' : '');
     }
     return (selected ? selected.nom : '—') + '  ·  ' + pMin.value + '–' + pMax.value + ' m²';
@@ -602,6 +614,7 @@
     grpAutour.hidden = activeTab !== 'autour';
     grpHeatmap.hidden = activeTab !== 'heatmap';
     grpPlu.hidden = activeTab !== 'plu';
+    $('plu-mini').hidden = !(activeTab === 'plu' && collapsed);
   }
   function collapseControls(){ st[activeTab].collapsed = true; summaryText.textContent = summaryFor(); applyControlsVisibility(); setTimeout(() => map.invalidateSize(), 140); }
   function expandControls(){ st[activeTab].collapsed = false; applyControlsVisibility(); setTimeout(() => map.invalidateSize(), 140); }
@@ -612,7 +625,7 @@
     const cards = sheetBody.querySelectorAll('.card').length;
     let has = cards > 0, label = (cards > 0 ? '≡ Liste (' + cards + ')' : '≡ Liste');
     if (activeTab === 'heatmap'){ has = !!st.heatmap.data; label = '≡ Synthèse'; }
-    if (activeTab === 'plu'){ has = !!(st.plu.hasZones || st.plu.matched.length); label = '≡ PLU'; }
+    if (activeTab === 'plu'){ has = !!(st.plu.zonesShown || st.plu.libresShown); label = '≡ PLU'; }
     fabList.hidden = !(has && !sheet.classList.contains('open'));
     fabList.textContent = label;
   }
@@ -928,7 +941,7 @@
     if (tab === 'parcelles') return [st.parcelles.layer];
     if (tab === 'dvf') return [st.dvf.layer];
     if (tab === 'heatmap') return [st.heatmap.layer];
-    if (tab === 'plu') return [st.plu.zonesLayer, st.plu.libresLayer];
+    if (tab === 'plu') return [st.plu.zonesShown && st.plu.zonesLayer, st.plu.libresShown && st.plu.libresLayer].filter(Boolean);
     return [st.autour.parcLayer, st.autour.circle, st.autour.ventes, st.autour.refMarker];
   }
   function syncLayers(){
@@ -945,7 +958,7 @@
     else if (activeTab === 'dvf' && st.dvf.data) renderDvf(st.dvf.data);
     else if (activeTab === 'autour' && st.autour.data) renderAround(st.autour.data);
     else if (activeTab === 'heatmap' && st.heatmap.data) renderHeatmap(false);
-    else if (activeTab === 'plu' && (st.plu.hasZones || st.plu.matched.length)) renderPluSheet();
+    else if (activeTab === 'plu' && (st.plu.zonesShown || st.plu.libresShown)) renderPluSheet();
     else { closeSheet(); updateFab(); }
   }
 
@@ -960,12 +973,9 @@
     goBtn.textContent = activeTab === 'dvf' ? 'Voir les transactions'
       : activeTab === 'autour' ? 'Charger les parcelles'
       : activeTab === 'heatmap' ? 'Afficher la carte de chaleur'
-      : activeTab === 'plu' ? (st.plu.zonesLayer ? 'Masquer le zonage PLU' : 'Afficher le zonage PLU')
+      : activeTab === 'plu' ? (st.plu.zonesShown ? 'Masquer le zonage PLU' : 'Afficher le zonage PLU')
       : 'Rechercher';
-    if (activeTab === 'plu'){
-      pluLibresBtn.textContent = st.plu.libresLayer ? 'Masquer les parcelles' : 'Parcelles non bâties';
-      pluLibresBtn.setAttribute('aria-pressed', st.plu.libresLayer ? 'true' : 'false');
-    }
+    if (activeTab === 'plu') syncPluControls();
     applyControlsVisibility();
     syncLayers();
     restoreSheetForTab();
@@ -979,7 +989,7 @@
       setStatus('Touchez la carte pour choisir un point de référence.');
     else if (activeTab === 'heatmap' && st.heatmap.data)
       setStatus('Carte de chaleur ' + selText(hLayer).toLowerCase() + ' — synthèse via « Synthèse ».');
-    else if (activeTab === 'plu' && (st.plu.hasZones || st.plu.matched.length))
+    else if (activeTab === 'plu' && (st.plu.zonesShown || st.plu.libresShown))
       setStatus('Zonage PLU / foncier à ' + (selected ? selected.nom : '') + ' — détail via « PLU ».');
     else
       setStatus('Prêt. Choisissez une commune et lancez la recherche.');
@@ -1013,7 +1023,7 @@
 
     if (activeTab === 'heatmap'){ await runHeatmap(); return; }
 
-    if (activeTab === 'plu'){ await togglePluZones(); return; }
+    if (activeTab === 'plu'){ await showPluZones(!st.plu.zonesShown); return; }
 
     if (activeTab === 'autour'){
       const min = parseInt(aMin.value, 10) || 0, max = parseInt(aMax.value, 10) || 999999;
@@ -1035,9 +1045,9 @@
     st.dvf = { layer:null, data:null, collapsed:false };
     st.autour = { layer:null, ventes:null, circle:null, refMarker:null, ref:null, parcLayer:null, data:null, collapsed:false };
     st.heatmap = { layer:null, data:null, dataThrough:null, collapsed:false, userSetRadius:false };
-    st.plu = { zonesLayer:null, libresLayer:null, hasZones:false, gpuUrl:null, matched:[], meta:null, collapsed:false };
-    pluLibresBtn.textContent = 'Parcelles non bâties'; pluLibresBtn.setAttribute('aria-pressed', 'false');
-    if (activeTab === 'plu') goBtn.textContent = 'Afficher le zonage PLU';
+    st.plu = { zonesLayer:null, libresLayer:null, zonesShown:false, libresShown:false, gpuUrl:null,
+               zonesCount:0, zonesNom:'', zonesPartial:false, matched:[], meta:null, collapsed:false };
+    if (activeTab === 'plu'){ goBtn.textContent = 'Afficher le zonage PLU'; syncPluControls(); }
     sheetBody.innerHTML = ''; sheetStats.innerHTML = ''; sheetStats.hidden = true;
     closeSheet();
     applyControlsVisibility();
@@ -1310,8 +1320,17 @@
   // Après action : on replie les contrôles pour dégager la carte (comme les autres
   // onglets). Si plus rien n'est affiché, on ré-ouvre les contrôles.
   function pluSyncCollapse(){
-    if (st.plu.hasZones || st.plu.matched.length) collapseControls();
+    if (st.plu.zonesShown || st.plu.libresShown) collapseControls();
     else expandControls();
+  }
+  // Garde en cohérence : bouton principal, bouton « Parcelles non bâties », et les
+  // 2 cases de la barre repliée.
+  function syncPluControls(){
+    if (activeTab === 'plu') goBtn.textContent = st.plu.zonesShown ? 'Masquer le zonage PLU' : 'Afficher le zonage PLU';
+    pluLibresBtn.textContent = st.plu.libresShown ? 'Masquer les parcelles' : 'Parcelles non bâties';
+    pluLibresBtn.setAttribute('aria-pressed', st.plu.libresShown ? 'true' : 'false');
+    $('plu-t-zones').checked = st.plu.zonesShown;
+    $('plu-t-libres').checked = st.plu.libresShown;
   }
   function pluGpuLink(){
     if (st.plu.gpuUrl) return st.plu.gpuUrl;
@@ -1345,7 +1364,7 @@
         '<button class="q" type="button" data-cat="' + c + '">?</button></div>' +
         '<div class="def" data-cat="' + c + '" hidden>' + PLU_DEF[c] + '</div>').join('') +
       '<div class="gpu"><a href="' + pluGpuLink() + '" target="_blank" rel="noopener">Consulter le PLU officiel (Géoportail de l’Urbanisme) ↗</a></div></div>';
-    if (st.plu.meta){
+    if (st.plu.meta && st.plu.libresShown){
       const m = st.plu.meta;
       html += '<div style="margin-top:8px"><b>' + m.matched + ' parcelle(s) non bâtie(s)</b> ≥ ' + fmtNum(m.min) + ' m² · zone ' + (m.cats || []).join('/') +
         '<br/><span style="color:var(--muted)">sur ' + fmtNum(m.examined) + ' ≥ seuil · ' + fmtNum(m.built) + ' bâties écartées</span>' +
@@ -1358,7 +1377,7 @@
     const csvB = sheetStats.querySelector('#plu-csv'); if (csvB) csvB.addEventListener('click', pluCsv);
 
     sheetBody.innerHTML = '';
-    if (st.plu.matched.length){
+    if (st.plu.libresShown && st.plu.matched.length){
       st.plu.matched.forEach(f => {
         const p = f.properties;
         const el = document.createElement('button'); el.type = 'button'; el.className = 'card';
@@ -1377,87 +1396,98 @@
     updateFab();
   }
 
-  async function togglePluZones(){
-    if (st.plu.zonesLayer){
-      map.removeLayer(st.plu.zonesLayer); st.plu.zonesLayer = null; st.plu.hasZones = false;
-      goBtn.textContent = 'Afficher le zonage PLU';
-      setStatus('Zonage PLU masqué.');
-      if (st.plu.matched.length) renderPluSheet(); else { sheetStats.hidden = true; sheetStats.innerHTML = ''; closeSheet(); }
-      updateFab();
-      pluSyncCollapse();
-      return;
-    }
-    if (!selected){ setStatus('Choisissez une commune dans la liste.', 'error'); return; }
-    goBtn.disabled = true; setStatus('Chargement du zonage PLU (Géoportail de l’Urbanisme)…', 'loading');
-    try{
-      const r = await withTimeout('/api/plu?insee=' + encodeURIComponent(selected.code), 90000);
-      const d = await r.json();
-      if (!r.ok) throw new Error((d && d.error) || 'Erreur serveur.');
-      st.plu.gpuUrl = d.gpu_url || null;
-      if (!d.hasPlu){
-        st.plu.hasZones = false; renderPluSheet();
-        setStatus('⚠ ' + (d.message || 'Aucun zonage numérisé pour cette commune.'), 'error');
-        updateFab(); pluSyncCollapse(); return;
-      }
-      st.plu.zonesLayer = L.geoJSON({ type:'FeatureCollection', features: d.features }, {
-        style: (f) => { const c = PLU_COL[f.properties.cat] || PLU_COL.autre; return { color:c, weight:1, fillColor:c, fillOpacity:0.22 }; },
-        onEachFeature: (f, ly) => ly.bindPopup(pluZonePopup(f.properties)),
-      });
-      if (activeTab === 'plu') st.plu.zonesLayer.addTo(map);
-      try{ map.fitBounds(st.plu.zonesLayer.getBounds(), { padding:[20,20] }); }catch(e){}
-      st.plu.hasZones = true;
-      goBtn.textContent = 'Masquer le zonage PLU';
-      renderPluSheet();
-      setStatus(d.count + ' zone(s) PLU à ' + (d.nom || selected.nom) + (d.partial ? ' (zonage allégé U/AU)' : '') + '.');
-      pluSyncCollapse();
-    }catch(err){ setStatus(err.message || 'Erreur PLU.', 'error'); }
-    finally{ goBtn.disabled = false; }
+  function pluSheetOrClose(){
+    if (st.plu.zonesShown || st.plu.libresShown) renderPluSheet();
+    else { sheetStats.hidden = true; sheetStats.innerHTML = ''; sheetBody.innerHTML = ''; closeSheet(); }
   }
 
-  async function togglePluLibres(){
-    if (st.plu.libresLayer){
-      map.removeLayer(st.plu.libresLayer); st.plu.libresLayer = null;
-      st.plu.matched = []; st.plu.meta = null;
-      pluLibresBtn.textContent = 'Parcelles non bâties'; pluLibresBtn.setAttribute('aria-pressed', 'false');
-      if (st.plu.hasZones) renderPluSheet(); else { sheetStats.hidden = true; sheetStats.innerHTML = ''; sheetBody.innerHTML = ''; closeSheet(); }
-      setStatus('Parcelles non bâties masquées.'); updateFab();
-      pluSyncCollapse();
-      return;
-    }
-    if (!selected){ setStatus('Choisissez une commune dans la liste.', 'error'); return; }
+  // Charge (si besoin) le zonage PLU dans st.plu.zonesLayer. Renvoie true si dispo.
+  async function ensurePluZones(){
+    if (st.plu.zonesLayer) return true;
+    if (!selected){ setStatus('Choisissez une commune dans la liste.', 'error'); return false; }
+    setStatus('Chargement du zonage PLU (Géoportail de l’Urbanisme)…', 'loading');
+    const r = await withTimeout('/api/plu?insee=' + encodeURIComponent(selected.code), 90000);
+    const d = await r.json();
+    if (!r.ok) throw new Error((d && d.error) || 'Erreur serveur.');
+    st.plu.gpuUrl = d.gpu_url || null;
+    if (!d.hasPlu){ setStatus('⚠ ' + (d.message || 'Aucun zonage numérisé pour cette commune.'), 'error'); return false; }
+    st.plu.zonesLayer = L.geoJSON({ type:'FeatureCollection', features: d.features }, {
+      style: (f) => { const c = PLU_COL[f.properties.cat] || PLU_COL.autre; return { color:c, weight:1, fillColor:c, fillOpacity:0.22 }; },
+      onEachFeature: (f, ly) => ly.bindPopup(pluZonePopup(f.properties)),
+    });
+    st.plu.zonesCount = d.count; st.plu.zonesNom = d.nom || selected.nom; st.plu.zonesPartial = !!d.partial;
+    return true;
+  }
+  // Charge (si besoin) les parcelles non bâties U/AU dans st.plu.libresLayer.
+  async function ensurePluLibres(){
+    if (st.plu.libresLayer) return true;
+    if (!selected){ setStatus('Choisissez une commune dans la liste.', 'error'); return false; }
     const cats = [];
     if (pluU.checked) cats.push('U');
     if (pluAu.checked) cats.push('AU');
     if (pluA.checked) cats.push('A');
     if (pluN.checked) cats.push('N');
-    if (!cats.length){ setStatus('Cochez au moins une catégorie de zone.', 'error'); return; }
+    if (!cats.length){ setStatus('Cochez au moins une catégorie de zone (via « Modifier »).', 'error'); return false; }
     const min = Math.max(0, parseInt(pluMin.value, 10) || 0);
-    pluLibresBtn.disabled = true;
     setStatus('Analyse : parcelles ≥ ' + fmtNum(min) + ' m², non bâties, en zone ' + cats.join('/') + '…', 'loading');
+    const r = await withTimeout('/api/parcelles-libres?insee=' + encodeURIComponent(selected.code) + '&min=' + min + '&cats=' + cats.join(','), 90000);
+    const d = await r.json();
+    if (!r.ok) throw new Error((d && d.error) || 'Erreur serveur.');
+    if (!d.hasPlu){ setStatus('⚠ ' + (d.message || 'Zonage indisponible pour cette commune.'), 'error'); return false; }
+    st.plu.matched = d.features || []; st.plu.meta = d;
+    st.plu.libresLayer = L.geoJSON({ type:'FeatureCollection', features: st.plu.matched }, {
+      style: { color:'#1d4ed8', weight:2, fillColor:'#3b82f6', fillOpacity:0.45 },
+      onEachFeature: (f, ly) => { const p = f.properties;
+        ly.bindPopup('<b>' + p.idu + '</b>' + fmtNum(p.contenance) + ' m² · zone <b>' + p.zone + '</b> (' + p.typezone + ')<br/>' + (p.zone_long || ''));
+        ly._idu = p.idu;
+      }
+    });
+    return true;
+  }
+
+  async function showPluZones(on){
+    goBtn.disabled = true;
     try{
-      const r = await withTimeout('/api/parcelles-libres?insee=' + encodeURIComponent(selected.code) + '&min=' + min + '&cats=' + cats.join(','), 90000);
-      const d = await r.json();
-      if (!r.ok) throw new Error((d && d.error) || 'Erreur serveur.');
-      if (!d.hasPlu){ setStatus('⚠ ' + (d.message || 'Zonage indisponible pour cette commune.'), 'error'); return; }
-      st.plu.matched = d.features || []; st.plu.meta = d;
-      st.plu.libresLayer = L.geoJSON({ type:'FeatureCollection', features: st.plu.matched }, {
-        style: { color:'#1d4ed8', weight:2, fillColor:'#3b82f6', fillOpacity:0.45 },
-        onEachFeature: (f, ly) => { const p = f.properties;
-          ly.bindPopup('<b>' + p.idu + '</b>' + fmtNum(p.contenance) + ' m² · zone <b>' + p.zone + '</b> (' + p.typezone + ')<br/>' + (p.zone_long || ''));
-          ly._idu = p.idu;
-        }
-      });
-      if (activeTab === 'plu') st.plu.libresLayer.addTo(map);
-      if (st.plu.matched.length){ try{ map.fitBounds(st.plu.libresLayer.getBounds(), { padding:[24,24] }); }catch(e){} }
-      pluLibresBtn.textContent = 'Masquer les parcelles'; pluLibresBtn.setAttribute('aria-pressed', 'true');
-      renderPluSheet();
-      setStatus(d.matched + ' parcelle(s) non bâtie(s) ≥ ' + fmtNum(min) + ' m² en zone ' + cats.join('/') + ' à ' + (d.nom || selected.nom) +
-        ' — sur ' + fmtNum(d.examined) + ' ≥ seuil (' + fmtNum(d.built) + ' bâties écartées)' + (d.truncated ? ' · liste tronquée' : '') + '.');
-      pluSyncCollapse();
-    }catch(err){ setStatus(err.message || 'Erreur.', 'error'); }
+      if (on){
+        if (!(await ensurePluZones())){ st.plu.zonesShown = false; syncPluControls(); pluSheetOrClose(); updateFab(); pluSyncCollapse(); return; }
+        if (!map.hasLayer(st.plu.zonesLayer)) st.plu.zonesLayer.addTo(map);
+        st.plu.zonesShown = true;
+        if (!st.plu.libresShown){ try{ map.fitBounds(st.plu.zonesLayer.getBounds(), { padding:[20,20] }); }catch(e){} }
+        setStatus(st.plu.zonesCount + ' zone(s) PLU à ' + st.plu.zonesNom + (st.plu.zonesPartial ? ' (zonage allégé U/AU)' : '') + '.');
+      } else {
+        if (st.plu.zonesLayer && map.hasLayer(st.plu.zonesLayer)) map.removeLayer(st.plu.zonesLayer);
+        st.plu.zonesShown = false;
+        setStatus('Zonage PLU masqué.');
+      }
+      syncPluControls(); pluSheetOrClose(); updateFab(); pluSyncCollapse();
+    }catch(err){ setStatus(err.message || 'Erreur PLU.', 'error'); syncPluControls(); }
+    finally{ goBtn.disabled = false; }
+  }
+
+  async function showPluLibres(on){
+    pluLibresBtn.disabled = true;
+    try{
+      if (on){
+        if (!(await ensurePluLibres())){ st.plu.libresShown = false; syncPluControls(); pluSheetOrClose(); updateFab(); pluSyncCollapse(); return; }
+        if (!map.hasLayer(st.plu.libresLayer)) st.plu.libresLayer.addTo(map);
+        st.plu.libresShown = true;
+        if (st.plu.matched.length){ try{ map.fitBounds(st.plu.libresLayer.getBounds(), { padding:[24,24] }); }catch(e){} }
+        const m = st.plu.meta;
+        setStatus(m.matched + ' parcelle(s) non bâtie(s) ≥ ' + fmtNum(m.min) + ' m² en zone ' + (m.cats || []).join('/') + ' à ' + (m.nom || selected.nom) +
+          ' — sur ' + fmtNum(m.examined) + ' ≥ seuil (' + fmtNum(m.built) + ' bâties écartées)' + (m.truncated ? ' · liste tronquée' : '') + '.');
+      } else {
+        if (st.plu.libresLayer && map.hasLayer(st.plu.libresLayer)) map.removeLayer(st.plu.libresLayer);
+        st.plu.libresShown = false;
+        setStatus('Parcelles non bâties masquées.');
+      }
+      syncPluControls(); pluSheetOrClose(); updateFab(); pluSyncCollapse();
+    }catch(err){ setStatus(err.message || 'Erreur.', 'error'); syncPluControls(); }
     finally{ pluLibresBtn.disabled = false; }
   }
-  pluLibresBtn.addEventListener('click', togglePluLibres);
+
+  pluLibresBtn.addEventListener('click', () => showPluLibres(!st.plu.libresShown));
+  $('plu-t-zones').addEventListener('change', (e) => showPluZones(e.target.checked));
+  $('plu-t-libres').addEventListener('change', (e) => showPluLibres(e.target.checked));
 
   setStatus('Prêt. Choisissez une commune et lancez la recherche.');
 
