@@ -28,6 +28,7 @@
   .checks label{ display:flex; gap:4px; align-items:center; font-size:13px; font-weight:600; text-transform:none; color:var(--ink); }
   .btn{ min-height:38px; padding:8px 14px; font-size:14px; font-weight:700; border-radius:8px; border:1px solid transparent; cursor:pointer; }
   .btn-p{ background:var(--accent); color:#fff; } .btn-p:disabled{ background:#caa79a; }
+  #run[aria-pressed="true"]{ background:#7a2a06; }
   .btn-g{ background:#fff; color:var(--ink); border-color:var(--border); }
   .suggestions{ position:absolute; top:calc(100% + 4px); left:0; right:0; z-index:1200; background:#fff; border:1px solid var(--border);
     border-radius:8px; box-shadow:0 10px 24px rgba(0,0,0,.14); max-height:260px; overflow-y:auto; }
@@ -184,9 +185,17 @@
   }
   function clearAll(){
     if (pluLayer){ map.removeLayer(pluLayer); pluLayer = null; }
-    if (libresLayer){ map.removeLayer(libresLayer); libresLayer = null; }
-    legend.hidden = panel.hidden = true; lastMatched = [];
+    hideLibres();
+    legend.hidden = true;
     setStatus('');
+  }
+  function hideLibres(){
+    if (libresLayer){ map.removeLayer(libresLayer); libresLayer = null; }
+    lastMatched = [];
+    panel.hidden = true;
+    const btn = $('run');
+    btn.textContent = 'Parcelles non bâties';
+    btn.setAttribute('aria-pressed', 'false');
   }
 
   // ---- zonage PLU ----
@@ -248,6 +257,8 @@
   // ---- parcelles non bâties U/AU ----
   $('run').addEventListener('click', runLibres);
   async function runLibres(){
+    // 2e appui : on masque et on s'arrête
+    if (libresLayer){ hideLibres(); setStatus('Parcelles non bâties masquées.'); return; }
     if (!selected){ setStatus('Choisissez une commune.', 'error'); return; }
     const cats = [];
     if ($('c-u').checked) cats.push('U');
@@ -273,6 +284,8 @@
         }
       }).addTo(map);
       if (lastMatched.length){ try{ map.fitBounds(libresLayer.getBounds(), { padding:[24,24] }); }catch(e){} }
+      $('run').textContent = 'Masquer les parcelles';
+      $('run').setAttribute('aria-pressed', 'true');
       renderPanel(d);
       setStatus(d.matched + ' parcelle(s) non bâtie(s) ≥ ' + fmt(min) + ' m² en zone ' + cats.join('/') +
         ' à ' + (d.nom || selected.nom) + ' — sur ' + fmt(d.examined) + ' parcelles ≥ seuil (' + fmt(d.built) + ' bâties écartées)' +
