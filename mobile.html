@@ -874,6 +874,7 @@
         const { features } = await fetchParcelles(min, max);
         renderAutourParcelles(features);
         setStatus(features.length + ' parcelle(s) chargée(s) — touchez-en une, ou touchez un point de la carte.');
+        collapseControls();   // réduit la zone de recherche pour dégager la carte
       }catch(err){ setStatus(err.message || 'Erreur.', 'error'); }
       finally{ goBtn.disabled = false; }
     }
