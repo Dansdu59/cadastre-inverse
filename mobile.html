@@ -250,14 +250,26 @@
 
     <!-- DVF -->
     <div class="grp" id="grp-dvf" hidden>
-      <div class="field">
-        <label for="d-months">Période</label>
-        <select id="d-months">
-          <option value="12">12 derniers mois</option>
-          <option value="24" selected>2 dernières années</option>
-          <option value="36">3 dernières années</option>
-          <option value="60">5 dernières années</option>
-        </select>
+      <div class="row">
+        <div class="field">
+          <label for="d-months">Période</label>
+          <select id="d-months">
+            <option value="12">12 derniers mois</option>
+            <option value="24" selected>2 dernières années</option>
+            <option value="36">3 dernières années</option>
+            <option value="60">5 dernières années</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="d-type">Type de bien</label>
+          <select id="d-type">
+            <option value="tous" selected>Tous</option>
+            <option value="maison">Maison</option>
+            <option value="appartement">Appartement</option>
+            <option value="terrain">Terrain</option>
+            <option value="local">Local</option>
+          </select>
+        </div>
       </div>
     </div>
 
@@ -354,10 +366,11 @@
   const fabList = $('fab-list'), tabbar = $('tabbar'), appTitle = $('app-title');
 
   const pMin = $('p-min'), pMax = $('p-max');
-  const dMonths = $('d-months');
+  const dMonths = $('d-months'), dType = $('d-type');
   const aRadius = $('a-radius'), aType = $('a-type'), aMonths = $('a-months'), aMin = $('a-min'), aMax = $('a-max');
 
   const CAT = { Maison:'#c1440e', Appartement:'#2563eb', Terrain:'#15803d', Local:'#7c3aed', Autre:'#64748b' };
+  const TYPE_CAT = { tous:null, maison:'Maison', appartement:'Appartement', terrain:'Terrain', local:'Local' };
   const TITLES = { parcelles:'Parcelles cadastrales', dvf:'Transactions immobilières', autour:'Autour d’une parcelle' };
   const SHEET_TITLES = { parcelles:'Parcelles', dvf:'Transactions (DVF)', autour:'Ventes autour du point' };
 
@@ -387,6 +400,7 @@
   function fmtDate(iso){ if (!iso) return ''; const d = new Date(iso + 'T00:00:00'); return isNaN(d) ? iso : d.toLocaleDateString('fr-FR'); }
   function fmtMonthYear(iso){ if (!iso) return ''; const d = new Date(iso + 'T00:00:00'); return isNaN(d) ? iso : d.toLocaleDateString('fr-FR', { month:'long', year:'numeric' }); }
   function fmtDist(m){ if (m == null) return ''; return m < 1000 ? Math.round(m) + ' m' : (m/1000).toFixed(m < 10000 ? 2 : 1).replace('.', ',') + ' km'; }
+  function median(a){ const s = a.filter(x => Number.isFinite(x)).sort((x,y) => x-y); if (!s.length) return null; const m = s.length>>1; return s.length%2 ? s[m] : Math.round((s[m-1]+s[m])/2); }
   function iduOf(p){ return (p && (p.idu || p.id)) ? String(p.idu || p.id).toUpperCase() : ''; }
   function selText(sel){ return sel.options[sel.selectedIndex].text; }
   function destPoint(lat, lon, brg, distM){
@@ -447,7 +461,8 @@
   // ---------- repli / expansion des contrôles ----------
   function activeGrp(){ return activeTab === 'dvf' ? grpDvf : activeTab === 'autour' ? grpAutour : grpParcelles; }
   function summaryFor(){
-    if (activeTab === 'dvf') return (selected ? selected.nom : '—') + '  ·  ' + selText(dMonths);
+    if (activeTab === 'dvf') return (selected ? selected.nom : '—') + '  ·  ' + selText(dMonths) +
+      (dType.value !== 'tous' ? '  ·  ' + selText(dType) : '');
     if (activeTab === 'autour'){
       const ref = st.autour.ref ? 'point choisi' : (selected ? selected.nom : '—');
       return ref + '  ·  ' + selText(aRadius) + '  ·  ' + selText(aType);
@@ -578,7 +593,7 @@
     clearLayer('parcelles');
     sheetStats.hidden = true; sheetStats.innerHTML = '';
     sheetBody.innerHTML = '';
-    if (!features.length){ sheetBody.innerHTML = '<div class="empty">Aucune parcelle dans cette fourchette.</div>'; sheetTitle.textContent = 'Parcelles (0)'; openSheet(); return; }
+    if (!features.length){ sheetBody.innerHTML = '<div class="empty">Aucune parcelle dans cette fourchette.</div>'; sheetTitle.textContent = 'Parcelles (0)'; updateFab(); return; }
     const centers = {};
     st.parcelles.layer = L.geoJSON({ type:'FeatureCollection', features }, {
       style:{ color:'#c1440e', weight:2, fillColor:'#f2a35c', fillOpacity:.45 },
@@ -607,7 +622,7 @@
       sheetBody.appendChild(el);
     });
     sheetTitle.textContent = 'Parcelles (' + features.length + ')';
-    openSheet();
+    updateFab();
   }
 
   // ---------- rendu : DVF ----------
@@ -639,12 +654,19 @@
   }
   function renderDvf(data){
     clearLayer('dvf');
-    const muts = (data && data.mutations) || [], s = (data && data.stats) || {};
     st.dvf.data = data;
-    const parts = ['<b>' + (s.total || muts.length) + '</b> transaction(s)'];
-    if (s.total && muts.length < s.total) parts.push('(' + muts.length + ' affichées)');
-    if (s.prix_median != null) parts.push('prix médian <b>' + fmtEur(s.prix_median) + '</b>');
-    if (s.prix_m2_median != null) parts.push('<b>' + fmtNum(s.prix_m2_median) + ' €/m²</b> médian (maison/appart.)');
+    const all = (data && data.mutations) || [], s = (data && data.stats) || {};
+    const typeKey = dType.value, cat = TYPE_CAT[typeKey];
+    const muts = cat ? all.filter(m => m.categorie === cat) : all;
+
+    // Stats recalculées sur le sous-ensemble affiché
+    const ventes = muts.filter(m => /^Vente/i.test(m.nature || ''));
+    const prixMed = median(ventes.map(m => m.valeur));
+    const pm2Med = median(ventes.map(m => typeKey === 'terrain' ? m.prix_m2_terrain : m.prix_m2));
+    const parts = ['<b>' + muts.length + '</b> vente(s)' + (typeKey !== 'tous' ? ' (' + typeKey + ')' : '') + ' affichées'];
+    if (s.total && all.length < s.total) parts.push(all.length + ' sur ' + s.total + ' sur la période');
+    if (prixMed != null) parts.push('prix médian <b>' + fmtEur(prixMed) + '</b>');
+    if (pm2Med != null) parts.push('<b>' + fmtNum(pm2Med) + ' €/m²</b> médian');
     let html = parts.join(' · ');
     if (s.data_through) html += '<br/>Données publiées jusqu’à ' + fmtMonthYear(s.data_through) + '.';
     sheetStats.innerHTML = html; sheetStats.hidden = false;
@@ -660,9 +682,9 @@
     if (markers.length) map.fitBounds(L.featureGroup(markers).getBounds(), { maxZoom:16, padding:[30,30] });
 
     sheetBody.innerHTML = '';
-    if (!muts.length){ sheetBody.innerHTML = '<div class="empty">Aucune transaction sur cette période.</div>'; }
+    if (!muts.length){ sheetBody.innerHTML = '<div class="empty">Aucune transaction ' + (typeKey !== 'tous' ? '(' + typeKey + ') ' : '') + 'sur cette période.</div>'; }
     muts.forEach(m => {
-      const el = dvfCard(m, 'tous');
+      const el = dvfCard(m, typeKey);
       el.addEventListener('click', (ev) => {
         if (ev.target.tagName === 'A') return;
         const mk = st.dvf.layer && st.dvf.layer.getLayers().find(x => x._id === m.id);
@@ -671,7 +693,7 @@
       sheetBody.appendChild(el);
     });
     sheetTitle.textContent = 'Transactions (' + muts.length + ')';
-    openSheet();
+    updateFab();
   }
 
   // ---------- rendu : AUTOUR ----------
@@ -764,7 +786,7 @@
       sheetBody.appendChild(el);
     });
     sheetTitle.textContent = 'Ventes autour (' + ventes.length + ')';
-    openSheet();
+    updateFab();
   }
 
   // ---------- gestion des couches par onglet ----------
@@ -806,10 +828,16 @@
     applyControlsVisibility();
     syncLayers();
     restoreSheetForTab();
-    if (activeTab === 'autour' && !st.autour.ref && !st.autour.collapsed)
+    if (activeTab === 'parcelles' && Array.isArray(st.parcelles.data))
+      setStatus(st.parcelles.data.length + ' parcelle(s) à ' + (selected ? selected.nom : '') + ' — liste via « Liste ».');
+    else if (activeTab === 'dvf' && st.dvf.data)
+      setStatus(dvfStatusLine(st.dvf.data.from));
+    else if (activeTab === 'autour' && st.autour.data)
+      setStatus(((st.autour.data.synthese || {}).count_type || 0) + ' vente(s) autour — liste via « Liste ».');
+    else if (activeTab === 'autour' && !st.autour.ref)
       setStatus('Touchez la carte pour choisir un point de référence.');
-    else if (!st[activeTab].data && !st.parcelles.layer)
-      setStatus('Prêt.');
+    else
+      setStatus('Prêt. Choisissez une commune et lancez la recherche.');
     setTimeout(() => map.invalidateSize(), 120);
   });
 
@@ -836,19 +864,7 @@
       return;
     }
 
-    if (activeTab === 'dvf'){
-      goBtn.disabled = true; setStatus('Récupération des transactions DVF…', 'loading');
-      try{
-        const months = parseInt(dMonths.value, 10) || 24;
-        const data = await fetchDvf(months);
-        const n = (data.stats && data.stats.total) || (data.mutations || []).length;
-        setStatus(n + ' transaction(s) DVF à ' + selected.nom + ' depuis ' + fmtDate(data.from) + '.');
-        renderDvf(data);
-        collapseControls();
-      }catch(err){ setStatus(err.message || 'Erreur DVF.', 'error'); }
-      finally{ goBtn.disabled = false; }
-      return;
-    }
+    if (activeTab === 'dvf'){ await runDvf(); return; }
 
     if (activeTab === 'autour'){
       const min = parseInt(aMin.value, 10) || 0, max = parseInt(aMax.value, 10) || 999999;
@@ -874,9 +890,45 @@
     setStatus('Réinitialisé. Lancez une recherche.');
   });
 
+  function dvfStatusLine(fromDate){
+    const shown = sheetBody.querySelectorAll('.card').length;
+    return shown + ' transaction(s)' + (dType.value !== 'tous' ? ' (' + dType.value + ')' : '') +
+      ' à ' + (selected ? selected.nom : '') + (fromDate ? ' depuis ' + fmtDate(fromDate) : '') + '.';
+  }
+  async function runDvf(){
+    if (!selected){ setStatus('Choisissez une commune dans la liste.', 'error'); return; }
+    goBtn.disabled = true; setStatus('Récupération des transactions DVF…', 'loading');
+    try{
+      const data = await fetchDvf(parseInt(dMonths.value, 10) || 24);
+      renderDvf(data);
+      setStatus(dvfStatusLine(data.from));
+      collapseControls();
+    }catch(err){ setStatus(err.message || 'Erreur DVF.', 'error'); }
+    finally{ goBtn.disabled = false; }
+  }
+
   aRadius.addEventListener('change', () => { if (activeTab === 'autour' && st.autour.ref) runAutour(); });
   aType.addEventListener('change', () => { if (activeTab === 'autour' && st.autour.ref) runAutour(); });
   aMonths.addEventListener('change', () => { if (activeTab === 'autour' && st.autour.ref) runAutour(); });
+
+  // DVF : re-filtre à la volée sans replier les contrôles (on peut enchaîner les filtres)
+  dType.addEventListener('change', () => {
+    if (activeTab !== 'dvf' || !st.dvf.data) return;
+    renderDvf(st.dvf.data);
+    setStatus(dvfStatusLine());
+    if (st.dvf.collapsed) summaryText.textContent = summaryFor();
+  });
+  dMonths.addEventListener('change', async () => {
+    if (activeTab !== 'dvf' || !st.dvf.data) return;
+    goBtn.disabled = true; setStatus('Mise à jour…', 'loading');
+    try{
+      const data = await fetchDvf(parseInt(dMonths.value, 10) || 24);
+      renderDvf(data);
+      setStatus(dvfStatusLine(data.from));
+      if (st.dvf.collapsed) summaryText.textContent = summaryFor();
+    }catch(err){ setStatus(err.message || 'Erreur DVF.', 'error'); }
+    finally{ goBtn.disabled = false; }
+  });
 
   setStatus('Prêt. Choisissez une commune et lancez la recherche.');
 })();
