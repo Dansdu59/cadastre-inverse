@@ -67,6 +67,7 @@
   .field{ display:flex; flex-direction:column; gap:6px; position:relative; }
   .field > label{ font-size:16px; font-weight:600; color:var(--ink); }
   .field .hint{ font-size:14px; color:var(--muted); }
+  .field .hint.manual{ color:var(--accent); cursor:pointer; text-decoration:underline; }
   .tip{ font-size:14px; color:var(--muted); }
 
   input, select{
@@ -213,6 +214,10 @@
     gap:3px; border:0; background:none; cursor:pointer; color:var(--muted); font-size:12px; font-weight:600;
   }
   .tabbar button .ic{ font-size:22px; line-height:1; }
+  .tabbar button .ic-hm{ display:inline-flex; }
+  .tabbar button .ic-hm svg{ display:block; }
+  .hm-legend .bar{ height:12px; border-radius:3px; margin:5px 0; }
+  .hm-legend .lbls{ display:flex; justify-content:space-between; color:var(--muted); font-size:12px; }
   .tabbar button[aria-current="page"]{ color:var(--accent); }
   .tabbar button:active{ background:#f0f2f4; }
 
@@ -334,6 +339,50 @@
       </div>
     </div>
 
+    <div class="grp" id="grp-heatmap" hidden>
+      <p class="tip">Carte de chaleur des prix / de l’activité, moyennés dans le rayon choisi. Touchez une zone pour son détail.</p>
+      <div class="row">
+        <div class="field">
+          <label for="h-months">Période</label>
+          <select id="h-months">
+            <option value="24">2 ans</option>
+            <option value="36" selected>3 ans</option>
+            <option value="60">5 ans</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="h-type">Type de bien</label>
+          <select id="h-type">
+            <option value="tous" selected>Maison + Appart.</option>
+            <option value="maison">Maison</option>
+            <option value="appartement">Appartement</option>
+            <option value="terrain">Terrain</option>
+          </select>
+        </div>
+      </div>
+      <div class="row">
+        <div class="field">
+          <label for="h-layer">Indicateur</label>
+          <select id="h-layer">
+            <option value="price" selected>Prix €/m²</option>
+            <option value="volume">Volume de ventes</option>
+            <option value="evo">Évolution du €/m²</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="h-radius">Rayon de moyennage</label>
+          <select id="h-radius">
+            <option value="150">150 m</option>
+            <option value="250" selected>250 m</option>
+            <option value="400">400 m</option>
+            <option value="600">600 m</option>
+            <option value="1000">1 km</option>
+          </select>
+          <div class="hint" id="h-radius-hint"></div>
+        </div>
+      </div>
+    </div>
+
     <button class="btn btn-primary" id="go" type="submit">Rechercher</button>
     <button class="btn btn-ghost" id="reset" type="button">Réinitialiser</button>
   </form>
@@ -364,6 +413,7 @@
   <button type="button" data-tab="parcelles" aria-current="page"><span class="ic">▦</span>Parcelles</button>
   <button type="button" data-tab="dvf"><span class="ic">€</span>Transactions</button>
   <button type="button" data-tab="autour"><span class="ic">◎</span>Autour</button>
+  <button type="button" data-tab="heatmap"><span class="ic ic-hm" aria-hidden="true"><svg width="22" height="22" viewBox="0 0 22 22"><defs><radialGradient id="hmIco" cx="34%" cy="38%" r="80%"><stop offset="0" stop-color="#ffe58f"/><stop offset=".42" stop-color="#fd8d3c"/><stop offset=".78" stop-color="#e02d1b"/><stop offset="1" stop-color="#7a1a10"/></radialGradient></defs><rect x="1.5" y="1.5" width="19" height="19" rx="6" fill="url(#hmIco)"/><circle cx="14.6" cy="14" r="2.7" fill="#fff3cf" fill-opacity=".85"/></svg></span>Chaleur</button>
 </nav>
 
 <script>
@@ -371,7 +421,8 @@
   const $ = (id) => document.getElementById(id);
   const communeInput = $('commune'), suggestions = $('suggestions');
   const controls = $('controls'), summary = $('summary'), summaryText = $('summary-text');
-  const grpParcelles = $('grp-parcelles'), grpDvf = $('grp-dvf'), grpAutour = $('grp-autour');
+  const grpParcelles = $('grp-parcelles'), grpDvf = $('grp-dvf'), grpAutour = $('grp-autour'), grpHeatmap = $('grp-heatmap');
+  const hMonths = $('h-months'), hType = $('h-type'), hLayer = $('h-layer'), hRadius = $('h-radius'), hRadiusHint = $('h-radius-hint');
   const goBtn = $('go'), resetBtn = $('reset');
   const statusEl = $('status');
   const sheet = $('sheet'), sheetBody = $('sheet-body'), sheetStats = $('sheet-stats'), sheetTitle = $('sheet-title');
@@ -383,8 +434,14 @@
 
   const CAT = { Maison:'#c1440e', Appartement:'#2563eb', Terrain:'#15803d', Local:'#7c3aed', Autre:'#64748b' };
   const TYPE_CAT = { tous:null, maison:'Maison', appartement:'Appartement', terrain:'Terrain', local:'Local' };
-  const TITLES = { parcelles:'Parcelles cadastrales', dvf:'Transactions immobilières', autour:'Autour d’une parcelle' };
-  const SHEET_TITLES = { parcelles:'Parcelles', dvf:'Transactions (DVF)', autour:'Ventes autour du point' };
+  const HTYPE_CATS = { tous:['Maison','Appartement'], maison:['Maison'], appartement:['Appartement'], terrain:['Terrain'] };
+  const RAMPS = {
+    price:  ['#ffffb2','#fed976','#feb24c','#fd8d3c','#f03b20','#bd0026'],
+    volume: ['#eff3ff','#c6dbef','#9ecae1','#6baed6','#3182bd','#08519c'],
+    evo:    ['#2166ac','#67a9cf','#d1e5f0','#fddbc7','#ef8a62','#b2182b']
+  };
+  const TITLES = { parcelles:'Parcelles cadastrales', dvf:'Transactions immobilières', autour:'Autour d’une parcelle', heatmap:'Prix & dynamique par zone' };
+  const SHEET_TITLES = { parcelles:'Parcelles', dvf:'Transactions (DVF)', autour:'Ventes autour du point', heatmap:'Synthèse de la commune' };
 
   let activeTab = 'parcelles';
   let selected = { code:'53130', nom:'Laval', cp:'53000' };
@@ -394,7 +451,8 @@
   const st = {
     parcelles:{ layer:null, data:null, collapsed:false },
     dvf:{ layer:null, data:null, collapsed:false },
-    autour:{ layer:null, ventes:null, circle:null, refMarker:null, ref:null, parcLayer:null, data:null, collapsed:false }
+    autour:{ layer:null, ventes:null, circle:null, refMarker:null, ref:null, parcLayer:null, data:null, collapsed:false },
+    heatmap:{ layer:null, data:null, dataThrough:null, collapsed:false, userSetRadius:false }
   };
   const cacheP = {}, cacheD = {}, cacheA = {}, communesCache = {}, addrCache = {};
 
@@ -408,7 +466,7 @@
     return fetch(url, { signal:c.signal }).finally(() => clearTimeout(t));
   }
   const fmtEur = (n) => (n == null || isNaN(n)) ? '—' : Math.round(n).toLocaleString('fr-FR') + ' €';
-  const fmtNum = (n) => (n == null) ? '—' : Number(n).toLocaleString('fr-FR');
+  const fmtNum = (n) => (n == null) ? '—' : Math.round(n).toLocaleString('fr-FR');
   function fmtDate(iso){ if (!iso) return ''; const d = new Date(iso + 'T00:00:00'); return isNaN(d) ? iso : d.toLocaleDateString('fr-FR'); }
   function fmtMonthYear(iso){ if (!iso) return ''; const d = new Date(iso + 'T00:00:00'); return isNaN(d) ? iso : d.toLocaleDateString('fr-FR', { month:'long', year:'numeric' }); }
   function fmtDist(m){ if (m == null) return ''; return m < 1000 ? Math.round(m) + ' m' : (m/1000).toFixed(m < 10000 ? 2 : 1).replace('.', ',') + ' km'; }
@@ -479,6 +537,7 @@
       const ref = st.autour.ref ? 'point choisi' : (selected ? selected.nom : '—');
       return ref + '  ·  ' + selText(aRadius) + '  ·  ' + selText(aType);
     }
+    if (activeTab === 'heatmap') return (selected ? selected.nom : '—') + '  ·  ' + selText(hLayer) + '  ·  ' + selText(hRadius);
     return (selected ? selected.nom : '—') + '  ·  ' + pMin.value + '–' + pMax.value + ' m²';
   }
   function applyControlsVisibility(){
@@ -488,6 +547,7 @@
     grpParcelles.hidden = activeTab !== 'parcelles';
     grpDvf.hidden = activeTab !== 'dvf';
     grpAutour.hidden = activeTab !== 'autour';
+    grpHeatmap.hidden = activeTab !== 'heatmap';
   }
   function collapseControls(){ st[activeTab].collapsed = true; summaryText.textContent = summaryFor(); applyControlsVisibility(); setTimeout(() => map.invalidateSize(), 140); }
   function expandControls(){ st[activeTab].collapsed = false; applyControlsVisibility(); setTimeout(() => map.invalidateSize(), 140); }
@@ -496,8 +556,9 @@
   // ---------- bottom-sheet + FAB ----------
   function updateFab(){
     const cards = sheetBody.querySelectorAll('.card').length;
-    fabList.hidden = !(cards > 0 && !sheet.classList.contains('open'));
-    if (cards > 0) fabList.textContent = '≡ Liste (' + cards + ')';
+    const has = activeTab === 'heatmap' ? !!st.heatmap.data : cards > 0;
+    fabList.hidden = !(has && !sheet.classList.contains('open'));
+    fabList.textContent = activeTab === 'heatmap' ? '≡ Synthèse' : (cards > 0 ? '≡ Liste (' + cards + ')' : '≡ Liste');
   }
   function openSheet(){ sheet.classList.add('open'); updateFab(); }
   function closeSheet(){ sheet.classList.remove('open'); updateFab(); }
@@ -810,10 +871,11 @@
   function layersFor(tab){
     if (tab === 'parcelles') return [st.parcelles.layer];
     if (tab === 'dvf') return [st.dvf.layer];
+    if (tab === 'heatmap') return [st.heatmap.layer];
     return [st.autour.parcLayer, st.autour.circle, st.autour.ventes, st.autour.refMarker];
   }
   function syncLayers(){
-    ['parcelles','dvf','autour'].forEach(tab => layersFor(tab).forEach(l => {
+    ['parcelles','dvf','autour','heatmap'].forEach(tab => layersFor(tab).forEach(l => {
       if (!l) return;
       const show = tab === activeTab;
       if (show && !map.hasLayer(l)) l.addTo(map);
@@ -825,6 +887,7 @@
     if (activeTab === 'parcelles' && Array.isArray(st.parcelles.data)) renderParcelles(st.parcelles.data);
     else if (activeTab === 'dvf' && st.dvf.data) renderDvf(st.dvf.data);
     else if (activeTab === 'autour' && st.autour.data) renderAround(st.autour.data);
+    else if (activeTab === 'heatmap' && st.heatmap.data) renderHeatmap(false);
     else { closeSheet(); updateFab(); }
   }
 
@@ -836,7 +899,10 @@
     [...tabbar.children].forEach(x => x.removeAttribute('aria-current'));
     b.setAttribute('aria-current', 'page');
     appTitle.textContent = TITLES[activeTab];
-    goBtn.textContent = activeTab === 'dvf' ? 'Voir les transactions' : activeTab === 'autour' ? 'Charger les parcelles' : 'Rechercher';
+    goBtn.textContent = activeTab === 'dvf' ? 'Voir les transactions'
+      : activeTab === 'autour' ? 'Charger les parcelles'
+      : activeTab === 'heatmap' ? 'Afficher la carte de chaleur'
+      : 'Rechercher';
     applyControlsVisibility();
     syncLayers();
     restoreSheetForTab();
@@ -848,6 +914,8 @@
       setStatus(((st.autour.data.synthese || {}).count_type || 0) + ' vente(s) autour — liste via « Liste ».');
     else if (activeTab === 'autour' && !st.autour.ref)
       setStatus('Touchez la carte pour choisir un point de référence.');
+    else if (activeTab === 'heatmap' && st.heatmap.data)
+      setStatus('Carte de chaleur ' + selText(hLayer).toLowerCase() + ' — synthèse via « Synthèse ».');
     else
       setStatus('Prêt. Choisissez une commune et lancez la recherche.');
     setTimeout(() => map.invalidateSize(), 120);
@@ -878,6 +946,8 @@
 
     if (activeTab === 'dvf'){ await runDvf(); return; }
 
+    if (activeTab === 'heatmap'){ await runHeatmap(); return; }
+
     if (activeTab === 'autour'){
       const min = parseInt(aMin.value, 10) || 0, max = parseInt(aMax.value, 10) || 999999;
       if (min > max){ setStatus('Surfaces invalides.', 'error'); return; }
@@ -893,10 +963,11 @@
   });
 
   resetBtn.addEventListener('click', () => {
-    ['parcelles','dvf','autour'].forEach(t => { layersFor(t).forEach(l => { if (l && map.hasLayer(l)) map.removeLayer(l); }); });
+    ['parcelles','dvf','autour','heatmap'].forEach(t => { layersFor(t).forEach(l => { if (l && map.hasLayer(l)) map.removeLayer(l); }); });
     st.parcelles = { layer:null, data:null, collapsed:false };
     st.dvf = { layer:null, data:null, collapsed:false };
     st.autour = { layer:null, ventes:null, circle:null, refMarker:null, ref:null, parcLayer:null, data:null, collapsed:false };
+    st.heatmap = { layer:null, data:null, dataThrough:null, collapsed:false, userSetRadius:false };
     sheetBody.innerHTML = ''; sheetStats.innerHTML = ''; sheetStats.hidden = true;
     closeSheet();
     applyControlsVisibility();
@@ -941,6 +1012,228 @@
       if (st.dvf.collapsed) summaryText.textContent = summaryFor();
     }catch(err){ setStatus(err.message || 'Erreur DVF.', 'error'); }
     finally{ goBtn.disabled = false; }
+  });
+
+  // ================= Onglet « Chaleur » (heatmap prix / dynamique) =================
+  function hexToRgb(h){ return [parseInt(h.slice(1,3),16), parseInt(h.slice(3,5),16), parseInt(h.slice(5,7),16)]; }
+  function interp(ramp, t){
+    t = Math.max(0, Math.min(1, t));
+    const seg = t * (ramp.length - 1), i = Math.min(ramp.length - 2, Math.floor(seg)), f = seg - i;
+    const a = hexToRgb(ramp[i]), b = hexToRgb(ramp[i + 1]);
+    return 'rgb(' + Math.round(a[0]+(b[0]-a[0])*f) + ',' + Math.round(a[1]+(b[1]-a[1])*f) + ',' + Math.round(a[2]+(b[2]-a[2])*f) + ')';
+  }
+  function quantile(sorted, q){ if (!sorted.length) return null; const i = Math.min(sorted.length-1, Math.max(0, Math.round(q*(sorted.length-1)))); return sorted[i]; }
+  function meanF(a){ const s = a.filter(x => Number.isFinite(x)); return s.length ? s.reduce((p,c) => p+c, 0)/s.length : null; }
+  function medF(a){ const s = a.filter(x => Number.isFinite(x)).sort((x,y) => x-y); if (!s.length) return null; const m = s.length>>1; return s.length%2 ? s[m] : (s[m-1]+s[m])/2; }
+  function fmtPct(n){ return (n == null || !isFinite(n)) ? '—' : (n > 0 ? '+' : '') + (n*100).toFixed(0) + ' %'; }
+
+  // Rayon auto : espacement médian entre localisations de ventes distinctes (dédoublonnées ~16 m), ×6.
+  function suggestRadius(sales){
+    const seen = new Set(), pts = [];
+    for (const m of sales){ const k = Math.round(m.lat*7000) + ',' + Math.round(m.lon*7000); if (!seen.has(k)){ seen.add(k); pts.push(m); } }
+    if (pts.length < 2) return { value:250, medNN:0 };
+    const midLat = pts.reduce((s,m) => s+m.lat, 0) / pts.length;
+    const mLat = 111320, mLon = 111320 * Math.cos(midLat*Math.PI/180);
+    const nn = [];
+    for (let i = 0; i < pts.length; i++){
+      let best = Infinity;
+      for (let j = 0; j < pts.length; j++){
+        if (i === j) continue;
+        const dx = (pts[j].lon-pts[i].lon)*mLon, dy = (pts[j].lat-pts[i].lat)*mLat, d = dx*dx + dy*dy;
+        if (d < best) best = d;
+      }
+      if (isFinite(best)) nn.push(Math.sqrt(best));
+    }
+    nn.sort((a,b) => a-b);
+    const medNN = nn.length ? nn[nn.length >> 1] : 200;
+    let rm = Math.max(150, Math.min(1000, medNN * 6));
+    const presets = [150, 250, 400, 600, 1000];
+    let best = presets[0];
+    for (const p of presets) if (Math.abs(p - rm) < Math.abs(best - rm)) best = p;
+    return { value: best, medNN: Math.round(medNN) };
+  }
+  function updateHRadiusHint(){
+    if (!st.heatmap.data){ hRadiusHint.textContent = ''; hRadiusHint.className = 'hint'; return; }
+    const sug = suggestRadius(st.heatmap.data);
+    if (st.heatmap.userSetRadius){
+      hRadiusHint.textContent = '↺ revenir au rayon auto (' + (sug.value >= 1000 ? '1 km' : sug.value + ' m') + ')';
+      hRadiusHint.className = 'hint manual';
+    } else {
+      hRadiusHint.textContent = 'auto · ventes espacées de ~' + sug.medNN + ' m';
+      hRadiusHint.className = 'hint';
+    }
+  }
+  function monthlySparklineH(sales){
+    const byM = {};
+    sales.forEach(m => { const k = (m.date || '').slice(0, 7); if (k) byM[k] = (byM[k] || 0) + 1; });
+    const keys = Object.keys(byM).sort();
+    if (keys.length < 3) return '';
+    const last = keys.slice(-30), max = Math.max(1, ...last.map(k => byM[k]));
+    const W = 300, H = 44, bw = W / last.length;
+    let bars = '';
+    last.forEach((k, i) => {
+      const h = (byM[k] / max) * (H - 12);
+      bars += '<rect x="' + (i*bw+0.5).toFixed(1) + '" y="' + (H-10-h).toFixed(1) + '" width="' + (bw-1).toFixed(1) + '" height="' + h.toFixed(1) + '" fill="#c1440e" fill-opacity="0.8"/>';
+    });
+    return '<svg viewBox="0 0 ' + W + ' ' + H + '" width="100%" height="' + H + '">' + bars +
+      '<text x="0" y="' + H + '" font-size="9" fill="#54606b">' + last[0].replace('-', '/') + '</text>' +
+      '<text x="' + W + '" y="' + H + '" font-size="9" fill="#54606b" text-anchor="end">' + last[last.length-1].replace('-', '/') + '</text></svg>';
+  }
+  function clearHeatmap(){ if (st.heatmap.layer){ map.removeLayer(st.heatmap.layer); st.heatmap.layer = null; } }
+
+  async function runHeatmap(){
+    if (!selected){ setStatus('Choisissez une commune dans la liste.', 'error'); return; }
+    goBtn.disabled = true; setStatus('Chargement des transactions DVF…', 'loading');
+    try{
+      const d = await fetchDvf(parseInt(hMonths.value, 10) || 36);
+      const muts = (d.mutations || []).filter(m => m.lat != null && m.lon != null && /^Vente/i.test(m.nature || ''));
+      st.heatmap.data = muts;
+      st.heatmap.dataThrough = d.stats && d.stats.data_through;
+      if (!muts.length){ setStatus('Aucune vente exploitable ici sur la période.', 'error'); clearHeatmap(); return; }
+      if (!st.heatmap.userSetRadius) hRadius.value = String(suggestRadius(muts).value);
+      updateHRadiusHint();
+      renderHeatmap(true);
+      collapseControls();
+    }catch(err){ setStatus(err.message || 'Erreur.', 'error'); }
+    finally{ goBtn.disabled = false; }
+  }
+
+  function renderHeatmap(fit){
+    const muts = st.heatmap.data;
+    if (!muts || !muts.length) return;
+    const t0 = performance.now();
+    const radiusM = parseInt(hRadius.value, 10) || 250;
+    const layerKey = hLayer.value;
+    const cats = HTYPE_CATS[hType.value] || HTYPE_CATS.tous;
+    const pf = hType.value === 'terrain' ? 'prix_m2_terrain' : 'prix_m2';
+
+    const forPrice = muts.filter(m => cats.includes(m.categorie) && isFinite(m[pf]) && m[pf] > 0);
+    const base = layerKey === 'volume' ? muts : forPrice;
+    if (!base.length){ setStatus('Pas assez de ventes pour ce filtre.', 'error'); clearHeatmap(); sheetStats.hidden = true; return; }
+
+    let minLat = Infinity, maxLat = -Infinity, minLon = Infinity, maxLon = -Infinity;
+    base.forEach(m => { if (m.lat<minLat)minLat=m.lat; if (m.lat>maxLat)maxLat=m.lat; if (m.lon<minLon)minLon=m.lon; if (m.lon>maxLon)maxLon=m.lon; });
+    const midLat = (minLat + maxLat) / 2, mLat = 111320, mLon = 111320 * Math.cos(midLat*Math.PI/180);
+    minLat -= radiusM/mLat; maxLat += radiusM/mLat; minLon -= radiusM/mLon; maxLon += radiusM/mLon;
+
+    let cellM = 120;
+    let nx = Math.ceil((maxLon-minLon)*mLon/cellM), ny = Math.ceil((maxLat-minLat)*mLat/cellM);
+    while (nx*ny > 3600){ cellM *= 1.3; nx = Math.ceil((maxLon-minLon)*mLon/cellM); ny = Math.ceil((maxLat-minLat)*mLat/cellM); }
+    const dLat = cellM/mLat, dLon = cellM/mLon;
+
+    const bucketM = radiusM, buckets = new Map(), bkey = (x,y) => x + ':' + y;
+    base.forEach(m => {
+      const bx = Math.floor((m.lon-minLon)*mLon/bucketM), by = Math.floor((m.lat-minLat)*mLat/bucketM), k = bkey(bx,by);
+      if (!buckets.has(k)) buckets.set(k, []);
+      buckets.get(k).push(m);
+    });
+
+    const now = st.heatmap.dataThrough ? new Date(st.heatmap.dataThrough + 'T00:00:00') : new Date();
+    const recentCut = new Date(now); recentCut.setFullYear(now.getFullYear() - 1);
+    const olderStart = new Date(now); olderStart.setFullYear(now.getFullYear() - 3);
+    const months = parseInt(hMonths.value, 10) || 36, years = months / 12;
+    const minN = layerKey === 'evo' ? 6 : (layerKey === 'volume' ? 3 : 4);
+
+    const cells = [];
+    for (let iy = 0; iy < ny; iy++) for (let ix = 0; ix < nx; ix++){
+      const cLat = minLat + (iy+0.5)*dLat, cLon = minLon + (ix+0.5)*dLon;
+      const bx = Math.floor((cLon-minLon)*mLon/bucketM), by = Math.floor((cLat-minLat)*mLat/bucketM);
+      const near = [];
+      for (let dx = -1; dx <= 1; dx++) for (let dy = -1; dy <= 1; dy++){ const arr = buckets.get(bkey(bx+dx, by+dy)); if (arr) near.push(...arr); }
+      if (near.length < minN) continue;
+      const inR = [];
+      for (const m of near){ const ex = (m.lon-cLon)*mLon, ey = (m.lat-cLat)*mLat; if (ex*ex + ey*ey <= radiusM*radiusM) inR.push(m); }
+      if (inR.length < minN) continue;
+
+      let value = null, extra = {};
+      if (layerKey === 'price'){ const v = inR.map(m => m[pf]); value = meanF(v); extra = { n:inR.length, med: medF(v) }; }
+      else if (layerKey === 'volume'){ value = inR.length / years; extra = { n:inR.length }; }
+      else {
+        const rec = [], old = [];
+        inR.forEach(m => { const dt = new Date(m.date + 'T00:00:00');
+          if (dt >= recentCut) rec.push(m[pf]); else if (dt >= olderStart) old.push(m[pf]); });
+        const rf = rec.filter(isFinite), of = old.filter(isFinite);
+        if (rf.length < 6 || of.length < 6) continue;
+        const mr = medF(rf), mo = medF(of);
+        if (!mo) continue;
+        value = (mr - mo) / mo; extra = { rec:mr, old:mo, nr:rf.length, no:of.length };
+      }
+      if (value == null || !isFinite(value)) continue;
+      cells.push({ s:minLat + iy*dLat, w:minLon + ix*dLon, n2:minLat + (iy+1)*dLat, e2:minLon + (ix+1)*dLon, value, extra });
+    }
+
+    if (!cells.length){ setStatus('Pas assez de données à ce rayon. Élargissez le rayon ou la période.', 'error'); clearHeatmap(); sheetStats.hidden = true; return; }
+
+    const sortedVals = cells.map(c => c.value).sort((a,b) => a-b);
+    const ramp = RAMPS[layerKey], diverging = layerKey === 'evo';
+    let lo, hi;
+    if (diverging){
+      const absMax = Math.min(0.4, quantile(sortedVals.map(Math.abs).sort((a,b) => a-b), 0.92) || 0.3);
+      lo = -absMax; hi = absMax;
+    } else { lo = quantile(sortedVals, 0.05); hi = quantile(sortedVals, 0.95); if (hi <= lo) hi = lo + 1; }
+
+    clearHeatmap();
+    const rects = cells.map(c => {
+      const rect = L.rectangle([[c.s, c.w], [c.n2, c.e2]], { stroke:false, fillColor: interp(ramp, (c.value - lo) / (hi - lo)), fillOpacity: 0.55 });
+      rect.bindPopup(hmCellPopup(c, layerKey, radiusM));
+      return rect;
+    });
+    st.heatmap.layer = L.layerGroup(rects);
+    if (activeTab === 'heatmap') st.heatmap.layer.addTo(map);
+    if (fit){ map.fitBounds(L.latLngBounds(base.map(m => [m.lat, m.lon])), { padding:[24,24], maxZoom:15 }); }
+
+    renderHeatmapPanel(forPrice, muts, pf, lo, hi, ramp, diverging, cells.length);
+    setStatus(cells.length + ' zones · ' + selText(hLayer).toLowerCase() + ' · rayon ' + (radiusM >= 1000 ? '1 km' : radiusM + ' m') +
+      ' · maille ' + Math.round(cellM) + ' m · ' + Math.round(performance.now() - t0) + ' ms');
+    updateFab();
+  }
+
+  function hmCellPopup(c, layerKey, radiusM){
+    const e = c.extra;
+    if (layerKey === 'price') return '<b>' + fmtEur(c.value) + '/m²</b> (moyenne)<br/>médiane ' + fmtEur(e.med) + '/m²<br/>' + e.n + ' vente(s) dans ' + radiusM + ' m';
+    if (layerKey === 'volume') return '<b>' + c.value.toFixed(1) + ' vente(s)/an</b><br/>' + e.n + ' au total dans ' + radiusM + ' m';
+    return '<b>' + fmtPct(c.value) + '</b> (€/m² médian)<br/>récent ' + fmtEur(e.rec) + ' (' + e.nr + ') vs avant ' + fmtEur(e.old) + ' (' + e.no + ')';
+  }
+
+  function renderHeatmapPanel(forPrice, allSales, pf, lo, hi, ramp, diverging, nCells){
+    const pm2 = forPrice.map(m => m[pf]).filter(isFinite).sort((a,b) => a-b);
+    const months = parseInt(hMonths.value, 10) || 36;
+    const grad = 'linear-gradient(to right,' + ramp.join(',') + ')';
+    let unit = '', loL, hiL;
+    if (hLayer.value === 'price'){ unit = ' €/m²'; loL = fmtNum(lo); hiL = fmtNum(hi); }
+    else if (hLayer.value === 'volume'){ unit = ' /an'; loL = lo.toFixed(1); hiL = hi.toFixed(1); }
+    else { loL = fmtPct(lo); hiL = fmtPct(hi); }
+    let html =
+      '<div class="hm-legend"><b>' + selText(hLayer) + '</b>' +
+        '<div class="bar" style="background:' + grad + '"></div>' +
+        '<div class="lbls"><span>' + loL + unit + '</span>' + (diverging ? '<span>0 %</span>' : '') + '<span>' + hiL + unit + '</span></div>' +
+      '</div>' +
+      '<div style="margin-top:8px"><b>' + selText(hLayer).toLowerCase() + '</b> moyenné dans ' + (parseInt(hRadius.value,10) >= 1000 ? '1 km' : hRadius.value + ' m') + ' · ' + nCells + ' zones</div>' +
+      '<div style="margin-top:8px">' + allSales.length + ' vente(s) · rythme <b>' + (allSales.length / (months/12)).toFixed(0) + '/an</b>' +
+        ' · €/m² médian <b>' + fmtEur(medF(pm2)) + '</b>' +
+        (pm2.length ? ' (P25–P75 ' + fmtNum(quantile(pm2, .25)) + '–' + fmtNum(quantile(pm2, .75)) + ')' : '') + '</div>' +
+      (st.heatmap.dataThrough ? '<div style="margin-top:4px;color:var(--muted)">Données DVF jusqu’à ' + fmtMonthYear(st.heatmap.dataThrough) + '.</div>' : '') +
+      '<div style="margin-top:8px"><b>Ventes par mois</b></div>' + (monthlySparklineH(allSales) || '<div style="color:var(--muted)">série trop courte</div>');
+    sheetStats.innerHTML = html; sheetStats.hidden = false;
+    sheetBody.innerHTML = '<div style="padding:14px 4px;color:var(--muted);font-size:14px">Touchez une zone de la carte pour son détail (moyenne, médiane, nombre de ventes).</div>';
+    sheetTitle.textContent = SHEET_TITLES.heatmap + ' — ' + (selected ? selected.nom : '');
+  }
+
+  hType.addEventListener('change', () => { if (activeTab === 'heatmap' && st.heatmap.data){ renderHeatmap(false); if (st.heatmap.collapsed) summaryText.textContent = summaryFor(); } });
+  hLayer.addEventListener('change', () => { if (activeTab === 'heatmap' && st.heatmap.data){ renderHeatmap(false); if (st.heatmap.collapsed) summaryText.textContent = summaryFor(); } });
+  hMonths.addEventListener('change', () => { if (activeTab === 'heatmap' && st.heatmap.data) runHeatmap(); });
+  hRadius.addEventListener('change', () => {
+    if (activeTab !== 'heatmap') return;
+    st.heatmap.userSetRadius = true; updateHRadiusHint();
+    if (st.heatmap.data) renderHeatmap(false);
+    if (st.heatmap.collapsed) summaryText.textContent = summaryFor();
+  });
+  hRadiusHint.addEventListener('click', () => {
+    if (!st.heatmap.userSetRadius || !st.heatmap.data) return;
+    st.heatmap.userSetRadius = false;
+    hRadius.value = String(suggestRadius(st.heatmap.data).value);
+    updateHRadiusHint(); renderHeatmap(false);
+    if (st.heatmap.collapsed) summaryText.textContent = summaryFor();
   });
 
   setStatus('Prêt. Choisissez une commune et lancez la recherche.');
