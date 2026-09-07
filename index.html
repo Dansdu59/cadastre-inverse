@@ -214,10 +214,25 @@
     gap:3px; border:0; background:none; cursor:pointer; color:var(--muted); font-size:12px; font-weight:600;
   }
   .tabbar button .ic{ font-size:22px; line-height:1; }
-  .tabbar button .ic-hm{ display:inline-flex; }
-  .tabbar button .ic-hm svg{ display:block; }
+  .tabbar button .ic-hm, .tabbar button .ic-loupe{ display:inline-flex; }
+  .tabbar button .ic-hm svg, .tabbar button .ic-loupe svg{ display:block; }
   .hm-legend .bar{ height:12px; border-radius:3px; margin:5px 0; }
   .hm-legend .lbls{ display:flex; justify-content:space-between; color:var(--muted); font-size:12px; }
+  .plu-checks{ display:flex; gap:16px; align-items:center; flex-wrap:wrap; min-height:44px; }
+  .plu-checks label{ display:flex; gap:6px; align-items:center; font-size:16px; font-weight:600; }
+  .plu-checks input[type=checkbox]{
+    -webkit-appearance:auto; appearance:auto; accent-color:var(--accent);
+    width:22px; height:22px; min-height:0; min-width:0; padding:0; margin:0; border-radius:0; border:0;
+  }
+  #plu-libres[aria-pressed="true"]{ background:#eef2ff; border-color:#1d4ed8; color:#1d4ed8; }
+  .plu-legend .it{ display:flex; align-items:center; gap:6px; margin:3px 0; }
+  .plu-legend .sw{ width:14px; height:14px; border-radius:3px; border:1px solid rgba(0,0,0,.2); flex:none; }
+  .plu-legend .q{ width:17px; height:17px; flex:none; border:1px solid var(--border); border-radius:50%; background:#fff;
+    font-size:11px; font-weight:700; line-height:1; color:var(--muted); cursor:pointer; padding:0; }
+  .plu-legend .def{ font-size:12px; color:var(--muted); margin:2px 0 6px 20px; line-height:1.45; }
+  .plu-legend .gpu{ margin-top:8px; padding-top:8px; border-top:1px solid var(--border); }
+  .plu-legend .gpu a, .linkbtn{ font-size:13px; font-weight:700; color:var(--accent); text-decoration:none; }
+  .linkbtn{ border:0; background:none; cursor:pointer; padding:0; }
   .tabbar button[aria-current="page"]{ color:var(--accent); }
   .tabbar button:active{ background:#f0f2f4; }
 
@@ -383,6 +398,26 @@
       </div>
     </div>
 
+    <div class="grp" id="grp-plu" hidden>
+      <p class="tip">Zonage du PLU (Géoportail de l’Urbanisme) + parcelles non bâties d’au moins X m² en zone U / AU.</p>
+      <div class="row">
+        <div class="field">
+          <label for="plu-min">Surface min (m²)</label>
+          <input id="plu-min" type="text" inputmode="numeric" pattern="[0-9]*" value="800" />
+        </div>
+        <div class="field">
+          <label>Zones ciblées</label>
+          <div class="plu-checks">
+            <label><input type="checkbox" id="plu-u" checked /> U</label>
+            <label><input type="checkbox" id="plu-au" checked /> AU</label>
+            <label><input type="checkbox" id="plu-a" /> A</label>
+            <label><input type="checkbox" id="plu-n" /> N</label>
+          </div>
+        </div>
+      </div>
+      <button class="btn btn-ghost" id="plu-libres" type="button" aria-pressed="false">Parcelles non bâties</button>
+    </div>
+
     <button class="btn btn-primary" id="go" type="submit">Rechercher</button>
     <button class="btn btn-ghost" id="reset" type="button">Réinitialiser</button>
   </form>
@@ -411,9 +446,10 @@
 
 <nav class="tabbar" id="tabbar" aria-label="Sections">
   <button type="button" data-tab="parcelles" aria-current="page"><span class="ic">▦</span>Parcelles</button>
-  <button type="button" data-tab="dvf"><span class="ic">€</span>Transactions</button>
+  <button type="button" data-tab="dvf"><span class="ic">€</span>Ventes</button>
   <button type="button" data-tab="autour"><span class="ic">◎</span>Autour</button>
   <button type="button" data-tab="heatmap"><span class="ic ic-hm" aria-hidden="true"><svg width="22" height="22" viewBox="0 0 22 22"><defs><radialGradient id="hmIco" cx="34%" cy="38%" r="80%"><stop offset="0" stop-color="#ffe58f"/><stop offset=".42" stop-color="#fd8d3c"/><stop offset=".78" stop-color="#e02d1b"/><stop offset="1" stop-color="#7a1a10"/></radialGradient></defs><rect x="1.5" y="1.5" width="19" height="19" rx="6" fill="url(#hmIco)"/><circle cx="14.6" cy="14" r="2.7" fill="#fff3cf" fill-opacity=".85"/></svg></span>Chaleur</button>
+  <button type="button" data-tab="plu"><span class="ic ic-loupe" aria-hidden="true"><svg width="22" height="22" viewBox="0 0 22 22" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><circle cx="9.3" cy="9.3" r="6.4"/><line x1="14" y1="14" x2="19.5" y2="19.5"/><rect x="6.1" y="6.1" width="6.4" height="6.4" rx="0.8" stroke-width="1.1" stroke-dasharray="1.7 1.4"/></svg></span>PLU</button>
 </nav>
 
 <script>
@@ -421,8 +457,9 @@
   const $ = (id) => document.getElementById(id);
   const communeInput = $('commune'), suggestions = $('suggestions');
   const controls = $('controls'), summary = $('summary'), summaryText = $('summary-text');
-  const grpParcelles = $('grp-parcelles'), grpDvf = $('grp-dvf'), grpAutour = $('grp-autour'), grpHeatmap = $('grp-heatmap');
+  const grpParcelles = $('grp-parcelles'), grpDvf = $('grp-dvf'), grpAutour = $('grp-autour'), grpHeatmap = $('grp-heatmap'), grpPlu = $('grp-plu');
   const hMonths = $('h-months'), hType = $('h-type'), hLayer = $('h-layer'), hRadius = $('h-radius'), hRadiusHint = $('h-radius-hint');
+  const pluMin = $('plu-min'), pluU = $('plu-u'), pluAu = $('plu-au'), pluA = $('plu-a'), pluN = $('plu-n'), pluLibresBtn = $('plu-libres');
   const goBtn = $('go'), resetBtn = $('reset');
   const statusEl = $('status');
   const sheet = $('sheet'), sheetBody = $('sheet-body'), sheetStats = $('sheet-stats'), sheetTitle = $('sheet-title');
@@ -440,8 +477,17 @@
     volume: ['#eff3ff','#c6dbef','#9ecae1','#6baed6','#3182bd','#08519c'],
     evo:    ['#2166ac','#67a9cf','#d1e5f0','#fddbc7','#ef8a62','#b2182b']
   };
-  const TITLES = { parcelles:'Parcelles cadastrales', dvf:'Transactions immobilières', autour:'Autour d’une parcelle', heatmap:'Prix & dynamique par zone' };
-  const SHEET_TITLES = { parcelles:'Parcelles', dvf:'Transactions (DVF)', autour:'Ventes autour du point', heatmap:'Synthèse de la commune' };
+  const TITLES = { parcelles:'Parcelles cadastrales', dvf:'Transactions immobilières', autour:'Autour d’une parcelle', heatmap:'Prix & dynamique par zone', plu:'Zonage PLU & foncier' };
+  const SHEET_TITLES = { parcelles:'Parcelles', dvf:'Transactions (DVF)', autour:'Ventes autour du point', heatmap:'Synthèse de la commune', plu:'PLU & foncier' };
+  const PLU_COL = { U:'#e34a33', AU:'#8856a7', A:'#78c679', N:'#238443', autre:'#969696' };
+  const PLU_NAME = { U:'Zone urbaine (U)', AU:'À urbaniser (AU)', A:'Agricole (A)', N:'Naturelle (N)', autre:'Autre zonage' };
+  const PLU_DEF = {
+    U: "Secteurs déjà urbanisés + ceux où les équipements publics (voirie, réseaux) ont une capacité suffisante pour desservir les constructions. Constructible selon le règlement de zone (art. R.151-18).",
+    AU: "Secteurs naturels destinés à être ouverts à l'urbanisation. AU « ouverte » (1AU / AUc) : constructible via une opération d'aménagement d'ensemble. AU « fermée » (2AU / AUs) : urbanisation différée, nécessite une évolution du PLU.",
+    A: "Terres agricoles protégées (potentiel agronomique, biologique, économique). Seules les constructions nécessaires à l'exploitation agricole ou aux services publics y sont admises.",
+    N: "Espaces naturels et forestiers protégés (sites, paysages, écologie, risques). Constructibilité très limitée ; des STECAL peuvent être délimités.",
+    autre: "Zonage spécifique du document (secteur, sous-secteur, indice) — se reporter au règlement écrit."
+  };
 
   let activeTab = 'parcelles';
   let selected = { code:'53130', nom:'Laval', cp:'53000' };
@@ -452,7 +498,8 @@
     parcelles:{ layer:null, data:null, collapsed:false },
     dvf:{ layer:null, data:null, collapsed:false },
     autour:{ layer:null, ventes:null, circle:null, refMarker:null, ref:null, parcLayer:null, data:null, collapsed:false },
-    heatmap:{ layer:null, data:null, dataThrough:null, collapsed:false, userSetRadius:false }
+    heatmap:{ layer:null, data:null, dataThrough:null, collapsed:false, userSetRadius:false },
+    plu:{ zonesLayer:null, libresLayer:null, hasZones:false, gpuUrl:null, matched:[], meta:null, collapsed:false }
   };
   const cacheP = {}, cacheD = {}, cacheA = {}, communesCache = {}, addrCache = {};
 
@@ -548,6 +595,7 @@
     grpDvf.hidden = activeTab !== 'dvf';
     grpAutour.hidden = activeTab !== 'autour';
     grpHeatmap.hidden = activeTab !== 'heatmap';
+    grpPlu.hidden = activeTab !== 'plu';
   }
   function collapseControls(){ st[activeTab].collapsed = true; summaryText.textContent = summaryFor(); applyControlsVisibility(); setTimeout(() => map.invalidateSize(), 140); }
   function expandControls(){ st[activeTab].collapsed = false; applyControlsVisibility(); setTimeout(() => map.invalidateSize(), 140); }
@@ -556,9 +604,11 @@
   // ---------- bottom-sheet + FAB ----------
   function updateFab(){
     const cards = sheetBody.querySelectorAll('.card').length;
-    const has = activeTab === 'heatmap' ? !!st.heatmap.data : cards > 0;
+    let has = cards > 0, label = (cards > 0 ? '≡ Liste (' + cards + ')' : '≡ Liste');
+    if (activeTab === 'heatmap'){ has = !!st.heatmap.data; label = '≡ Synthèse'; }
+    if (activeTab === 'plu'){ has = !!(st.plu.hasZones || st.plu.matched.length); label = '≡ PLU'; }
     fabList.hidden = !(has && !sheet.classList.contains('open'));
-    fabList.textContent = activeTab === 'heatmap' ? '≡ Synthèse' : (cards > 0 ? '≡ Liste (' + cards + ')' : '≡ Liste');
+    fabList.textContent = label;
   }
   function openSheet(){ sheet.classList.add('open'); updateFab(); }
   function closeSheet(){ sheet.classList.remove('open'); updateFab(); }
@@ -872,10 +922,11 @@
     if (tab === 'parcelles') return [st.parcelles.layer];
     if (tab === 'dvf') return [st.dvf.layer];
     if (tab === 'heatmap') return [st.heatmap.layer];
+    if (tab === 'plu') return [st.plu.zonesLayer, st.plu.libresLayer];
     return [st.autour.parcLayer, st.autour.circle, st.autour.ventes, st.autour.refMarker];
   }
   function syncLayers(){
-    ['parcelles','dvf','autour','heatmap'].forEach(tab => layersFor(tab).forEach(l => {
+    ['parcelles','dvf','autour','heatmap','plu'].forEach(tab => layersFor(tab).forEach(l => {
       if (!l) return;
       const show = tab === activeTab;
       if (show && !map.hasLayer(l)) l.addTo(map);
@@ -888,6 +939,7 @@
     else if (activeTab === 'dvf' && st.dvf.data) renderDvf(st.dvf.data);
     else if (activeTab === 'autour' && st.autour.data) renderAround(st.autour.data);
     else if (activeTab === 'heatmap' && st.heatmap.data) renderHeatmap(false);
+    else if (activeTab === 'plu' && (st.plu.hasZones || st.plu.matched.length)) renderPluSheet();
     else { closeSheet(); updateFab(); }
   }
 
@@ -902,7 +954,12 @@
     goBtn.textContent = activeTab === 'dvf' ? 'Voir les transactions'
       : activeTab === 'autour' ? 'Charger les parcelles'
       : activeTab === 'heatmap' ? 'Afficher la carte de chaleur'
+      : activeTab === 'plu' ? (st.plu.zonesLayer ? 'Masquer le zonage PLU' : 'Afficher le zonage PLU')
       : 'Rechercher';
+    if (activeTab === 'plu'){
+      pluLibresBtn.textContent = st.plu.libresLayer ? 'Masquer les parcelles' : 'Parcelles non bâties';
+      pluLibresBtn.setAttribute('aria-pressed', st.plu.libresLayer ? 'true' : 'false');
+    }
     applyControlsVisibility();
     syncLayers();
     restoreSheetForTab();
@@ -916,6 +973,8 @@
       setStatus('Touchez la carte pour choisir un point de référence.');
     else if (activeTab === 'heatmap' && st.heatmap.data)
       setStatus('Carte de chaleur ' + selText(hLayer).toLowerCase() + ' — synthèse via « Synthèse ».');
+    else if (activeTab === 'plu' && (st.plu.hasZones || st.plu.matched.length))
+      setStatus('Zonage PLU / foncier à ' + (selected ? selected.nom : '') + ' — détail via « PLU ».');
     else
       setStatus('Prêt. Choisissez une commune et lancez la recherche.');
     setTimeout(() => map.invalidateSize(), 120);
@@ -948,6 +1007,8 @@
 
     if (activeTab === 'heatmap'){ await runHeatmap(); return; }
 
+    if (activeTab === 'plu'){ await togglePluZones(); return; }
+
     if (activeTab === 'autour'){
       const min = parseInt(aMin.value, 10) || 0, max = parseInt(aMax.value, 10) || 999999;
       if (min > max){ setStatus('Surfaces invalides.', 'error'); return; }
@@ -963,11 +1024,14 @@
   });
 
   resetBtn.addEventListener('click', () => {
-    ['parcelles','dvf','autour','heatmap'].forEach(t => { layersFor(t).forEach(l => { if (l && map.hasLayer(l)) map.removeLayer(l); }); });
+    ['parcelles','dvf','autour','heatmap','plu'].forEach(t => { layersFor(t).forEach(l => { if (l && map.hasLayer(l)) map.removeLayer(l); }); });
     st.parcelles = { layer:null, data:null, collapsed:false };
     st.dvf = { layer:null, data:null, collapsed:false };
     st.autour = { layer:null, ventes:null, circle:null, refMarker:null, ref:null, parcLayer:null, data:null, collapsed:false };
     st.heatmap = { layer:null, data:null, dataThrough:null, collapsed:false, userSetRadius:false };
+    st.plu = { zonesLayer:null, libresLayer:null, hasZones:false, gpuUrl:null, matched:[], meta:null, collapsed:false };
+    pluLibresBtn.textContent = 'Parcelles non bâties'; pluLibresBtn.setAttribute('aria-pressed', 'false');
+    if (activeTab === 'plu') goBtn.textContent = 'Afficher le zonage PLU';
     sheetBody.innerHTML = ''; sheetStats.innerHTML = ''; sheetStats.hidden = true;
     closeSheet();
     applyControlsVisibility();
@@ -1235,6 +1299,149 @@
     updateHRadiusHint(); renderHeatmap(false);
     if (st.heatmap.collapsed) summaryText.textContent = summaryFor();
   });
+
+  // ================= Onglet « PLU » (zonage + parcelles non bâties U/AU) =================
+  function pluGpuLink(){
+    if (st.plu.gpuUrl) return st.plu.gpuUrl;
+    const c = map.getCenter();
+    return 'https://www.geoportail-urbanisme.gouv.fr/map/#tile=1&lon=' + c.lng.toFixed(5) + '&lat=' + c.lat.toFixed(5) + '&zoom=15';
+  }
+  function pluZonePopup(p){
+    const cat = PLU_COL[p.cat] ? p.cat : 'autre';
+    return '<b>' + p.libelle + ' — ' + PLU_NAME[cat] + '</b>' + (p.libelong ? p.libelong + '<br/>' : '') +
+      'Type CNIG : ' + p.typezone + (p.datappro ? ' · approuvé le ' + p.datappro : '') + '<br/>' +
+      '<span style="color:var(--muted)">' + PLU_DEF[cat] + '</span>' +
+      (p.urlfic ? '<br/><a href="' + p.urlfic + '" target="_blank" rel="noopener">Règlement du document ↗</a>' : '') +
+      '<br/><a href="' + pluGpuLink() + '" target="_blank" rel="noopener">Géoportail de l’Urbanisme ↗</a>';
+  }
+  function pluCsv(){
+    if (!st.plu.matched.length) return;
+    const rows = [['idu','contenance_m2','zone','typezone','categorie','zone_libelle_long']];
+    st.plu.matched.forEach(f => { const p = f.properties; rows.push([p.idu, p.contenance, p.zone, p.typezone, p.cat, '"' + (p.zone_long || '').replace(/"/g, '""') + '"']); });
+    const blob = new Blob([rows.map(r => r.join(';')).join('\n')], { type:'text/csv;charset=utf-8' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'parcelles-non-baties-' + (selected ? selected.code : 'commune') + '.csv';
+    a.click();
+    URL.revokeObjectURL(a.href);
+  }
+
+  function renderPluSheet(){
+    const cats = ['U','AU','A','N'];
+    let html = '<div class="plu-legend"><b>Zonage PLU — que veut dire…</b>' +
+      cats.map(c => '<div class="it"><span class="sw" style="background:' + PLU_COL[c] + '"></span><span>' + PLU_NAME[c] + '</span>' +
+        '<button class="q" type="button" data-cat="' + c + '">?</button></div>' +
+        '<div class="def" data-cat="' + c + '" hidden>' + PLU_DEF[c] + '</div>').join('') +
+      '<div class="gpu"><a href="' + pluGpuLink() + '" target="_blank" rel="noopener">Consulter le PLU officiel (Géoportail de l’Urbanisme) ↗</a></div></div>';
+    if (st.plu.meta){
+      const m = st.plu.meta;
+      html += '<div style="margin-top:8px"><b>' + m.matched + ' parcelle(s) non bâtie(s)</b> ≥ ' + fmtNum(m.min) + ' m² · zone ' + (m.cats || []).join('/') +
+        '<br/><span style="color:var(--muted)">sur ' + fmtNum(m.examined) + ' ≥ seuil · ' + fmtNum(m.built) + ' bâties écartées</span>' +
+        ' · <button id="plu-csv" class="linkbtn" type="button">⬇ CSV</button></div>';
+    }
+    sheetStats.innerHTML = html; sheetStats.hidden = false;
+    sheetStats.querySelectorAll('.plu-legend .q').forEach(b => b.addEventListener('click', () => {
+      const d = sheetStats.querySelector('.def[data-cat="' + b.dataset.cat + '"]'); if (d) d.hidden = !d.hidden;
+    }));
+    const csvB = sheetStats.querySelector('#plu-csv'); if (csvB) csvB.addEventListener('click', pluCsv);
+
+    sheetBody.innerHTML = '';
+    if (st.plu.matched.length){
+      st.plu.matched.forEach(f => {
+        const p = f.properties;
+        const el = document.createElement('button'); el.type = 'button'; el.className = 'card';
+        el.innerHTML = '<div class="r1"><span class="idu">' + p.idu + '</span><span class="date">' + fmtNum(p.contenance) + ' m²</span></div>' +
+          '<div class="meta">zone ' + p.zone + ' · ' + p.typezone + '</div>' + (p.zone_long ? '<div class="adr">' + p.zone_long + '</div>' : '');
+        el.addEventListener('click', () => {
+          if (!st.plu.libresLayer) return;
+          st.plu.libresLayer.eachLayer(l => { if (l._idu === p.idu){ map.fitBounds(l.getBounds(), { maxZoom:19 }); l.openPopup(); closeSheet(); } });
+        });
+        sheetBody.appendChild(el);
+      });
+    } else {
+      sheetBody.innerHTML = '<div style="padding:14px 4px;color:var(--muted);font-size:14px">« Parcelles non bâties » liste ici les terrains ≥ seuil, sans bâti cadastral, dont le centroïde est en zone U/AU.</div>';
+    }
+    sheetTitle.textContent = SHEET_TITLES.plu + ' — ' + (selected ? selected.nom : '');
+    updateFab();
+  }
+
+  async function togglePluZones(){
+    if (st.plu.zonesLayer){
+      map.removeLayer(st.plu.zonesLayer); st.plu.zonesLayer = null; st.plu.hasZones = false;
+      goBtn.textContent = 'Afficher le zonage PLU';
+      setStatus('Zonage PLU masqué.');
+      if (st.plu.matched.length) renderPluSheet(); else { sheetStats.hidden = true; sheetStats.innerHTML = ''; closeSheet(); }
+      updateFab();
+      return;
+    }
+    if (!selected){ setStatus('Choisissez une commune dans la liste.', 'error'); return; }
+    goBtn.disabled = true; setStatus('Chargement du zonage PLU (Géoportail de l’Urbanisme)…', 'loading');
+    try{
+      const r = await withTimeout('/api/plu?insee=' + encodeURIComponent(selected.code), 90000);
+      const d = await r.json();
+      if (!r.ok) throw new Error((d && d.error) || 'Erreur serveur.');
+      st.plu.gpuUrl = d.gpu_url || null;
+      if (!d.hasPlu){
+        st.plu.hasZones = false; renderPluSheet();
+        setStatus('⚠ ' + (d.message || 'Aucun zonage numérisé pour cette commune.'), 'error');
+        updateFab(); return;
+      }
+      st.plu.zonesLayer = L.geoJSON({ type:'FeatureCollection', features: d.features }, {
+        style: (f) => { const c = PLU_COL[f.properties.cat] || PLU_COL.autre; return { color:c, weight:1, fillColor:c, fillOpacity:0.22 }; },
+        onEachFeature: (f, ly) => ly.bindPopup(pluZonePopup(f.properties)),
+      });
+      if (activeTab === 'plu') st.plu.zonesLayer.addTo(map);
+      try{ map.fitBounds(st.plu.zonesLayer.getBounds(), { padding:[20,20] }); }catch(e){}
+      st.plu.hasZones = true;
+      goBtn.textContent = 'Masquer le zonage PLU';
+      renderPluSheet();
+      setStatus(d.count + ' zone(s) PLU à ' + (d.nom || selected.nom) + (d.partial ? ' (zonage allégé U/AU)' : '') + '.');
+    }catch(err){ setStatus(err.message || 'Erreur PLU.', 'error'); }
+    finally{ goBtn.disabled = false; }
+  }
+
+  async function togglePluLibres(){
+    if (st.plu.libresLayer){
+      map.removeLayer(st.plu.libresLayer); st.plu.libresLayer = null;
+      st.plu.matched = []; st.plu.meta = null;
+      pluLibresBtn.textContent = 'Parcelles non bâties'; pluLibresBtn.setAttribute('aria-pressed', 'false');
+      if (st.plu.hasZones) renderPluSheet(); else { sheetStats.hidden = true; sheetStats.innerHTML = ''; sheetBody.innerHTML = ''; closeSheet(); }
+      setStatus('Parcelles non bâties masquées.'); updateFab();
+      return;
+    }
+    if (!selected){ setStatus('Choisissez une commune dans la liste.', 'error'); return; }
+    const cats = [];
+    if (pluU.checked) cats.push('U');
+    if (pluAu.checked) cats.push('AU');
+    if (pluA.checked) cats.push('A');
+    if (pluN.checked) cats.push('N');
+    if (!cats.length){ setStatus('Cochez au moins une catégorie de zone.', 'error'); return; }
+    const min = Math.max(0, parseInt(pluMin.value, 10) || 0);
+    pluLibresBtn.disabled = true;
+    setStatus('Analyse : parcelles ≥ ' + fmtNum(min) + ' m², non bâties, en zone ' + cats.join('/') + '…', 'loading');
+    try{
+      const r = await withTimeout('/api/parcelles-libres?insee=' + encodeURIComponent(selected.code) + '&min=' + min + '&cats=' + cats.join(','), 90000);
+      const d = await r.json();
+      if (!r.ok) throw new Error((d && d.error) || 'Erreur serveur.');
+      if (!d.hasPlu){ setStatus('⚠ ' + (d.message || 'Zonage indisponible pour cette commune.'), 'error'); return; }
+      st.plu.matched = d.features || []; st.plu.meta = d;
+      st.plu.libresLayer = L.geoJSON({ type:'FeatureCollection', features: st.plu.matched }, {
+        style: { color:'#1d4ed8', weight:2, fillColor:'#3b82f6', fillOpacity:0.45 },
+        onEachFeature: (f, ly) => { const p = f.properties;
+          ly.bindPopup('<b>' + p.idu + '</b>' + fmtNum(p.contenance) + ' m² · zone <b>' + p.zone + '</b> (' + p.typezone + ')<br/>' + (p.zone_long || ''));
+          ly._idu = p.idu;
+        }
+      });
+      if (activeTab === 'plu') st.plu.libresLayer.addTo(map);
+      if (st.plu.matched.length){ try{ map.fitBounds(st.plu.libresLayer.getBounds(), { padding:[24,24] }); }catch(e){} }
+      pluLibresBtn.textContent = 'Masquer les parcelles'; pluLibresBtn.setAttribute('aria-pressed', 'true');
+      renderPluSheet();
+      setStatus(d.matched + ' parcelle(s) non bâtie(s) ≥ ' + fmtNum(min) + ' m² en zone ' + cats.join('/') + ' à ' + (d.nom || selected.nom) +
+        ' — sur ' + fmtNum(d.examined) + ' ≥ seuil (' + fmtNum(d.built) + ' bâties écartées)' + (d.truncated ? ' · liste tronquée' : '') + '.');
+    }catch(err){ setStatus(err.message || 'Erreur.', 'error'); }
+    finally{ pluLibresBtn.disabled = false; }
+  }
+  pluLibresBtn.addEventListener('click', togglePluLibres);
 
   setStatus('Prêt. Choisissez une commune et lancez la recherche.');
 
