@@ -1,0 +1,45 @@
+// GET /api/plu?insee=53130
+//   -> { insee, nom, centre, hasPlu, features:[ {geometry, properties:{typezone,cat,libelle,libelong}} ], sources }
+
+import { getPluZones } from '../lib/plu.js';
+
+const MAX_BYTES = 4 * 1024 * 1024;
+
+export default async function handler(req, res) {
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  const insee = String(req.query.insee || '').trim().toUpperCase();
+  if (!/^(\d{5}|2[AB]\d{3})$/.test(insee)) {
+    res.status(400).json({ error: 'Paramètre "insee" invalide.' });
+    return;
+  }
+
+  try {
+    const { nom, centre, hasPlu, zones } = await getPluZones(insee);
+    if (!hasPlu) {
+      res.status(200).json({
+        insee, nom, centre, hasPlu: false, features: [],
+        message: "Aucun document d'urbanisme numérisé pour cette emprise dans le Géoportail de l'Urbanisme (commune au RNU, ou PLU non versé au GPU).",
+      });
+      return;
+    }
+
+    const feats = zones.map((z) => ({
+      type: 'Feature',
+      geometry: z.geometry,
+      properties: { typezone: z.typezone, cat: z.cat, libelle: z.libelle, libelong: z.libelong, datappro: z.datappro },
+    }));
+    let body = JSON.stringify({ insee, nom, centre, hasPlu: true, count: feats.length, features: feats, source: "Géoportail de l'Urbanisme (wfs_du:zone_urba)" });
+
+    if (Buffer.byteLength(body) > MAX_BYTES) {
+      // simplifie : ne garde que les zones U / AU si le zonage complet est trop lourd
+      const light = feats.filter((f) => f.properties.cat === 'U' || f.properties.cat === 'AU');
+      body = JSON.stringify({ insee, nom, centre, hasPlu: true, count: light.length, features: light, partial: true, source: "Géoportail de l'Urbanisme" });
+    }
+
+    res.setHeader('Cache-Control', 'public, s-maxage=86400, stale-while-revalidate=604800');
+    res.setHeader('Content-Type', 'application/json; charset=utf-8');
+    res.status(200).send(body);
+  } catch (e) {
+    res.status(500).json({ error: e && e.message ? `Erreur PLU : ${e.message}` : 'Erreur PLU.' });
+  }
+}

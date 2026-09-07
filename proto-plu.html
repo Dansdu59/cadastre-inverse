@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>Proto — Zonage PLU & parcelles non bâties U/AU</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css" />
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<style>
+  :root{ --accent:#c1440e; --ink:#1f2328; --muted:#54606b; --border:#d7dbe0; --bg:#f4f5f7; --card:#fff; }
+  *{ box-sizing:border-box; }
+  [hidden]{ display:none !important; }
+  html,body{ height:100%; }
+  body{ margin:0; font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    font-size:15px; line-height:1.5; color:var(--ink); background:var(--bg); display:flex; flex-direction:column; }
+  header{ background:var(--card); border-bottom:1px solid var(--border); padding:12px 16px; display:flex; flex-wrap:wrap; align-items:baseline; gap:10px; }
+  header h1{ margin:0; font-size:16px; } header .sub{ font-size:13px; color:var(--muted); }
+  header .badge{ font-size:11px; font-weight:700; color:#fff; background:var(--muted); border-radius:4px; padding:2px 6px; text-transform:uppercase; }
+
+  .controls{ background:var(--card); border-bottom:1px solid var(--border); padding:10px 16px; display:flex; flex-wrap:wrap; gap:14px; align-items:flex-end; }
+  .field{ display:flex; flex-direction:column; gap:4px; position:relative; }
+  .field label{ font-size:11px; font-weight:700; color:var(--muted); text-transform:uppercase; letter-spacing:.03em; }
+  .field input[type=text], .field input[type=search], .field input[type=number]{
+    min-height:38px; font-size:14px; padding:8px 10px; border:1px solid var(--border); border-radius:8px; background:#fff; }
+  #commune-field{ width:230px; } #commune-field input{ width:100%; }
+  #min{ width:120px; }
+  .checks{ display:flex; gap:10px; align-items:center; }
+  .checks label{ display:flex; gap:4px; align-items:center; font-size:13px; font-weight:600; text-transform:none; color:var(--ink); }
+  .btn{ min-height:38px; padding:8px 14px; font-size:14px; font-weight:700; border-radius:8px; border:1px solid transparent; cursor:pointer; }
+  .btn-p{ background:var(--accent); color:#fff; } .btn-p:disabled{ background:#caa79a; }
+  .btn-g{ background:#fff; color:var(--ink); border-color:var(--border); }
+  .suggestions{ position:absolute; top:calc(100% + 4px); left:0; right:0; z-index:1200; background:#fff; border:1px solid var(--border);
+    border-radius:8px; box-shadow:0 10px 24px rgba(0,0,0,.14); max-height:260px; overflow-y:auto; }
+  .suggestions button{ display:flex; flex-direction:column; gap:1px; width:100%; text-align:left; padding:8px 10px; border:0;
+    border-bottom:1px solid var(--border); background:#fff; font-size:14px; cursor:pointer; }
+  .suggestions button:hover{ background:#fdf1ea; } .suggestions .s{ font-size:12px; color:var(--muted); }
+
+  #status{ padding:8px 16px; font-size:13px; color:var(--muted); background:var(--card); border-bottom:1px solid var(--border); min-height:16px; }
+  #status.error{ color:#b3261e; }
+  #status .sp{ display:inline-block; width:12px; height:12px; border:2px solid rgba(0,0,0,.15); border-top-color:var(--accent); border-radius:50%; animation:spin .8s linear infinite; vertical-align:-2px; margin-right:6px; }
+  @keyframes spin{ to{ transform:rotate(360deg); } }
+
+  main{ flex:1 1 auto; position:relative; min-height:380px; }
+  #map{ position:absolute; inset:0; }
+  .legend, .panel{ position:absolute; z-index:1000; background:rgba(255,255,255,.97); border:1px solid var(--border);
+    border-radius:10px; box-shadow:0 6px 20px rgba(0,0,0,.12); font-size:12px; }
+  .legend{ left:12px; bottom:20px; padding:10px 12px; }
+  .legend .t{ font-weight:700; margin-bottom:6px; }
+  .legend .it{ display:flex; align-items:center; gap:6px; margin:3px 0; }
+  .legend .sw{ width:14px; height:14px; border-radius:3px; border:1px solid rgba(0,0,0,.2); }
+  .panel{ right:12px; top:12px; width:300px; max-height:calc(100% - 24px); display:flex; flex-direction:column; }
+  .panel .hd{ padding:10px 12px; border-bottom:1px solid var(--border); }
+  .panel .hd b{ font-size:13px; } .panel .hd .m{ color:var(--muted); margin-top:2px; }
+  .panel .list{ overflow-y:auto; padding:4px 0; }
+  .row{ display:flex; justify-content:space-between; gap:8px; padding:7px 12px; border-bottom:1px solid var(--border); cursor:pointer; }
+  .row:hover{ background:#f4f6f8; }
+  .row .idu{ font-weight:600; font-size:12.5px; } .row .z{ font-size:11px; color:var(--muted); }
+  .row .surf{ font-weight:700; white-space:nowrap; }
+  .panel .ft{ padding:8px 12px; border-top:1px solid var(--border); display:flex; gap:8px; }
+  .panel .ft .btn{ flex:1; min-height:34px; font-size:13px; }
+  .leaflet-popup-content{ font-size:13px; } .leaflet-popup-content b{ display:block; }
+  @media (max-width:760px){ .panel{ position:static; width:auto; margin:10px; max-height:46vh; } .legend{ left:10px; bottom:10px; } }
+</style>
+</head>
+<body>
+
+<header>
+  <span class="badge">Proto</span>
+  <h1>Zonage PLU &amp; parcelles non bâties</h1>
+  <span class="sub">GPU (Géoportail de l’Urbanisme) + cadastre Etalab · hors app officielle</span>
+</header>
+
+<div class="controls">
+  <div class="field" id="commune-field">
+    <label for="commune">Commune</label>
+    <input id="commune" type="search" autocomplete="off" placeholder="Ex : Laval" value="Laval" />
+    <div class="suggestions" id="suggestions" hidden></div>
+  </div>
+  <div class="field">
+    <label>&nbsp;</label>
+    <button class="btn btn-g" id="show-plu" type="button">Afficher le zonage PLU</button>
+  </div>
+  <div class="field">
+    <label for="min">Surface min (m²)</label>
+    <input id="min" type="number" min="0" step="50" value="800" />
+  </div>
+  <div class="field">
+    <label>Zones</label>
+    <div class="checks">
+      <label><input type="checkbox" id="c-u" checked /> U</label>
+      <label><input type="checkbox" id="c-au" checked /> AU</label>
+      <label><input type="checkbox" id="c-a" /> A</label>
+      <label><input type="checkbox" id="c-n" /> N</label>
+    </div>
+  </div>
+  <div class="field">
+    <label>&nbsp;</label>
+    <button class="btn btn-p" id="run" type="button">Parcelles non bâties</button>
+  </div>
+</div>
+
+<div id="status"></div>
+
+<main>
+  <div id="map"></div>
+  <div class="legend" id="legend" hidden></div>
+  <div class="panel" id="panel" hidden>
+    <div class="hd" id="panel-hd"></div>
+    <div class="list" id="panel-list"></div>
+    <div class="ft"><button class="btn btn-g" id="csv" type="button">Export CSV</button></div>
+  </div>
+</main>
+
+<script>
+(function(){
+  const $ = (id) => document.getElementById(id);
+  const communeInput = $('commune'), suggestions = $('suggestions');
+  const statusEl = $('status'), legend = $('legend'), panel = $('panel');
+  const API = /^(localhost|127\.0\.0\.1)$/.test(location.hostname) ? '' : 'https://cadastre-inverse.vercel.app';
+
+  const CATCOL = { U:'#e34a33', AU:'#8856a7', A:'#78c679', N:'#238443', autre:'#969696' };
+  const CATNAME = { U:'Zone urbaine (U)', AU:'À urbaniser (AU)', A:'Agricole (A)', N:'Naturelle (N)', autre:'Autre' };
+
+  let selected = { code:'53130', nom:'Laval', centre:[48.0578,-0.7692] };
+  let debounce = null, pluLayer = null, libresLayer = null, lastMatched = [];
+
+  const map = L.map('map').setView(selected.centre, 13);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom:19, attribution:'&copy; OpenStreetMap' }).addTo(map);
+  map.attributionControl.setPosition('bottomright');
+
+  function setStatus(msg, kind){ statusEl.className = kind || ''; statusEl.innerHTML = (kind === 'loading' ? '<span class="sp"></span>' : '') + (msg || ''); }
+  const fmt = (n) => (n == null ? '—' : Number(n).toLocaleString('fr-FR'));
+
+  // ---- autocomplétion ----
+  communeInput.addEventListener('input', () => {
+    const q = communeInput.value.trim();
+    clearTimeout(debounce);
+    if (q.length < 2){ suggestions.hidden = true; return; }
+    debounce = setTimeout(async () => {
+      try{
+        const r = await fetch('https://geo.api.gouv.fr/communes?nom=' + encodeURIComponent(q) + '&fields=nom,code,codesPostaux,departement,centre&boost=population&limit=10');
+        if (r.ok) renderSug(await r.json());
+      }catch(e){}
+    }, 260);
+  });
+  document.addEventListener('click', (e) => { if (!suggestions.contains(e.target) && e.target !== communeInput) suggestions.hidden = true; });
+  function renderSug(list){
+    suggestions.innerHTML = '';
+    if (!list || !list.length){ suggestions.hidden = true; return; }
+    list.forEach(c => {
+      const cp = (c.codesPostaux && c.codesPostaux[0]) || '', dep = c.departement ? c.departement.nom : '';
+      const b = document.createElement('button'); b.type = 'button';
+      b.innerHTML = '<span>' + c.nom + '</span><span class="s">' + [cp, dep].filter(Boolean).join(' · ') + '</span>';
+      b.onclick = () => {
+        selected = { code:c.code, nom:c.nom, centre: c.centre && c.centre.coordinates ? [c.centre.coordinates[1], c.centre.coordinates[0]] : null };
+        communeInput.value = c.nom + (cp ? ' (' + cp + ')' : '');
+        suggestions.hidden = true;
+        if (selected.centre) map.setView(selected.centre, 13);
+        clearAll();
+      };
+      suggestions.appendChild(b);
+    });
+    suggestions.hidden = false;
+  }
+  function clearAll(){
+    if (pluLayer){ map.removeLayer(pluLayer); pluLayer = null; }
+    if (libresLayer){ map.removeLayer(libresLayer); libresLayer = null; }
+    legend.hidden = panel.hidden = true; lastMatched = [];
+    setStatus('');
+  }
+
+  // ---- zonage PLU ----
+  $('show-plu').addEventListener('click', showPlu);
+  async function showPlu(){
+    if (!selected){ setStatus('Choisissez une commune.', 'error'); return; }
+    setStatus('Chargement du zonage PLU (Géoportail de l’Urbanisme)…', 'loading');
+    try{
+      const r = await fetch(API + '/api/plu?insee=' + encodeURIComponent(selected.code));
+      const d = await r.json();
+      if (!r.ok) throw new Error(d.error || 'Erreur serveur.');
+      if (pluLayer){ map.removeLayer(pluLayer); pluLayer = null; }
+      if (!d.hasPlu){ setStatus('⚠ ' + (d.message || 'Aucun zonage disponible.'), 'error'); legend.hidden = true; return; }
+      pluLayer = L.geoJSON({ type:'FeatureCollection', features:d.features }, {
+        style: (f) => ({ color: CATCOL[f.properties.cat] || CATCOL.autre, weight:1, fillColor: CATCOL[f.properties.cat] || CATCOL.autre, fillOpacity:0.22 }),
+        onEachFeature: (f, ly) => ly.bindPopup('<b>' + f.properties.libelle + '</b>' + (f.properties.libelong ? f.properties.libelong + '<br/>' : '') + 'Type : ' + f.properties.typezone + (f.properties.datappro ? '<br/>Approuvé le ' + f.properties.datappro : ''))
+      }).addTo(map);
+      try{ map.fitBounds(pluLayer.getBounds(), { padding:[20,20] }); }catch(e){}
+      renderLegend(d.features);
+      setStatus(d.count + ' zone(s) PLU à ' + (d.nom || selected.nom) + (d.partial ? ' (zonage allégé U/AU — document volumineux)' : '') + '. Source : ' + (d.source || 'GPU') + '.');
+    }catch(err){ setStatus(err.message || 'Erreur.', 'error'); }
+  }
+  function renderLegend(feats){
+    const cats = [...new Set(feats.map(f => f.properties.cat))];
+    const order = ['U','AU','A','N','autre'];
+    legend.innerHTML = '<div class="t">Zonage PLU</div>' + order.filter(c => cats.includes(c)).map(c =>
+      '<div class="it"><span class="sw" style="background:' + CATCOL[c] + '"></span>' + CATNAME[c] + '</div>').join('');
+    legend.hidden = false;
+  }
+
+  // ---- parcelles non bâties U/AU ----
+  $('run').addEventListener('click', runLibres);
+  async function runLibres(){
+    if (!selected){ setStatus('Choisissez une commune.', 'error'); return; }
+    const cats = [];
+    if ($('c-u').checked) cats.push('U');
+    if ($('c-au').checked) cats.push('AU');
+    if ($('c-a').checked) cats.push('A');
+    if ($('c-n').checked) cats.push('N');
+    if (!cats.length){ setStatus('Cochez au moins une catégorie de zone.', 'error'); return; }
+    const min = Math.max(0, parseInt($('min').value, 10) || 0);
+    $('run').disabled = true;
+    setStatus('Analyse : parcelles ≥ ' + fmt(min) + ' m², non bâties, en zone ' + cats.join('/') + '…', 'loading');
+    try{
+      const r = await fetch(API + '/api/parcelles-libres?insee=' + encodeURIComponent(selected.code) + '&min=' + min + '&cats=' + cats.join(','));
+      const d = await r.json();
+      if (!r.ok) throw new Error(d.error || 'Erreur serveur.');
+      if (libresLayer){ map.removeLayer(libresLayer); libresLayer = null; }
+      if (!d.hasPlu){ setStatus('⚠ ' + (d.message || 'Zonage indisponible.'), 'error'); panel.hidden = true; return; }
+      lastMatched = d.features || [];
+      libresLayer = L.geoJSON({ type:'FeatureCollection', features:lastMatched }, {
+        style:{ color:'#1d4ed8', weight:2, fillColor:'#3b82f6', fillOpacity:0.45 },
+        onEachFeature:(f, ly) => { const p = f.properties;
+          ly.bindPopup('<b>' + p.idu + '</b>' + fmt(p.contenance) + ' m² · zone <b>' + p.zone + '</b> (' + p.typezone + ')<br/>' + (p.zone_long || ''));
+          ly._idu = p.idu;
+        }
+      }).addTo(map);
+      if (lastMatched.length){ try{ map.fitBounds(libresLayer.getBounds(), { padding:[24,24] }); }catch(e){} }
+      renderPanel(d);
+      setStatus(d.matched + ' parcelle(s) non bâtie(s) ≥ ' + fmt(min) + ' m² en zone ' + cats.join('/') +
+        ' à ' + (d.nom || selected.nom) + ' — sur ' + fmt(d.examined) + ' parcelles ≥ seuil (' + fmt(d.built) + ' bâties écartées)' +
+        (d.truncated ? ' · liste tronquée' : '') + '.');
+    }catch(err){ setStatus(err.message || 'Erreur.', 'error'); }
+    finally{ $('run').disabled = false; }
+  }
+  function renderPanel(d){
+    $('panel-hd').innerHTML = '<b>' + d.matched + ' parcelle(s) non bâtie(s)</b>' +
+      '<div class="m">≥ ' + fmt(d.min) + ' m² · zone ' + d.cats.join('/') + ' · ' + (d.nom || selected.nom) + '</div>' +
+      '<div class="m">sur ' + fmt(d.examined) + ' parcelles ≥ seuil · ' + fmt(d.built) + ' bâties écartées</div>';
+    const list = $('panel-list'); list.innerHTML = '';
+    (d.features || []).forEach(f => {
+      const p = f.properties;
+      const row = document.createElement('div'); row.className = 'row';
+      row.innerHTML = '<div><div class="idu">' + p.idu + '</div><div class="z">zone ' + p.zone + ' · ' + p.typezone + '</div></div>' +
+        '<div class="surf">' + fmt(p.contenance) + ' m²</div>';
+      row.onclick = () => { libresLayer && libresLayer.eachLayer(l => { if (l._idu === p.idu){ map.fitBounds(l.getBounds(), { maxZoom:19 }); l.openPopup(); } }); };
+      list.appendChild(row);
+    });
+    panel.hidden = false;
+  }
+
+  $('csv').addEventListener('click', () => {
+    if (!lastMatched.length) return;
+    const rows = [['idu','contenance_m2','zone','typezone','categorie','zone_libelle_long']];
+    lastMatched.forEach(f => { const p = f.properties; rows.push([p.idu, p.contenance, p.zone, p.typezone, p.cat, '"' + (p.zone_long || '').replace(/"/g,'""') + '"']); });
+    const blob = new Blob([rows.map(r => r.join(';')).join('\n')], { type:'text/csv;charset=utf-8' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'parcelles-non-baties-' + selected.code + '.csv';
+    a.click();
+    URL.revokeObjectURL(a.href);
+  });
+
+  setStatus('Choisissez une commune, puis « Afficher le zonage PLU » ou directement « Parcelles non bâties ».');
+})();
+</script>
+</body>
+</html>

@@ -12,6 +12,14 @@
     "api/dvf-around.js": {
       "maxDuration": 60,
       "memory": 1024
+    },
+    "api/plu.js": {
+      "maxDuration": 60,
+      "memory": 1024
+    },
+    "api/parcelles-libres.js": {
+      "maxDuration": 60,
+      "memory": 1769
     }
   },
   "headers": [
