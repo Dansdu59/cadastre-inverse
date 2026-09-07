@@ -44,10 +44,17 @@
   #map{ position:absolute; inset:0; }
   .legend, .panel{ position:absolute; z-index:1000; background:rgba(255,255,255,.97); border:1px solid var(--border);
     border-radius:10px; box-shadow:0 6px 20px rgba(0,0,0,.12); font-size:12px; }
-  .legend{ left:12px; bottom:20px; padding:10px 12px; }
+  .legend{ left:12px; bottom:20px; padding:10px 12px; max-width:300px; }
   .legend .t{ font-weight:700; margin-bottom:6px; }
   .legend .it{ display:flex; align-items:center; gap:6px; margin:3px 0; }
-  .legend .sw{ width:14px; height:14px; border-radius:3px; border:1px solid rgba(0,0,0,.2); }
+  .legend .sw{ width:14px; height:14px; border-radius:3px; border:1px solid rgba(0,0,0,.2); flex:none; }
+  .legend .q{ width:17px; height:17px; flex:none; border:1px solid var(--border); border-radius:50%; background:#fff;
+    font-size:11px; font-weight:700; line-height:1; color:var(--muted); cursor:pointer; padding:0; }
+  .legend .q:hover{ background:#f0f2f4; color:var(--ink); }
+  .legend .def{ font-size:11.5px; color:var(--muted); margin:2px 0 6px 20px; line-height:1.45; }
+  .legend .gpu{ margin-top:8px; padding-top:8px; border-top:1px solid var(--border); }
+  .legend .gpu a{ font-size:12px; font-weight:700; color:var(--accent); text-decoration:none; }
+  .legend .gpu a:hover{ text-decoration:underline; }
   .panel{ right:12px; top:12px; width:300px; max-height:calc(100% - 24px); display:flex; flex-direction:column; }
   .panel .hd{ padding:10px 12px; border-bottom:1px solid var(--border); }
   .panel .hd b{ font-size:13px; } .panel .hd .m{ color:var(--muted); margin-top:2px; }
@@ -120,9 +127,16 @@
 
   const CATCOL = { U:'#e34a33', AU:'#8856a7', A:'#78c679', N:'#238443', autre:'#969696' };
   const CATNAME = { U:'Zone urbaine (U)', AU:'À urbaniser (AU)', A:'Agricole (A)', N:'Naturelle (N)', autre:'Autre' };
+  const CATDEF = {
+    U: "Secteurs déjà urbanisés et secteurs où les équipements publics (voirie, réseaux) ont une capacité suffisante pour desservir les constructions. Constructible selon le règlement de la zone (art. R.151-18 du code de l'urbanisme).",
+    AU: "Secteurs à caractère naturel destinés à être ouverts à l'urbanisation. AU « ouverte » (1AU / AUc) : constructible via une opération d'aménagement d'ensemble. AU « fermée » (2AU / AUs) : urbanisation différée — nécessite une évolution du PLU (art. R.151-20).",
+    A: "Secteurs à protéger en raison du potentiel agronomique, biologique ou économique des terres agricoles. Seules les constructions nécessaires à l'exploitation agricole ou aux services publics y sont admises (art. R.151-22/23).",
+    N: "Secteurs à protéger : qualité des sites, milieux naturels, paysages, intérêt écologique, exploitation forestière, risques. Constructibilité très limitée ; des STECAL peuvent être délimités (art. R.151-24/25).",
+    autre: "Zonage spécifique du document (secteur, sous-secteur, indice). Se reporter au règlement écrit de la zone."
+  };
 
   let selected = { code:'53130', nom:'Laval', centre:[48.0578,-0.7692] };
-  let debounce = null, pluLayer = null, libresLayer = null, lastMatched = [];
+  let debounce = null, pluLayer = null, libresLayer = null, lastMatched = [], gpuUrl = null;
 
   const map = L.map('map').setView(selected.centre, 13);
   L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom:19, attribution:'&copy; OpenStreetMap' }).addTo(map);
@@ -130,6 +144,12 @@
 
   function setStatus(msg, kind){ statusEl.className = kind || ''; statusEl.innerHTML = (kind === 'loading' ? '<span class="sp"></span>' : '') + (msg || ''); }
   const fmt = (n) => (n == null ? '—' : Number(n).toLocaleString('fr-FR'));
+  function gpuLink(){
+    if (gpuUrl) return gpuUrl;
+    const c = selected && selected.centre;
+    return c ? 'https://www.geoportail-urbanisme.gouv.fr/map/#tile=1&lon=' + c[1] + '&lat=' + c[0] + '&zoom=15&mlon=' + c[1] + '&mlat=' + c[0]
+             : 'https://www.geoportail-urbanisme.gouv.fr/';
+  }
 
   // ---- autocomplétion ----
   communeInput.addEventListener('input', () => {
@@ -179,10 +199,25 @@
       const d = await r.json();
       if (!r.ok) throw new Error(d.error || 'Erreur serveur.');
       if (pluLayer){ map.removeLayer(pluLayer); pluLayer = null; }
-      if (!d.hasPlu){ setStatus('⚠ ' + (d.message || 'Aucun zonage disponible.'), 'error'); legend.hidden = true; return; }
+      gpuUrl = d.gpu_url || null;
+      if (!d.hasPlu){
+        renderLegend([]);   // affiche au moins le lien GPU + explications
+        setStatus('⚠ ' + (d.message || 'Aucun zonage disponible.'), 'error');
+        return;
+      }
       pluLayer = L.geoJSON({ type:'FeatureCollection', features:d.features }, {
         style: (f) => ({ color: CATCOL[f.properties.cat] || CATCOL.autre, weight:1, fillColor: CATCOL[f.properties.cat] || CATCOL.autre, fillOpacity:0.22 }),
-        onEachFeature: (f, ly) => ly.bindPopup('<b>' + f.properties.libelle + '</b>' + (f.properties.libelong ? f.properties.libelong + '<br/>' : '') + 'Type : ' + f.properties.typezone + (f.properties.datappro ? '<br/>Approuvé le ' + f.properties.datappro : ''))
+        onEachFeature: (f, ly) => {
+          const p = f.properties, cat = CATCOL[p.cat] ? p.cat : 'autre';
+          ly.bindPopup(
+            '<b>' + p.libelle + ' — ' + CATNAME[cat] + '</b>' +
+            (p.libelong ? p.libelong + '<br/>' : '') +
+            'Type CNIG : ' + p.typezone + (p.datappro ? ' · approuvé le ' + p.datappro : '') + '<br/>' +
+            '<span style="color:#54606b">' + CATDEF[cat] + '</span>' +
+            (p.urlfic ? '<br/><a href="' + p.urlfic + '" target="_blank" rel="noopener">Règlement du document ↗</a>' : '') +
+            (gpuUrl ? '<br/><a href="' + gpuUrl + '" target="_blank" rel="noopener">Voir sur le Géoportail de l’Urbanisme ↗</a>' : '')
+          );
+        }
       }).addTo(map);
       try{ map.fitBounds(pluLayer.getBounds(), { padding:[20,20] }); }catch(e){}
       renderLegend(d.features);
@@ -190,10 +225,23 @@
     }catch(err){ setStatus(err.message || 'Erreur.', 'error'); }
   }
   function renderLegend(feats){
-    const cats = [...new Set(feats.map(f => f.properties.cat))];
+    const present = new Set((feats || []).map(f => f.properties.cat));
     const order = ['U','AU','A','N','autre'];
-    legend.innerHTML = '<div class="t">Zonage PLU</div>' + order.filter(c => cats.includes(c)).map(c =>
-      '<div class="it"><span class="sw" style="background:' + CATCOL[c] + '"></span>' + CATNAME[c] + '</div>').join('');
+    const shown = order.filter(c => present.has(c));
+    const cats = shown.length ? shown : ['U','AU','A','N']; // si pas de zonage : on montre quand même les explications
+    legend.innerHTML =
+      '<div class="t">Zonage PLU — que veut dire…</div>' +
+      cats.map(c =>
+        '<div class="it"><span class="sw" style="background:' + CATCOL[c] + '"></span>' +
+        '<span>' + CATNAME[c] + '</span>' +
+        '<button class="q" type="button" data-cat="' + c + '" title="Explication">?</button></div>' +
+        '<div class="def" data-cat="' + c + '" hidden>' + CATDEF[c] + '</div>'
+      ).join('') +
+      '<div class="gpu"><a href="' + gpuLink() + '" target="_blank" rel="noopener">Consulter le PLU officiel (Géoportail de l’Urbanisme) ↗</a></div>';
+    legend.querySelectorAll('.q').forEach(b => b.addEventListener('click', () => {
+      const def = legend.querySelector('.def[data-cat="' + b.dataset.cat + '"]');
+      if (def) def.hidden = !def.hidden;
+    }));
     legend.hidden = false;
   }
 
@@ -235,7 +283,8 @@
   function renderPanel(d){
     $('panel-hd').innerHTML = '<b>' + d.matched + ' parcelle(s) non bâtie(s)</b>' +
       '<div class="m">≥ ' + fmt(d.min) + ' m² · zone ' + d.cats.join('/') + ' · ' + (d.nom || selected.nom) + '</div>' +
-      '<div class="m">sur ' + fmt(d.examined) + ' parcelles ≥ seuil · ' + fmt(d.built) + ' bâties écartées</div>';
+      '<div class="m">sur ' + fmt(d.examined) + ' parcelles ≥ seuil · ' + fmt(d.built) + ' bâties écartées</div>' +
+      '<div class="m"><a href="' + gpuLink() + '" target="_blank" rel="noopener" style="color:var(--accent);font-weight:700;text-decoration:none">PLU officiel (GPU) ↗</a></div>';
     const list = $('panel-list'); list.innerHTML = '';
     (d.features || []).forEach(f => {
       const p = f.properties;
