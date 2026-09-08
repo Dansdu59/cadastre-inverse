@@ -713,6 +713,8 @@
     grpHeatmap.hidden = activeTab !== 'heatmap';
     grpPlu.hidden = activeTab !== 'plu';
     grpEstim.hidden = activeTab !== 'estim';
+    // Estimation : la commune découle de l'adresse saisie, pas de champ Commune.
+    $('commune-field').hidden = activeTab === 'estim';
     $('plu-mini').hidden = !(activeTab === 'plu' && collapsed);
     $('hm-mini').hidden = !(activeTab === 'heatmap' && collapsed);
     if (activeTab === 'heatmap' && collapsed) syncHmSeg();
