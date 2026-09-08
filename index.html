@@ -144,11 +144,14 @@
     position:fixed; left:0; right:0; bottom:calc(var(--nav-h) + var(--safe-bottom)); z-index:1100;
     background:var(--card); border-top-left-radius:16px; border-top-right-radius:16px;
     box-shadow:0 -8px 28px rgba(0,0,0,.18);
-    display:flex; flex-direction:column; max-height:60vh;
+    display:flex; flex-direction:column; max-height:85vh;
     transform:translateY(calc(100% + var(--nav-h) + var(--safe-bottom)));
     transition:transform .25s ease;
   }
   .sheet.open{ transform:translateY(0); }
+  /* Zone défilante commune : le résumé (stats) ET la liste scrollent ensemble,
+     l'entête et la poignée restent fixes. */
+  .sheet-scroll{ flex:1 1 auto; min-height:0; overflow-y:auto; -webkit-overflow-scrolling:touch; overscroll-behavior:contain; }
   .sheet-grab{ align-self:center; width:40px; height:5px; border-radius:3px; background:#c9ced3; margin:8px 0 4px; }
   .sheet-head{
     display:flex; align-items:center; justify-content:space-between;
@@ -161,12 +164,12 @@
   }
   .sheet-close:active{ background:#eef0f2; }
   .sheet-stats{
-    flex:none; padding:12px 16px; border-bottom:1px solid var(--border);
+    padding:12px 16px; border-bottom:1px solid var(--border);
     font-size:14px; color:var(--muted); line-height:1.55;
   }
   .sheet-stats b{ color:var(--ink); }
   .sheet-stats .hist{ margin-top:8px; }
-  .sheet-body{ overflow-y:auto; -webkit-overflow-scrolling:touch; padding:8px 12px 16px; }
+  .sheet-body{ padding:8px 12px 16px; }
 
   .card{
     display:block; width:100%; text-align:left; background:#fff; border:1px solid var(--border);
@@ -533,8 +536,10 @@
     <strong id="sheet-title">Résultats</strong>
     <button class="sheet-close" id="sheet-close" aria-label="Fermer la liste">✕</button>
   </div>
-  <div class="sheet-stats" id="sheet-stats" hidden></div>
-  <div class="sheet-body" id="sheet-body"></div>
+  <div class="sheet-scroll">
+    <div class="sheet-stats" id="sheet-stats" hidden></div>
+    <div class="sheet-body" id="sheet-body"></div>
+  </div>
 </section>
 
 <button type="button" class="fab-list" id="fab-list" hidden>≡ Liste</button>
