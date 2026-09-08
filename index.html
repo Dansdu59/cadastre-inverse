@@ -67,6 +67,7 @@
   .help-body{ overflow-y:auto; -webkit-overflow-scrolling:touch; padding:14px 16px calc(20px + var(--safe-bottom)); font-size:13.5px; line-height:1.5; }
   .help-body h4{ margin:15px 0 3px; font-size:11px; text-transform:uppercase; letter-spacing:.05em; color:var(--muted); }
   .help-body h4:first-child{ margin-top:0; }
+  .help-body .help-logo{ display:block; width:min(78%, 260px); height:auto; margin:2px auto 12px; mix-blend-mode:multiply; }
   .help-body p{ margin:0 0 7px; }
   .help-body b{ color:var(--ink); font-weight:700; }
   .help-body code{ font-size:12px; background:#f0f2f4; border-radius:4px; padding:0 3px; }
@@ -770,6 +771,7 @@
       '<h4>Indicateurs</h4><p><b>Loyer €/m²</b> : valeur DHUP. <b>Loyer /mois</b> : loyer × surface de référence. <b>Prix €/m²</b> : médian DVF. <b>Rendement brut</b> = loyer annuel/m² ÷ prix/m², <span class="warn">avant charges, taxe foncière, vacance et frais</span>. Couleur = quantiles P10–P90 du secteur affiché.</p>' +
       '<h4>Effet de maille</h4><p>La Carte des loyers descend à la commune, souvent à une <b>maille</b> (grappe de communes homogènes) quand les annonces sont trop rares : des communes voisines affichent alors le même loyer. Ce sont des loyers <b>demandés</b>, pas les baux réels. En <b>grille fine</b>, le loyer est une <b>estimation</b> : loyer communal modulé par le prix de vente local (exposant 0,5), pas un loyer observé.</p>',
     credit:
+      '<img class="help-logo" src="logo-arpent.png" alt="Arpent" />' +
       '<h4>Développement</h4><p>Application conçue et développée par <b>William Limousin</b>.</p>' +
       '<h4>Données</h4><p>Sources publiques : cadastre &amp; DVF (DGFiP / Etalab), Base Adresse Nationale, API Découpage administratif (geo.api.gouv.fr), Géoportail de l’Urbanisme (IGN), Carte des loyers (DHUP / ministère du Logement), fonds de carte OpenStreetMap et IGN Géoportail.</p>' +
       '<h4>Avertissement</h4><p>Les données proviennent de services tiers et peuvent comporter des <b>erreurs</b>, des retards de publication ou des lacunes. Les <b>requêtes vers ces services peuvent échouer</b> temporairement (indisponibilité, limitation de débit, quota) : dans ce cas, réessayez plus tard.</p>' +
