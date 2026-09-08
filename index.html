@@ -77,7 +77,7 @@
   .map-legend{
     background:rgba(255,255,255,.95); border:1px solid var(--border); border-radius:8px;
     padding:7px 9px; font-size:11px; line-height:1.3; color:var(--ink);
-    box-shadow:0 2px 8px rgba(0,0,0,.18); max-width:180px;
+    box-shadow:0 2px 8px rgba(0,0,0,.18); min-width:172px; max-width:210px;
   }
   .map-legend .ml-t{ font-weight:700; margin-bottom:4px; }
   .map-legend .ml-bar{ height:10px; border-radius:3px; border:1px solid rgba(0,0,0,.15); }
@@ -855,15 +855,17 @@
     }
   }
   const gradientBar = (ramp) => '<div class="ml-bar" style="background:linear-gradient(90deg,' + ramp.join(',') + ')"></div>';
+  const HM_LEG_T = { price:'Prix au m²', volume:'Ventes par an', evo:'Évolution du €/m²' };
   function heatmapLegendHtml(){
     const s = st.heatmap.scale;
     if (!s) return '';
-    let loL, hiL;
-    if (s.layerKey === 'price'){ loL = fmtNum(s.lo); hiL = fmtNum(s.hi); }
-    else if (s.layerKey === 'volume'){ loL = s.lo.toFixed(1); hiL = s.hi.toFixed(1); }
-    else { loL = fmtPct(s.lo); hiL = fmtPct(s.hi); }
-    return '<div class="ml-t">' + selText(hLayer) + '</div>' + gradientBar(s.ramp) +
-      '<div class="ml-lb"><span>' + loL + '</span>' + (s.diverging ? '<span>0</span>' : '') + '<span>' + hiL + '</span></div>';
+    const mid = (s.lo + s.hi) / 2;
+    let ticks;
+    if (s.layerKey === 'price')       ticks = [fmtNum(s.lo), fmtNum(mid), fmtNum(s.hi) + ' €/m²'];
+    else if (s.layerKey === 'volume') ticks = [s.lo.toFixed(1), mid.toFixed(1), s.hi.toFixed(1) + ' /an'];
+    else                              ticks = [fmtPct(s.lo), '0', fmtPct(s.hi)];
+    return '<div class="ml-t">' + HM_LEG_T[s.layerKey] + '</div>' + gradientBar(s.ramp) +
+      '<div class="ml-lb">' + ticks.map(t => '<span>' + t + '</span>').join('') + '</div>';
   }
   function locLegendHtml(){
     const ind = st.loc.indicator, dom = computeLocDomain(), dg = ind === 'rdt' ? 2 : (ind === 'loyer' ? 1 : 0);
