@@ -269,8 +269,8 @@
     white-space:nowrap; padding:0 4px; scroll-snap-align:center;
   }
   .tabbar button .ic{ font-size:19px; line-height:1; }
-  .tabbar button .ic-hm, .tabbar button .ic-loupe, .tabbar button .ic-calc, .tabbar button .ic-key, .tabbar button .ic-tgt, .tabbar button .ic-info, .tabbar button .ic-therm{ display:inline-flex; }
-  .tabbar button .ic-hm svg, .tabbar button .ic-loupe svg, .tabbar button .ic-calc svg, .tabbar button .ic-key svg, .tabbar button .ic-tgt svg, .tabbar button .ic-info svg, .tabbar button .ic-therm svg{ display:block; width:19px; height:19px; }
+  .tabbar button .ic-hm, .tabbar button .ic-loupe, .tabbar button .ic-calc, .tabbar button .ic-key, .tabbar button .ic-tgt, .tabbar button .ic-info, .tabbar button .ic-therm, .tabbar button .ic-drop{ display:inline-flex; }
+  .tabbar button .ic-hm svg, .tabbar button .ic-loupe svg, .tabbar button .ic-calc svg, .tabbar button .ic-key svg, .tabbar button .ic-tgt svg, .tabbar button .ic-info svg, .tabbar button .ic-therm svg, .tabbar button .ic-drop svg{ display:block; width:19px; height:19px; }
   .hm-legend .bar{ height:12px; border-radius:3px; margin:5px 0; }
   .hm-legend .lbls{ display:flex; justify-content:space-between; color:var(--muted); font-size:12px; }
   .plu-checks{ display:flex; gap:16px; align-items:center; flex-wrap:wrap; min-height:44px; }
@@ -351,6 +351,21 @@
   .dpe-tbl th{ color:var(--muted); font-weight:600; cursor:pointer; }
   .dpe-tbl tbody tr{ cursor:pointer; }
   .dpe-tbl tbody tr:active{ background:#fbf4f0; }
+
+  /* ---- Onglet EAU ---- */
+  .eau-hero{ display:flex; align-items:center; gap:12px; padding:11px 13px; border-radius:12px; margin-bottom:8px; color:#fff; }
+  .eau-hero.ok{ background:#1a7f37; } .eau-hero.warn{ background:#b26a00; } .eau-hero.bad{ background:#b3261e; } .eau-hero.na{ background:var(--muted); }
+  .eau-hero .big{ font-size:26px; font-weight:800; line-height:1; }
+  .eau-hero .lbl{ font-size:12px; opacity:.95; }
+  .eau-sec{ font-weight:700; font-size:12px; text-transform:uppercase; letter-spacing:.03em; color:var(--muted); margin:12px 0 4px; }
+  .eau-udi{ font-size:12.5px; }
+  .eau-note{ font-size:11.5px; color:var(--muted); margin-top:6px; line-height:1.45; }
+  .eau-tbl{ width:100%; border-collapse:collapse; font-size:12.5px; }
+  .eau-tbl th, .eau-tbl td{ padding:5px 6px; text-align:right; border-bottom:1px solid var(--border); white-space:nowrap; }
+  .eau-tbl th:first-child, .eau-tbl td:first-child{ text-align:left; white-space:normal; }
+  .eau-tbl th{ color:var(--muted); font-weight:600; }
+  .eau-chip{ display:inline-block; font-size:11px; font-weight:700; border-radius:4px; padding:1px 6px; }
+  .eau-chip.ok{ background:#e4f2e6; color:#1a7f37; } .eau-chip.bad{ background:#fde8e8; color:#b3261e; } .eau-chip.info{ background:#eef0f2; color:var(--muted); }
 
   .leaflet-popup-content{ font-size:15px; }
   .leaflet-popup-content a{ color:var(--accent-dark); }
@@ -655,6 +670,10 @@
       </div>
     </div>
 
+    <div class="grp" id="grp-eau" hidden>
+      <p class="tip">Qualité de l'eau potable — résultats du contrôle sanitaire de l'ARS (Hub'Eau / SISE-Eaux) sur les 2 dernières années, pour le(s) réseau(x) qui desservent la commune.</p>
+    </div>
+
     <button class="btn btn-primary" id="go" type="submit">Rechercher</button>
     <button class="btn btn-ghost" id="reset" type="button">Réinitialiser</button>
   </form>
@@ -735,6 +754,7 @@
   <button type="button" data-tab="estim"><span class="ic ic-calc" aria-hidden="true"><svg width="22" height="22" viewBox="0 0 22 22" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><rect x="3.8" y="2" width="14.4" height="18" rx="2.4"/><rect x="6.6" y="4.6" width="8.8" height="3.6" rx="0.7" fill="currentColor" stroke="none"/><text x="11" y="7.75" font-size="4.4" font-weight="700" fill="#fff" text-anchor="middle" stroke="none">€</text><circle cx="7.6" cy="12" r=".95" fill="currentColor" stroke="none"/><circle cx="11" cy="12" r=".95" fill="currentColor" stroke="none"/><circle cx="14.4" cy="12" r=".95" fill="currentColor" stroke="none"/><circle cx="7.6" cy="15.4" r=".95" fill="currentColor" stroke="none"/><circle cx="11" cy="15.4" r=".95" fill="currentColor" stroke="none"/><circle cx="14.4" cy="15.4" r=".95" fill="currentColor" stroke="none"/></svg></span>Estim.</button>
   <button type="button" data-tab="loc"><span class="ic ic-key" aria-hidden="true"><svg width="22" height="22" viewBox="0 0 22 22" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="7.6" cy="7.6" r="4.1"/><line x1="10.5" y1="10.5" x2="18.5" y2="18.5"/><line x1="16.6" y1="16.6" x2="18.7" y2="14.5"/><line x1="14" y1="14" x2="16" y2="12"/></svg></span>LOC</button>
   <button type="button" data-tab="dpe"><span class="ic ic-therm" aria-hidden="true"><svg width="22" height="22" viewBox="0 0 22 22" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M9 3.6a2 2 0 0 1 4 0v7.9a3.5 3.5 0 1 1-4 0Z"/><line x1="11" y1="7" x2="11" y2="12.4"/><circle cx="11" cy="15" r="1.8" fill="currentColor" stroke="none"/></svg></span>DPE</button>
+  <button type="button" data-tab="eau"><span class="ic ic-drop" aria-hidden="true"><svg width="22" height="22" viewBox="0 0 22 22" fill="currentColor"><path d="M11 2.4c-.35 0-.67.18-.86.49C8.05 6.2 5 10.95 5 13.7A6 6 0 0 0 17 13.7c0-2.75-3.05-7.5-5.14-10.81A1 1 0 0 0 11 2.4Z"/></svg></span>EAU</button>
   <button type="button" id="credit-btn"><span class="ic ic-info" aria-hidden="true"><svg width="22" height="22" viewBox="0 0 22 22" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><circle cx="11" cy="11" r="8.4"/><line x1="11" y1="10" x2="11" y2="15.4"/><circle cx="11" cy="6.9" r="1" fill="currentColor" stroke="none"/></svg></span>Crédit</button>
 </nav>
 </div>
@@ -749,6 +769,7 @@
   const pluMin = $('plu-min'), pluU = $('plu-u'), pluAu = $('plu-au'), pluA = $('plu-a'), pluN = $('plu-n'), pluLibresBtn = $('plu-libres');
   const grpEstim = $('grp-estim'), esAddr = $('es-addr'), esSug = $('es-suggestions'), esSurf = $('es-surf'), esType = $('es-type'), esRadius = $('es-radius'), esYears = $('es-years');
   const grpDpe = $('grp-dpe'), dpeMonths = $('dpe-months'), dpeType = $('dpe-type'), dpeCap = $('dpe-cap'), dpeInd = $('dpe-ind');
+  const grpEau = $('grp-eau');
   const grpLoc = $('grp-loc'), locMode = $('loc-mode'), locRayon = $('loc-rayon'), locMaille = $('loc-maille'),
         locBien = $('loc-bien'), locSurf = $('loc-surf'), locMonths = $('loc-months'), locInd = $('loc-ind');
   const goBtn = $('go'), resetBtn = $('reset');
@@ -768,8 +789,8 @@
     volume: ['#eff3ff','#c6dbef','#9ecae1','#6baed6','#3182bd','#08519c'],
     evo:    ['#2166ac','#67a9cf','#d1e5f0','#fddbc7','#ef8a62','#b2182b']
   };
-  const TITLES = { parcelles:'Parcelles cadastrales', dvf:'Transactions immobilières', autour:'Autour d’une parcelle', heatmap:'Prix & dynamique par zone', plu:'Zonage PLU & foncier', estim:'Estimation à l’adresse', loc:'Loyers & rendement locatif', dpe:'DPE — performance énergétique' };
-  const SHEET_TITLES = { parcelles:'Parcelles', dvf:'Transactions (DVF)', autour:'Ventes autour du point', heatmap:'Synthèse de la commune', plu:'PLU & foncier', estim:'Estimation', loc:'Loyers & rendement', dpe:'DPE de la commune' };
+  const TITLES = { parcelles:'Parcelles cadastrales', dvf:'Transactions immobilières', autour:'Autour d’une parcelle', heatmap:'Prix & dynamique par zone', plu:'Zonage PLU & foncier', estim:'Estimation à l’adresse', loc:'Loyers & rendement locatif', dpe:'DPE — performance énergétique', eau:'Qualité de l’eau potable' };
+  const SHEET_TITLES = { parcelles:'Parcelles', dvf:'Transactions (DVF)', autour:'Ventes autour du point', heatmap:'Synthèse de la commune', plu:'PLU & foncier', estim:'Estimation', loc:'Loyers & rendement', dpe:'DPE de la commune', eau:'Qualité de l’eau' };
   const DPE_COL = { A:'#00a06e', B:'#5bb349', C:'#c3d545', D:'#ffe200', E:'#f7a600', F:'#ec6f2a', G:'#d3121a' };
   const DPE_LETTERS = ['A','B','C','D','E','F','G'];
   const LOC_RAMPS = {
@@ -824,6 +845,11 @@
       '<h4>Source</h4><p><b>Observatoire ADEME</b> — jeu de données « DPE logements existants (depuis juillet 2021) ». Géolocalisation à l’adresse (BAN). Les DPE antérieurs à juillet 2021 (ancienne méthode, non comparable) ne sont pas inclus.</p>' +
       '<h4>Indicateurs</h4><p>Bascule <b>Énergie (DPE)</b> = consommation en énergie primaire (kWh/m²/an) ou <b>Climat (GES)</b> = émissions de CO₂ (kgCO₂/m²/an). La légende A–G montre les effectifs et sert de filtre. « Passoires » = F + G ; part calculée sur <b>tous</b> les DPE de la commune. La médiane de consommation porte sur l’échantillon affiché (les plus récents).</p>' +
       '<h4>Représentativité</h4><p>Un DPE ne concerne que les logements ayant fait l’objet d’un diagnostic (vente, location, rénovation…) : la répartition n’est pas exactement celle du parc. La carte affiche au maximum 800 à 3 000 points (les plus récents) ; les effectifs de la légende, eux, portent sur l’ensemble.</p>',
+    eau:
+      '<h4>Principe</h4><p>Synthèse du <b>contrôle sanitaire réglementaire</b> de l’eau du robinet pour la commune, sur les <b>2 dernières années</b>.</p>' +
+      '<h4>Source</h4><p><b>Hub’Eau</b> — API « qualité de l’eau potable » (données SISE-Eaux du ministère de la Santé / ARS). Réseaux desservant la commune + résultats des prélèvements.</p>' +
+      '<h4>Indicateurs</h4><p>La conformité affichée est celle des <b>limites de qualité</b> (santé : bactéries, nitrates, pesticides…). Les <b>références de qualité</b> (goût, fer, chlore, température…) sont comptées à part : un dépassement n’est pas un risque sanitaire. Les paramètres clés montrent la dernière valeur mesurée et, quand elle existe, la limite. Les pesticides sont résumés (recherchés / détectés / au-dessus de 0,1 µg/L).</p>' +
+      '<h4>Représentativité</h4><p>Contrôle effectué <b>sur le réseau de distribution</b>, pas au robinet du logement (le plomb ou la stagnation dans les canalisations privées ne sont pas couverts). Une commune peut être alimentée par plusieurs réseaux : les valeurs sont agrégées. La conformité porte sur les prélèvements de la période.</p>',
     credit:
       '<img class="help-logo" src="logo-arpent.png" alt="Arpent" />' +
       '<h4>Développement</h4><p>Application conçue et développée par <b>William Limousin</b>.</p>' +
@@ -857,6 +883,7 @@
           zonesCount:0, zonesNom:'', zonesPartial:false, matched:[], meta:null, collapsed:false },
     estim:{ layer:null, circle:null, refMarker:null, ref:null, data:null, collapsed:false },
     dpe:{ layer:null, data:null, indicator:'dpe', hidden:new Set(), sortKey:'date', sortDir:-1, collapsed:false },
+    eau:{ contour:null, data:null, collapsed:false },
     loc:{ mode:'commune', layer:null, communeRows:[], gridSales:[], gridCells:[], gridMeta:{},
           loyByCommune:null, data:false, indicator:'rdt', bien:'app', surf:45, months:60,
           sortKey:'rdt', sortDir:-1, dataThrough:null, collapsed:false }
@@ -1022,6 +1049,9 @@
     if (activeTab === 'dpe'){
       return (selected ? selected.nom : '—') + '  ·  ' + selText(dpeInd) + '  ·  ' + selText(dpeType);
     }
+    if (activeTab === 'eau'){
+      return (selected ? selected.nom : '—') + '  ·  qualité de l’eau  ·  2 ans';
+    }
     return (selected ? selected.nom : '—') + '  ·  ' + pMin.value + '–' + pMax.value + ' m²';
   }
   function applyControlsVisibility(){
@@ -1036,6 +1066,7 @@
     grpEstim.hidden = activeTab !== 'estim';
     grpLoc.hidden = activeTab !== 'loc';
     grpDpe.hidden = activeTab !== 'dpe';
+    grpEau.hidden = activeTab !== 'eau';
     // Estimation : la commune découle de l'adresse saisie, pas de champ Commune.
     $('commune-field').hidden = activeTab === 'estim';
     $('plu-mini').hidden = !(activeTab === 'plu' && collapsed);
@@ -1059,6 +1090,7 @@
     if (activeTab === 'estim'){ has = !!st.estim.data; label = '≡ Estimation'; }
     if (activeTab === 'loc'){ has = !!st.loc.data; label = '≡ Loyers'; }
     if (activeTab === 'dpe'){ has = !!st.dpe.data; label = '≡ DPE'; }
+    if (activeTab === 'eau'){ has = !!st.eau.data; label = '≡ Eau'; }
     fabList.hidden = !(has && !sheet.classList.contains('open'));
     fabList.textContent = label;
   }
@@ -1394,10 +1426,11 @@
     if (tab === 'estim') return [st.estim.circle, st.estim.layer, st.estim.refMarker];
     if (tab === 'loc') return [st.loc.layer];
     if (tab === 'dpe') return [st.dpe.layer];
+    if (tab === 'eau') return [st.eau.contour];
     return [st.autour.parcLayer, st.autour.circle, st.autour.ventes, st.autour.refMarker];
   }
   function syncLayers(){
-    ['parcelles','dvf','autour','heatmap','plu','estim','loc','dpe'].forEach(tab => layersFor(tab).forEach(l => {
+    ['parcelles','dvf','autour','heatmap','plu','estim','loc','dpe','eau'].forEach(tab => layersFor(tab).forEach(l => {
       if (!l) return;
       const show = tab === activeTab;
       if (show && !map.hasLayer(l)) l.addTo(map);
@@ -1414,6 +1447,7 @@
     else if (activeTab === 'estim' && st.estim.data) renderEstim(st.estim.data);
     else if (activeTab === 'loc' && st.loc.data) renderLoc();
     else if (activeTab === 'dpe' && st.dpe.data) renderDpe();
+    else if (activeTab === 'eau' && st.eau.data) renderEau();
     else { closeSheet(); updateFab(); }
   }
 
@@ -1454,6 +1488,7 @@
       : activeTab === 'estim' ? 'Estimer'
       : activeTab === 'loc' ? 'Afficher les loyers'
       : activeTab === 'dpe' ? 'Charger les DPE'
+      : activeTab === 'eau' ? 'Voir la qualité de l’eau'
       : 'Rechercher';
     if (activeTab === 'plu') syncPluControls();
     applyControlsVisibility();
@@ -1484,6 +1519,10 @@
       setStatus('DPE à ' + (selected ? selected.nom : '') + ' — détail via « DPE ».');
     else if (activeTab === 'dpe')
       setStatus('Choisissez une commune puis « Charger les DPE ».');
+    else if (activeTab === 'eau' && st.eau.data)
+      setStatus('Qualité de l’eau à ' + (selected ? selected.nom : '') + ' — détail via « Eau ».');
+    else if (activeTab === 'eau')
+      setStatus('Choisissez une commune puis « Voir la qualité de l’eau ».');
     else
       setStatus('Prêt. Choisissez une commune et lancez la recherche.');
     setTimeout(() => map.invalidateSize(), 120);
@@ -1524,6 +1563,8 @@
 
     if (activeTab === 'dpe'){ await runDpe(); return; }
 
+    if (activeTab === 'eau'){ await runEau(); return; }
+
     if (activeTab === 'autour'){
       const min = parseInt(aMin.value, 10) || 0, max = parseInt(aMax.value, 10) || 999999;
       if (min > max){ setStatus('Surfaces invalides.', 'error'); return; }
@@ -1539,7 +1580,7 @@
   });
 
   resetBtn.addEventListener('click', () => {
-    ['parcelles','dvf','autour','heatmap','plu','estim','loc','dpe'].forEach(t => { layersFor(t).forEach(l => { if (l && map.hasLayer(l)) map.removeLayer(l); }); });
+    ['parcelles','dvf','autour','heatmap','plu','estim','loc','dpe','eau'].forEach(t => { layersFor(t).forEach(l => { if (l && map.hasLayer(l)) map.removeLayer(l); }); });
     st.parcelles = { layer:null, data:null, collapsed:false };
     st.dvf = { layer:null, data:null, collapsed:false };
     st.autour = { layer:null, ventes:null, circle:null, refMarker:null, ref:null, parcLayer:null, data:null, collapsed:false };
@@ -1551,6 +1592,7 @@
                loyByCommune:null, data:false, indicator:locInd.value, bien:locBien.value, surf:+locSurf.value,
                months:+locMonths.value, sortKey:locInd.value, sortDir:locInd.value === 'prix' ? 1 : -1, dataThrough:null, collapsed:false };
     st.dpe = { layer:null, data:null, indicator:dpeInd.value, hidden:new Set(), sortKey:'date', sortDir:-1, collapsed:false };
+    st.eau = { contour:null, data:null, collapsed:false };
     if (activeTab === 'plu'){ goBtn.textContent = 'Afficher le zonage PLU'; syncPluControls(); }
     if (activeTab === 'loc'){ $('loc-mini').hidden = true; }
     if (activeTab === 'dpe'){ $('dpe-mini').hidden = true; }
@@ -2731,6 +2773,91 @@
     if (st.dpe.collapsed) summaryText.textContent = summaryFor();
   });
   [dpeMonths, dpeType, dpeCap].forEach(el => el.addEventListener('change', () => { if (activeTab === 'dpe' && st.dpe.data) runDpe(); }));
+
+  // ================= Onglet « EAU » (qualité de l'eau potable) =================
+  // Source : Hub'Eau (contrôle sanitaire ARS / SISE-Eaux), fenêtre fixe de 2 ans.
+  const EAU_LBL = { nitrates:'Nitrates', nitrites:'Nitrites', ecoli:'E. coli', enterocoques:'Entérocoques',
+    coliformes:'Coliformes', durete:'Dureté (TH)', ph:'pH', chlore:'Chlore', conductivite:'Conductivité', turbidite:'Turbidité' };
+  const eauNum = (n, d = 2) => (n == null || !Number.isFinite(+n)) ? '—' : (+n).toLocaleString('fr-FR', { maximumFractionDigits:d });
+  const eauDate = (iso) => { if (!iso) return '—'; const dt = new Date(iso); return isNaN(dt) ? String(iso).slice(0, 10) : dt.toLocaleDateString('fr-FR'); };
+  function eauHeroClass(pct){ if (pct == null) return 'na'; if (pct >= 99) return 'ok'; if (pct >= 95) return 'warn'; return 'bad'; }
+
+  async function runEau(){
+    goBtn.disabled = true;
+    setStatus('Interrogation de Hub’Eau (contrôle sanitaire ARS)…', 'loading');
+    try{
+      // Contour de la commune (indicatif) — non bloquant.
+      fetch('https://geo.api.gouv.fr/communes/' + selected.code + '?fields=nom,code&format=geojson&geometry=contour')
+        .then(r => r.ok ? r.json() : null).then(gj => {
+          if (st.eau.contour){ map.removeLayer(st.eau.contour); st.eau.contour = null; }
+          if (gj && gj.geometry){
+            st.eau.contour = L.geoJSON(gj, { style:{ color:'#2563eb', weight:2, fill:false, dashArray:'4 3' } });
+            if (activeTab === 'eau'){ st.eau.contour.addTo(map); try{ map.fitBounds(st.eau.contour.getBounds(), { padding:[30, 30] }); }catch(e){} }
+          }
+        }).catch(() => {});
+
+      const r = await withTimeout('/api/eau?insee=' + encodeURIComponent(selected.code) + '&months=24', 45000);
+      let d = null; try{ d = await r.json(); }catch(e){}
+      if (!r.ok) throw new Error((d && d.error) || ('Erreur serveur (' + r.status + ').'));
+      st.eau.data = d;
+      renderEau();
+      collapseControls();
+      const p = d.prelevements;
+      setStatus((d.nom || selected.nom) + ' · ' + p.total + ' prélèvement(s) sur 2 ans · conformité limites sanitaires '
+        + (p.pct == null ? '—' : p.pct + ' %') + '. Source : Hub’Eau / ARS.' + (p.partiel ? ' (échantillon partiel)' : ''));
+    }catch(err){ setStatus(err.message || 'Erreur qualité de l’eau.', 'error'); }
+    finally{ goBtn.disabled = false; }
+  }
+
+  function renderEau(){
+    const d = st.eau.data, p = d.prelevements;
+    let s = '<div class="eau-hero ' + eauHeroClass(p.pct) + '">'
+      + '<div class="big">' + (p.pct == null ? '—' : p.pct + ' %') + '</div>'
+      + '<div><div class="lbl">conformes aux limites sanitaires</div>'
+      + '<div class="lbl">' + p.total + ' prélèvements · ' + p.non_conf_bact + ' bactério · ' + p.non_conf_pc + ' physico-chimie non conformes</div></div></div>';
+    if (p.non_conf_ref) s += '<div class="eau-note" style="margin-top:-2px">' + p.non_conf_ref + ' prélèvement(s) dépassent une <b>référence de qualité</b> (goût, fer, chlore… — pas un risque sanitaire).</div>';
+    if (d.udis && d.udis.length){
+      s += '<div class="eau-sec">Réseau(x) de distribution</div>';
+      s += d.udis.map(u => '<div class="eau-udi">• ' + (u.nom || u.code || '—') + (u.debut ? ' <span style="color:var(--muted)">(desservie depuis ' + eauDate(u.debut) + ')</span>' : '') + '</div>').join('');
+    }
+    sheetStats.innerHTML = s; sheetStats.hidden = false;
+
+    let h = '';
+    if (d.parametres && d.parametres.length){
+      h += '<div class="eau-sec">Paramètres clés (dernière mesure)</div>';
+      h += '<table class="eau-tbl"><thead><tr><th>Paramètre</th><th>Valeur</th><th>Limite</th><th>Statut</th></tr></thead><tbody>';
+      d.parametres.forEach(pa => {
+        const chip = pa.statut === 'depasse' ? '<span class="eau-chip bad">dépassé</span>'
+          : pa.statut === 'ok' ? '<span class="eau-chip ok">OK</span>'
+          : '<span class="eau-chip info">—</span>';
+        h += '<tr><td>' + (EAU_LBL[pa.id] || pa.label) + '<div style="font-size:10.5px;color:var(--muted)">' + eauDate(pa.date) + '</div></td>'
+          + '<td>' + eauNum(pa.valeur) + ' ' + (pa.unite || '') + '</td>'
+          + '<td>' + (pa.limite != null ? '≤ ' + eauNum(pa.limite) : (pa.ref ? pa.ref.replace(/\s*[a-zA-Zµ°/()]+$/,'') : '—')) + '</td>'
+          + '<td>' + chip + '</td></tr>';
+      });
+      h += '</tbody></table>';
+    }
+    if (d.pesticides){
+      const pe = d.pesticides;
+      h += '<div class="eau-sec">Pesticides</div>'
+        + '<div class="eau-udi">' + pe.n_recherches + ' recherché(s) · ' + pe.n_detectes + ' détecté(s) · <b>' + pe.n_depassements + '</b> au-dessus de 0,1 µg/L</div>';
+      if (pe.max_valeur != null) h += '<div class="eau-note">Plus élevé : ' + eauNum(pe.max_valeur, 3) + ' µg/L (' + (pe.max_substance || '?') + ')</div>';
+    }
+    if (d.derniers && d.derniers.length){
+      h += '<div class="eau-sec">Derniers prélèvements</div>';
+      h += '<table class="eau-tbl"><thead><tr><th>Date</th><th>Conforme</th></tr></thead><tbody>';
+      d.derniers.forEach(x => {
+        h += '<tr><td title="' + (x.conclusion || '').replace(/"/g,'') + '">' + eauDate(x.date) + '</td>'
+          + '<td>' + (x.conforme ? '<span class="eau-chip ok">oui</span>' : '<span class="eau-chip bad">non</span>') + '</td></tr>';
+      });
+      h += '</tbody></table>';
+    }
+    h += '<div class="eau-note">Contrôle sanitaire réglementaire sur le réseau de distribution — pas au robinet du logement. Conformité calculée sur les prélèvements des 2 dernières années.</div>';
+    sheetBody.innerHTML = h;
+
+    sheetTitle.textContent = SHEET_TITLES.eau + ' — ' + (d.nom || selected.nom);
+    updateFab();
+  }
 
   setStatus('Prêt. Choisissez une commune et lancez la recherche.');
 
