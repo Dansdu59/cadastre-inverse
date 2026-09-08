@@ -132,7 +132,9 @@ export default async function handler(req, res) {
     // La liste (et les marqueurs côté client) suit le filtre de type.
     const list = typeCat ? matching : inRadius;
     const total = list.length;
-    const ventes = list.slice(0, MAX_VENTES);
+    let cap = parseInt(req.query.limit, 10);
+    cap = Number.isFinite(cap) ? Math.max(1, Math.min(3000, cap)) : MAX_VENTES;
+    const ventes = list.slice(0, cap);
 
     res.setHeader('Cache-Control', 'public, s-maxage=86400, stale-while-revalidate=604800');
     res.setHeader('Content-Type', 'application/json; charset=utf-8');
