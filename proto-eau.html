@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>Proto — Qualité de l'eau potable</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css" />
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<style>
+  :root{ --accent:#c1440e; --ink:#1f2328; --muted:#54606b; --border:#d7dbe0; --bg:#f4f5f7; --card:#fff;
+    --ok:#1a7f37; --warn:#b26a00; --bad:#b3261e; }
+  *{ box-sizing:border-box; }
+  [hidden]{ display:none !important; }
+  html,body{ height:100%; }
+  body{ margin:0; font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    font-size:15px; line-height:1.5; color:var(--ink); background:var(--bg); display:flex; flex-direction:column; }
+  header{ background:var(--card); border-bottom:1px solid var(--border); padding:12px 16px; display:flex; flex-wrap:wrap; align-items:baseline; gap:10px; }
+  header h1{ margin:0; font-size:16px; } header .sub{ font-size:13px; color:var(--muted); }
+  header .badge{ font-size:11px; font-weight:700; color:#fff; background:var(--muted); border-radius:4px; padding:2px 6px; text-transform:uppercase; }
+
+  .controls{ background:var(--card); border-bottom:1px solid var(--border); padding:10px 16px; display:flex; flex-wrap:wrap; gap:14px; align-items:flex-end; }
+  .field{ display:flex; flex-direction:column; gap:4px; position:relative; }
+  .field label{ font-size:11px; font-weight:700; color:var(--muted); text-transform:uppercase; letter-spacing:.03em; }
+  .field input[type=search], .field select{
+    min-height:38px; font-size:14px; padding:8px 10px; border:1px solid var(--border); border-radius:8px; background:#fff; }
+  #commune-field{ width:230px; } #commune-field input{ width:100%; }
+  .btn{ min-height:38px; padding:8px 14px; font-size:14px; font-weight:700; border-radius:8px; border:1px solid transparent; cursor:pointer; }
+  .btn-p{ background:var(--accent); color:#fff; } .btn-p:disabled{ background:#caa79a; cursor:default; }
+  .btn-g{ background:#fff; color:var(--ink); border-color:var(--border); }
+  .suggestions{ position:absolute; top:calc(100% + 4px); left:0; right:0; z-index:1200; background:#fff; border:1px solid var(--border);
+    border-radius:8px; box-shadow:0 10px 24px rgba(0,0,0,.14); max-height:260px; overflow-y:auto; }
+  .suggestions button{ display:flex; flex-direction:column; gap:1px; width:100%; text-align:left; padding:8px 10px; border:0;
+    border-bottom:1px solid var(--border); background:#fff; font-size:14px; cursor:pointer; }
+  .suggestions button:hover{ background:#fdf1ea; } .suggestions .s{ font-size:12px; color:var(--muted); }
+
+  #status{ padding:8px 16px; font-size:13px; color:var(--muted); background:var(--card); border-bottom:1px solid var(--border); min-height:16px; }
+  #status.error{ color:#b3261e; }
+  #status .sp{ display:inline-block; width:12px; height:12px; border:2px solid rgba(0,0,0,.15); border-top-color:var(--accent); border-radius:50%; animation:spin .8s linear infinite; vertical-align:-2px; margin-right:6px; }
+  @keyframes spin{ to{ transform:rotate(360deg); } }
+
+  main{ flex:1 1 auto; position:relative; min-height:380px; }
+  #map{ position:absolute; inset:0; }
+  .legend, .panel{ position:absolute; z-index:1000; background:rgba(255,255,255,.97); border:1px solid var(--border);
+    border-radius:10px; box-shadow:0 6px 20px rgba(0,0,0,.12); font-size:12px; }
+  .legend{ left:12px; bottom:20px; width:200px; padding:10px 12px; }
+  .legend .hd{ font-weight:700; margin-bottom:6px; }
+  .legend .row{ display:flex; align-items:center; gap:7px; margin:3px 0; }
+  .legend .dot{ width:12px; height:12px; border-radius:50%; flex:none; }
+  .panel{ right:12px; top:12px; width:360px; max-height:calc(100% - 24px); display:flex; flex-direction:column; }
+  .panel .bd{ overflow-y:auto; padding:12px 14px; }
+  .hero{ display:flex; align-items:center; gap:12px; padding:10px 12px; border-radius:10px; margin-bottom:10px; color:#fff; }
+  .hero.ok{ background:var(--ok); } .hero.warn{ background:var(--warn); } .hero.bad{ background:var(--bad); } .hero.na{ background:var(--muted); }
+  .hero .big{ font-size:26px; font-weight:800; line-height:1; }
+  .hero .lbl{ font-size:12px; opacity:.95; }
+  .sec{ font-weight:700; font-size:12px; text-transform:uppercase; letter-spacing:.03em; color:var(--muted); margin:12px 0 4px; }
+  table.t{ width:100%; border-collapse:collapse; font-size:12.5px; }
+  table.t th, table.t td{ padding:5px 6px; text-align:right; border-bottom:1px solid var(--border); white-space:nowrap; }
+  table.t th:first-child, table.t td:first-child{ text-align:left; white-space:normal; }
+  table.t th{ color:var(--muted); font-weight:600; }
+  .chip{ display:inline-block; font-size:11px; font-weight:700; border-radius:4px; padding:1px 6px; }
+  .chip.ok{ background:#e4f2e6; color:var(--ok); } .chip.depasse{ background:#fde8e8; color:var(--bad); }
+  .chip.info{ background:#eef0f2; color:var(--muted); }
+  .udi{ font-size:12.5px; color:var(--ink); } .note{ font-size:11.5px; color:var(--muted); margin-top:6px; line-height:1.45; }
+  .panel .ft{ padding:8px 12px; border-top:1px solid var(--border); }
+  .panel .ft .btn{ width:100%; min-height:34px; font-size:13px; }
+  @media (max-width:820px){ .panel{ position:static; width:auto; margin:10px; max-height:52vh; } .legend{ left:10px; bottom:10px; } }
+</style>
+</head>
+<body>
+
+<header>
+  <span class="badge">Proto</span>
+  <h1>Qualité de l'eau potable</h1>
+  <span class="sub">Hub'Eau — contrôle sanitaire ARS (SISE-Eaux) · hors app officielle</span>
+</header>
+
+<div class="controls">
+  <div class="field" id="commune-field">
+    <label for="commune">Commune</label>
+    <input id="commune" type="search" autocomplete="off" placeholder="Ex : Laval" value="Laval" />
+    <div class="suggestions" id="suggestions" hidden></div>
+  </div>
+  <div class="field">
+    <label for="months">Période</label>
+    <select id="months">
+      <option value="12">12 mois</option>
+      <option value="24" selected>2 ans</option>
+      <option value="36">3 ans</option>
+    </select>
+  </div>
+  <div class="field">
+    <label>&nbsp;</label>
+    <button class="btn btn-p" id="run" type="button">Analyser l'eau</button>
+  </div>
+</div>
+
+<div id="status"></div>
+
+<main>
+  <div id="map"></div>
+  <div class="legend" id="legend" hidden>
+    <div class="hd">Statut d'un paramètre</div>
+    <div class="row"><span class="dot" style="background:var(--ok)"></span> Dans les limites</div>
+    <div class="row"><span class="dot" style="background:var(--bad)"></span> Limite dépassée</div>
+    <div class="row"><span class="dot" style="background:var(--muted)"></span> Sans limite sanitaire</div>
+  </div>
+  <div class="panel" id="panel" hidden>
+    <div class="bd" id="panel-bd"></div>
+    <div class="ft"><button class="btn btn-g" id="csv" type="button">Export CSV</button></div>
+  </div>
+</main>
+
+<script>
+(function(){
+  const $ = (id) => document.getElementById(id);
+  const communeInput = $('commune'), suggestions = $('suggestions'), statusEl = $('status');
+  const legend = $('legend'), panel = $('panel');
+  const API = /^(localhost|127\.0\.0\.1)$/.test(location.hostname) ? '' : 'https://cadastre-inverse.vercel.app';
+
+  let selected = { code:'53130', nom:'Laval', centre:[48.0578,-0.7692] };
+  let debounce = null, contour = null, data = null;
+
+  const map = L.map('map').setView(selected.centre, 12);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom:19, attribution:'&copy; OpenStreetMap' }).addTo(map);
+  map.attributionControl.setPosition('bottomright');
+
+  const setStatus = (m, k) => { statusEl.className = k || ''; statusEl.innerHTML = (k === 'loading' ? '<span class="sp"></span>' : '') + (m || ''); };
+  const fmt = (n, d=1) => (n == null || !Number.isFinite(+n)) ? '—' : Number(n).toLocaleString('fr-FR', { maximumFractionDigits:d });
+  const fmtDate = (iso) => { if (!iso) return '—'; const d = new Date(iso); return isNaN(d) ? String(iso).slice(0,10) : d.toLocaleDateString('fr-FR'); };
+  const PARAM_LBL = { nitrates:'Nitrates', nitrites:'Nitrites', ecoli:'E. coli', enterocoques:'Entérocoques',
+    coliformes:'Coliformes', durete:'Dureté (TH)', ph:'pH', chlore:'Chlore', conductivite:'Conductivité', turbidite:'Turbidité' };
+
+  // ---- autocomplétion commune ----
+  communeInput.addEventListener('input', () => {
+    const q = communeInput.value.trim();
+    clearTimeout(debounce);
+    if (q.length < 2){ suggestions.hidden = true; return; }
+    debounce = setTimeout(async () => {
+      try{
+        const r = await fetch('https://geo.api.gouv.fr/communes?nom=' + encodeURIComponent(q) + '&fields=nom,code,codesPostaux,departement,centre&boost=population&limit=10');
+        if (r.ok) renderSug(await r.json());
+      }catch(e){}
+    }, 260);
+  });
+  document.addEventListener('click', (e) => { if (!suggestions.contains(e.target) && e.target !== communeInput) suggestions.hidden = true; });
+  function renderSug(list){
+    suggestions.innerHTML = '';
+    if (!list || !list.length){ suggestions.hidden = true; return; }
+    list.forEach(c => {
+      const cp = (c.codesPostaux && c.codesPostaux[0]) || '', dep = c.departement ? c.departement.nom : '';
+      const b = document.createElement('button'); b.type = 'button';
+      b.innerHTML = '<span>' + c.nom + '</span><span class="s">' + [cp, dep].filter(Boolean).join(' · ') + '</span>';
+      b.onclick = () => {
+        selected = { code:c.code, nom:c.nom, centre: c.centre && c.centre.coordinates ? [c.centre.coordinates[1], c.centre.coordinates[0]] : null };
+        communeInput.value = c.nom + (cp ? ' (' + cp + ')' : '');
+        suggestions.hidden = true;
+        if (selected.centre) map.setView(selected.centre, 12);
+      };
+      suggestions.appendChild(b);
+    });
+    suggestions.hidden = false;
+  }
+
+  // ---- analyse ----
+  $('run').addEventListener('click', run);
+  async function run(){
+    const btn = $('run'); btn.disabled = true;
+    try{
+      setStatus('Contour de la commune…', 'loading');
+      fetch('https://geo.api.gouv.fr/communes/' + selected.code + '?fields=nom,code&format=geojson&geometry=contour')
+        .then(r => r.ok ? r.json() : null).then(gj => {
+          if (contour) map.removeLayer(contour);
+          if (gj && gj.geometry){
+            contour = L.geoJSON(gj, { style:{ color:'#2563eb', weight:2, fill:false, dashArray:'4 3' } }).addTo(map);
+            try{ map.fitBounds(contour.getBounds(), { padding:[30,30] }); }catch(e){}
+          }
+        }).catch(() => {});
+
+      setStatus('Interrogation de Hub’Eau (contrôle sanitaire ARS)…', 'loading');
+      const months = +$('months').value;
+      const d = await fetch(API + '/api/eau?insee=' + selected.code + '&months=' + months).then(r => r.json());
+      if (d.error) throw new Error(d.error);
+      data = d;
+      renderPanel();
+      legend.hidden = false; panel.hidden = false;
+
+      const p = d.prelevements;
+      setStatus((d.nom || selected.nom) + ' · ' + p.total + ' prélèvement(s) analysés depuis ' + fmtDate(d.from)
+        + ' · conformité ' + (p.pct == null ? '—' : p.pct + ' %') + '. Source : Hub’Eau / ARS.'
+        + (p.partiel ? ' (échantillon partiel)' : ''));
+    }catch(err){
+      setStatus(err.message || 'Erreur.', 'error');
+    }finally{
+      btn.disabled = false;
+    }
+  }
+
+  function heroClass(pct){
+    if (pct == null) return 'na';
+    if (pct >= 99) return 'ok';
+    if (pct >= 95) return 'warn';
+    return 'bad';
+  }
+
+  function renderPanel(){
+    const d = data, p = d.prelevements;
+    const hc = heroClass(p.pct);
+    let h = '<div class="hero ' + hc + '">'
+      + '<div class="big">' + (p.pct == null ? '—' : p.pct + ' %') + '</div>'
+      + '<div><div class="lbl">conformes aux limites sanitaires</div>'
+      + '<div class="lbl">' + p.total + ' prélèvements · ' + p.non_conf_bact + ' bactério · ' + p.non_conf_pc + ' physico-chimie non conformes</div></div></div>';
+    if (p.non_conf_ref) h += '<div class="note" style="margin-top:-4px">' + p.non_conf_ref + ' prélèvement(s) dépassent une <b>référence de qualité</b> (goût, fer, chlore… — pas un risque sanitaire).</div>';
+
+    if (d.udis && d.udis.length){
+      h += '<div class="sec">Réseau(x) de distribution</div>';
+      h += d.udis.map(u => '<div class="udi">• ' + (u.nom || u.code || '—') + (u.debut ? ' <span style="color:var(--muted)">(desservie depuis ' + fmtDate(u.debut) + ')</span>' : '') + '</div>').join('');
+    }
+
+    if (d.parametres && d.parametres.length){
+      h += '<div class="sec">Paramètres clés (dernière mesure)</div>';
+      h += '<table class="t"><thead><tr><th>Paramètre</th><th>Valeur</th><th>Limite</th><th>Statut</th></tr></thead><tbody>';
+      d.parametres.forEach(pa => {
+        const st = pa.statut === 'depasse' ? '<span class="chip depasse">dépassé</span>'
+          : pa.statut === 'ok' ? '<span class="chip ok">OK</span>'
+          : '<span class="chip info">—</span>';
+        h += '<tr><td>' + (PARAM_LBL[pa.id] || pa.label) + '<div style="font-size:10.5px;color:var(--muted)">' + fmtDate(pa.date) + '</div></td>'
+          + '<td>' + fmt(pa.valeur, 2) + ' ' + (pa.unite || '') + '</td>'
+          + '<td>' + (pa.limite != null ? '≤ ' + fmt(pa.limite, 2) : (pa.ref ? pa.ref.replace(/\s*[a-zµ°/()]+$/i, '') : '—')) + '</td>'
+          + '<td>' + st + '</td></tr>';
+      });
+      h += '</tbody></table>';
+    }
+
+    if (d.pesticides){
+      const pe = d.pesticides;
+      h += '<div class="sec">Pesticides</div>';
+      h += '<div class="udi">' + pe.n_recherches + ' substance(s) recherchée(s) · ' + pe.n_detectes + ' détectée(s) · '
+        + '<b>' + pe.n_depassements + '</b> au-dessus de 0,1 µg/L</div>';
+      if (pe.max_valeur != null) h += '<div class="note">Plus élevé : ' + fmt(pe.max_valeur, 3) + ' µg/L (' + (pe.max_substance || '?') + ')</div>';
+    }
+
+    if (d.derniers && d.derniers.length){
+      h += '<div class="sec">Derniers prélèvements</div>';
+      h += '<table class="t"><thead><tr><th>Date</th><th>Conforme</th></tr></thead><tbody>';
+      d.derniers.forEach(x => {
+        h += '<tr><td title="' + (x.conclusion || '').replace(/"/g,'') + '">' + fmtDate(x.date) + '</td>'
+          + '<td>' + (x.conforme ? '<span class="chip ok">oui</span>' : '<span class="chip depasse">non</span>') + '</td></tr>';
+      });
+      h += '</tbody></table>';
+    }
+
+    h += '<div class="note">Contrôle sanitaire réglementaire (ministère de la Santé / ARS), sur le réseau de distribution — pas au robinet du logement. La conformité est calculée sur les prélèvements récupérés (échantillon récent).</div>';
+    $('panel-bd').innerHTML = h;
+  }
+
+  $('csv').addEventListener('click', () => {
+    if (!data) return;
+    const L1 = ['section;cle;valeur'];
+    L1.push('conformite;pourcentage;' + (data.prelevements.pct ?? ''));
+    L1.push('conformite;prelevements_total;' + data.prelevements.total);
+    L1.push('conformite;non_conf_bacterio;' + data.prelevements.non_conf_bact);
+    L1.push('conformite;non_conf_physico_chimie;' + data.prelevements.non_conf_pc);
+    (data.udis || []).forEach(u => L1.push('reseau;nom;"' + (u.nom || '').replace(/"/g,'') + '"'));
+    (data.parametres || []).forEach(p => L1.push('parametre;' + p.id + ';' + (p.valeur ?? '') + ' ' + (p.unite || '') + ' (limite ' + (p.limite ?? '') + ', ' + (p.statut || '') + ', ' + (p.date || '') + ')'));
+    if (data.pesticides) L1.push('pesticides;depassements_0.1ug;' + data.pesticides.n_depassements + ' / ' + data.pesticides.n_recherches + ' recherchés');
+    (data.derniers || []).forEach(x => L1.push('prelevement;' + (x.date || '') + ';' + (x.conforme ? 'conforme' : 'non conforme')));
+    const blob = new Blob(["﻿" + L1.join('\n')], { type:'text/csv;charset=utf-8' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'qualite-eau-' + (data.nom || selected.nom).replace(/\s+/g,'-').toLowerCase() + '.csv';
+    a.click(); URL.revokeObjectURL(a.href);
+  });
+
+})();
+</script>
+</body>
+</html>
