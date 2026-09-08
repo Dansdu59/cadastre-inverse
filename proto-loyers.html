@@ -22,7 +22,10 @@
   .field label{ font-size:11px; font-weight:700; color:var(--muted); text-transform:uppercase; letter-spacing:.03em; }
   .field input[type=search], .field select{
     min-height:38px; font-size:14px; padding:8px 10px; border:1px solid var(--border); border-radius:8px; background:#fff; }
-  #commune-field{ width:230px; } #commune-field input{ width:100%; }
+  #commune-field{ width:220px; } #commune-field input{ width:100%; }
+  .modeseg{ display:flex; border:1px solid var(--border); border-radius:8px; overflow:hidden; }
+  .modeseg button{ border:0; background:#fff; padding:9px 12px; font-size:13px; font-weight:700; color:var(--muted); cursor:pointer; }
+  .modeseg button[aria-pressed="true"]{ background:var(--accent); color:#fff; }
   .btn{ min-height:38px; padding:8px 14px; font-size:14px; font-weight:700; border-radius:8px; border:1px solid transparent; cursor:pointer; }
   .btn-p{ background:var(--accent); color:#fff; } .btn-p:disabled{ background:#caa79a; cursor:default; }
   .btn-g{ background:#fff; color:var(--ink); border-color:var(--border); }
@@ -41,18 +44,20 @@
   #map{ position:absolute; inset:0; }
   .legend, .panel{ position:absolute; z-index:1000; background:rgba(255,255,255,.97); border:1px solid var(--border);
     border-radius:10px; box-shadow:0 6px 20px rgba(0,0,0,.12); font-size:12px; }
-  .legend{ left:12px; bottom:20px; padding:10px 12px; width:270px; }
-  .legend .seg{ display:flex; gap:0; margin-bottom:8px; border:1px solid var(--border); border-radius:8px; overflow:hidden; }
-  .legend .seg button{ flex:1; border:0; background:#fff; padding:6px 4px; font-size:11px; font-weight:700; color:var(--muted); cursor:pointer; }
+  .legend{ left:12px; bottom:20px; width:280px; padding:10px 12px; }
+  .legend .seg{ display:flex; flex-wrap:wrap; gap:0; margin-bottom:8px; border:1px solid var(--border); border-radius:8px; overflow:hidden; }
+  .legend .seg button{ flex:1 1 25%; border:0; border-right:1px solid var(--border); background:#fff; padding:6px 3px; font-size:10.5px; font-weight:700; color:var(--muted); cursor:pointer; }
+  .legend .seg button:last-child{ border-right:0; }
   .legend .seg button[aria-pressed="true"]{ background:var(--accent); color:#fff; }
   .legend .t{ font-weight:700; margin-bottom:6px; }
   .legend .bar{ height:12px; border-radius:3px; border:1px solid rgba(0,0,0,.15); }
   .legend .sc{ display:flex; justify-content:space-between; margin-top:3px; color:var(--muted); }
   .legend .note{ margin-top:7px; color:var(--muted); line-height:1.4; }
-  .panel{ right:12px; top:12px; width:320px; max-height:calc(100% - 24px); display:flex; flex-direction:column; }
+  .panel{ right:12px; top:12px; width:330px; max-height:calc(100% - 24px); display:flex; flex-direction:column; }
   .panel .hd{ padding:10px 12px; border-bottom:1px solid var(--border); }
   .panel .hd b{ font-size:13px; } .panel .hd .m{ color:var(--muted); margin-top:2px; }
   .panel .list{ overflow-y:auto; padding:0; }
+  .panel .pad{ padding:10px 12px; color:var(--muted); line-height:1.5; }
   table.t{ width:100%; border-collapse:collapse; font-size:12px; }
   table.t th, table.t td{ padding:6px 8px; text-align:right; border-bottom:1px solid var(--border); white-space:nowrap; }
   table.t th{ position:sticky; top:0; background:#f4f6f8; font-size:11px; color:var(--muted); cursor:pointer; }
@@ -66,7 +71,7 @@
   .leaflet-popup-content table{ border-collapse:collapse; margin-top:4px; }
   .leaflet-popup-content td{ padding:1px 6px 1px 0; }
   .pill{ display:inline-block; font-size:10px; font-weight:700; padding:1px 5px; border-radius:4px; background:#eef0f2; color:var(--muted); }
-  @media (max-width:820px){ .panel{ position:static; width:auto; margin:10px; max-height:44vh; } .legend{ left:10px; bottom:10px; } }
+  @media (max-width:860px){ .panel{ position:static; width:auto; margin:10px; max-height:44vh; } .legend{ left:10px; bottom:10px; } }
 </style>
 </head>
 <body>
@@ -84,24 +89,51 @@
     <div class="suggestions" id="suggestions" hidden></div>
   </div>
   <div class="field">
+    <label>Niveau</label>
+    <div class="modeseg" id="modeseg">
+      <button type="button" data-mode="commune" aria-pressed="true">Communes</button>
+      <button type="button" data-mode="grid" aria-pressed="false">Grille fine</button>
+    </div>
+  </div>
+  <div class="field">
     <label for="rayon">Rayon</label>
     <select id="rayon">
+      <option value="4">4 km</option>
       <option value="8">8 km</option>
       <option value="12" selected>12 km</option>
       <option value="20">20 km</option>
       <option value="30">30 km</option>
     </select>
   </div>
+  <div class="field" id="maille-field" hidden>
+    <label for="maille">Maille</label>
+    <select id="maille">
+      <option value="250">250 m</option>
+      <option value="500" selected>500 m</option>
+      <option value="1000">1 km</option>
+      <option value="2000">2 km</option>
+    </select>
+  </div>
   <div class="field">
-    <label for="bien">Bien (loyer &amp; rendement)</label>
+    <label for="bien">Bien (loyer)</label>
     <select id="bien">
       <option value="app" selected>Appartement</option>
       <option value="mai">Maison</option>
       <option value="mix">Moyenne app./maison</option>
     </select>
   </div>
+  <div class="field" id="surf-field">
+    <label for="surf">Surface réf.</label>
+    <select id="surf">
+      <option value="30">Studio 30 m²</option>
+      <option value="45" selected>T2 45 m²</option>
+      <option value="65">T3 65 m²</option>
+      <option value="85">T4 85 m²</option>
+      <option value="100">Maison 100 m²</option>
+    </select>
+  </div>
   <div class="field">
-    <label for="months">Prix de vente (DVF)</label>
+    <label for="months">Prix vente (DVF)</label>
     <select id="months">
       <option value="36">3 ans</option>
       <option value="60" selected>5 ans</option>
@@ -122,6 +154,7 @@
     <div class="seg" id="seg">
       <button type="button" data-ind="rdt" aria-pressed="true">Rendement %</button>
       <button type="button" data-ind="loyer" aria-pressed="false">Loyer €/m²</button>
+      <button type="button" data-ind="mois" aria-pressed="false">Loyer /mois</button>
       <button type="button" data-ind="prix" aria-pressed="false">Prix €/m²</button>
     </div>
     <div class="t" id="legend-t">Rendement locatif brut</div>
@@ -142,18 +175,25 @@
   const communeInput = $('commune'), suggestions = $('suggestions'), statusEl = $('status');
   const legend = $('legend'), panel = $('panel');
   const API = /^(localhost|127\.0\.0\.1)$/.test(location.hostname) ? '' : 'https://cadastre-inverse.vercel.app';
+  const isInsee = (v) => /^(\d{5}|2[AB]\d{3})$/.test(String(v || '').toUpperCase());
 
   const RAMPS = {
-    rdt:   ['#f7fcf5','#c7e9c0','#74c476','#31a354','#006d2c'],   // vert : + haut = mieux (investisseur)
-    loyer: ['#fff7ec','#fdd49e','#fc8d59','#e34a33','#b30000'],   // rouge : + haut = + cher
-    prix:  ['#f7fbff','#c6dbef','#6baed6','#3182bd','#08519c'],   // bleu : + haut = + cher
+    rdt:   ['#f7fcf5','#c7e9c0','#74c476','#31a354','#006d2c'],
+    loyer: ['#fff7ec','#fdd49e','#fc8d59','#e34a33','#b30000'],
+    mois:  ['#fff7ec','#fdd49e','#fc8d59','#e34a33','#b30000'],
+    prix:  ['#f7fbff','#c6dbef','#6baed6','#3182bd','#08519c'],
   };
-  const IND_LABEL = { rdt:'Rendement locatif brut', loyer:'Loyer d’annonce', prix:'Prix de vente médian' };
-  const IND_UNIT  = { rdt:' %', loyer:' €/m²/mois', prix:' €/m²' };
+  const IND_LABEL = { rdt:'Rendement locatif brut', loyer:'Loyer d’annonce', mois:'Loyer mensuel estimé', prix:'Prix de vente médian' };
+  const IND_UNIT  = { rdt:' %', loyer:' €/m²/mois', mois:' €/mois', prix:' €/m²' };
+  const BIEN_LB = { app:'appartement', mai:'maison', mix:'moy. app./maison' };
 
   let selected = { code:'53130', nom:'Laval', centre:[48.0578,-0.7692] };
-  let debounce = null, layer = null, rows = [], indicator = 'rdt', sortKey = 'rdt', sortDir = -1;
-  let meta = { months:60, bien:'app', dataThrough:null };
+  let debounce = null, layer = null, indicator = 'rdt', sortKey = 'rdt', sortDir = -1;
+  let mode = 'commune';
+  let rows = [];                       // mode commune
+  let gridSales = [], gridCells = [], gridMeta = {};   // mode grille
+  let loyByCommune = new Map();
+  let meta = { months:60, bien:'app', surf:45, dataThrough:null };
 
   const map = L.map('map').setView(selected.centre, 11);
   L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom:19, attribution:'&copy; OpenStreetMap' }).addTo(map);
@@ -165,27 +205,43 @@
     const dLat=tr(b[0]-a[0]), dLon=tr(b[1]-a[1]);
     const s=Math.sin(dLat/2)**2 + Math.cos(tr(a[0]))*Math.cos(tr(b[0]))*Math.sin(dLon/2)**2;
     return 2*R*Math.asin(Math.sqrt(s)); };
+  const medF = (arr) => { const s = arr.filter(Number.isFinite).sort((x,y) => x-y);
+    if (!s.length) return null; const m = s.length >> 1; return s.length % 2 ? s[m] : (s[m-1] + s[m]) / 2; };
 
-  function hexToRgb(h){ const n=parseInt(h.slice(1),16); return [n>>16&255, n>>8&255, n&255]; }
+  function hexToRgb(h){ const n = parseInt(h.slice(1), 16); return [n>>16&255, n>>8&255, n&255]; }
   function interp(ramp, t){
     t = Math.max(0, Math.min(1, t));
     const seg = (ramp.length - 1) * t, i = Math.floor(seg), f = seg - i;
     if (i >= ramp.length - 1) return ramp[ramp.length - 1];
     const a = hexToRgb(ramp[i]), b = hexToRgb(ramp[i+1]);
-    return 'rgb(' + a.map((v,k)=>Math.round(v + (b[k]-v)*f)).join(',') + ')';
+    return 'rgb(' + a.map((v,k) => Math.round(v + (b[k]-v)*f)).join(',') + ')';
   }
   function quantile(sorted, q){
     if (!sorted.length) return null;
     const p = (sorted.length - 1) * q, lo = Math.floor(p), hi = Math.ceil(p);
     return sorted[lo] + (sorted[hi] - sorted[lo]) * (p - lo);
   }
+  function fmtMY(iso){
+    const [y,m] = String(iso).split('-'); const M = ['janv.','févr.','mars','avr.','mai','juin','juil.','août','sept.','oct.','nov.','déc.'];
+    return (M[(+m||1)-1] || '') + ' ' + y;
+  }
 
-  // valeur de l'indicateur courant pour une ligne, selon le bien choisi
+  // loyer €/m² d'une ligne commune selon le bien choisi
+  const bienLoy = (r) => meta.bien === 'mai' ? r.loy_mai : meta.bien === 'mix' ? r.loy_mix : r.loy_app;
+
+  // valeur de l'indicateur courant — mode commune
   function valOf(r, ind){
-    const b = meta.bien;
     if (ind === 'prix') return r.prix_m2;
-    if (ind === 'loyer') return b === 'mai' ? r.loy_mai : b === 'mix' ? r.loy_mix : r.loy_app;
-    return b === 'mai' ? r.rdt_mai : b === 'mix' ? r.rdt_mix : r.rdt_app; // rdt
+    if (ind === 'loyer') return bienLoy(r);
+    if (ind === 'mois'){ const l = bienLoy(r); return l != null ? Math.round(l * meta.surf) : null; }
+    return meta.bien === 'mai' ? r.rdt_mai : meta.bien === 'mix' ? r.rdt_mix : r.rdt_app;
+  }
+  // valeur de l'indicateur courant — mode grille (cellule)
+  function cellVal(c, ind){
+    if (ind === 'prix') return c.prix_m2;
+    if (ind === 'loyer') return c.loy_m2;
+    if (ind === 'mois') return Math.round(c.loy_m2 * meta.surf);
+    return c.prix_m2 ? (c.loy_m2 * 12) / c.prix_m2 * 100 : null;
   }
 
   // ---- autocomplétion commune ----
@@ -219,22 +275,41 @@
     suggestions.hidden = false;
   }
 
-  // ---- chargement ----
-  $('run').addEventListener('click', run);
-  // Le type de bien se rejoue sans requête (loyers app/maison déjà en mémoire).
-  $('bien').addEventListener('change', () => {
-    if (!rows.length) return;
-    meta.bien = $('bien').value;
-    sortKey = indicator; sortDir = indicator === 'prix' ? 1 : -1;
-    paint(); renderLegend(); renderPanel();
+  // ---- bascule de mode ----
+  $('modeseg').addEventListener('click', (e) => {
+    const b = e.target.closest('button[data-mode]'); if (!b) return;
+    mode = b.dataset.mode;
+    [...$('modeseg').children].forEach(x => x.setAttribute('aria-pressed', String(x === b)));
+    $('maille-field').hidden = mode !== 'grid';
+    if (mode === 'grid' && indicator === 'rdt') {} // rdt ok dans les deux modes
+    // recalcul si on a déjà des données pour ce mode
+    if (mode === 'grid' && gridSales.length){ recomputeGrid(); }
+    else if (mode === 'commune' && rows.length){ paint(); renderLegend(); renderPanel(); legend.hidden = false; panel.hidden = false; }
+    else { legend.hidden = true; panel.hidden = true; setStatus('Cliquez « Charger la carte ».'); }
   });
+
+  // ---- indicateur ----
   $('seg').addEventListener('click', (e) => {
     const b = e.target.closest('button[data-ind]'); if (!b) return;
     indicator = b.dataset.ind;
     [...$('seg').children].forEach(x => x.setAttribute('aria-pressed', String(x === b)));
     sortKey = indicator; sortDir = indicator === 'prix' ? 1 : -1;
-    paint(); renderPanel(); renderLegend();
+    paint(); renderLegend(); renderPanel();
   });
+
+  // ---- réglages rejoués sans requête ----
+  $('bien').addEventListener('change', () => {
+    meta.bien = $('bien').value;
+    if (mode === 'grid' && gridSales.length) recomputeGrid();
+    else if (rows.length){ sortKey = indicator; sortDir = indicator === 'prix' ? 1 : -1; paint(); renderLegend(); renderPanel(); }
+  });
+  $('surf').addEventListener('change', () => {
+    meta.surf = +$('surf').value;
+    if (indicator === 'mois'){ paint(); renderLegend(); renderPanel(); }
+  });
+  $('maille').addEventListener('change', () => { if (mode === 'grid' && gridSales.length) recomputeGrid(); });
+
+  $('run').addEventListener('click', run);
 
   async function pLimit(items, limit, fn){
     const out = new Array(items.length); let i = 0;
@@ -243,73 +318,43 @@
     return out;
   }
 
+  // Communes dont le territoire est susceptible de toucher le cercle (centre + 2
+  // anneaux × 8 azimuts) — requis par /api/dvf-around.
+  async function communesAround(lat, lon, radiusKm){
+    const R = 6371, pts = [[lat, lon]];
+    for (const frac of [0.5, 1]){
+      const d = (radiusKm * frac) / R, la1 = lat*Math.PI/180, lo1 = lon*Math.PI/180;
+      for (let a = 0; a < 360; a += 45){
+        const br = a*Math.PI/180;
+        const la2 = Math.asin(Math.sin(la1)*Math.cos(d) + Math.cos(la1)*Math.sin(d)*Math.cos(br));
+        const lo2 = lo1 + Math.atan2(Math.sin(br)*Math.sin(d)*Math.cos(la1), Math.cos(d) - Math.sin(la1)*Math.sin(la2));
+        pts.push([la2*180/Math.PI, lo2*180/Math.PI]);
+      }
+    }
+    const set = new Set();
+    await pLimit(pts, 6, async ([la, lo]) => {
+      try{
+        const r = await fetch('https://geo.api.gouv.fr/communes?lat=' + la + '&lon=' + lo + '&fields=code').then(x => x.json());
+        (Array.isArray(r) ? r : [r]).forEach(c => c && c.code && set.add(c.code));
+      }catch(e){}
+    });
+    return [...set];
+  }
+
   async function run(){
     const btn = $('run'); btn.disabled = true;
-    const radiusKm = +$('rayon').value;
     meta.months = +$('months').value;
     meta.bien = $('bien').value;
+    meta.surf = +$('surf').value;
     try{
-      setStatus('Communes du secteur…', 'loading');
-      const s = await fetch('https://geo.api.gouv.fr/communes/' + selected.code + '?fields=nom,code,centre,codeDepartement').then(r => r.json());
-      const dep = s.codeDepartement;
-      const c0 = [s.centre.coordinates[1], s.centre.coordinates[0]];
-      selected.centre = c0;
-
-      const cs = await fetch('https://geo.api.gouv.fr/communes?codeDepartement=' + dep + '&fields=nom,code,centre,population&format=json').then(r => r.json());
-      let near = cs
-        .filter(c => c.centre && c.centre.coordinates)
-        .map(c => ({ code:c.code, nom:c.nom, pop:c.population || 0, ll:[c.centre.coordinates[1], c.centre.coordinates[0]] }))
-        .map(c => ({ ...c, d: hav(c0, c.ll) }))
-        .filter(c => c.d <= radiusKm * 1000)
-        .sort((a, b) => a.d - b.d);
-      if (!near.some(c => c.code === selected.code)) near.unshift({ code:selected.code, nom:selected.nom, ll:c0, d:0 });
-      const capped = near.slice(0, 40);
-
-      setStatus('Contours (' + capped.length + ' communes)…', 'loading');
-      const feats = await pLimit(capped, 12, (c) =>
-        fetch('https://geo.api.gouv.fr/communes/' + c.code + '?fields=nom,code&format=geojson&geometry=contour')
-          .then(r => r.ok ? r.json() : null).catch(() => null));
-
-      setStatus('Loyers + prix de vente (DVF)… cela peut prendre quelques secondes.', 'loading');
-      const codes = capped.map(c => c.code).join(',');
-      const d = await fetch(API + '/api/loyers?communes=' + codes + '&months=' + meta.months).then(r => r.json());
-      if (d.error) throw new Error(d.error);
-      meta.dataThrough = d.data_through || null;
-
-      const byCode = new Map(d.communes.map(r => [r.insee, r]));
-      rows = [];
-      const gj = { type:'FeatureCollection', features:[] };
-      feats.forEach((f, i) => {
-        if (!f || !f.geometry) return;
-        const code = capped[i].code, r = byCode.get(code);
-        if (!r) return;
-        r.nom = r.nom || capped[i].nom;
-        r.dist_km = Math.round(capped[i].d / 100) / 10;
-        r.is_center = code === selected.code;
-        f.properties = Object.assign({}, f.properties, r);
-        gj.features.push(f);
-        rows.push(r);
-      });
-      if (!rows.length) throw new Error('Aucune donnée de loyer sur ce secteur.');
-
-      if (layer) map.removeLayer(layer);
-      layer = L.geoJSON(gj, {
-        style: styleFor,
-        onEachFeature: (f, ly) => {
-          ly.on('click', () => openRow(f.properties.insee));
-          ly.bindPopup(popupHtml(f.properties));
-        },
-      }).addTo(map);
-      try{ map.fitBounds(layer.getBounds(), { padding:[24,24] }); }catch(e){}
-
-      sortKey = indicator; sortDir = indicator === 'prix' ? 1 : -1;
-      paint(); renderLegend(); renderPanel();
-      legend.hidden = false; panel.hidden = false;
-
-      const withRdt = rows.filter(r => valOf(r, 'rdt') != null).length;
-      setStatus(rows.length + ' communes · rendement calculé pour ' + withRdt + ' (prix DVF dispo). '
-        + 'Loyers : carte des loyers 2023 (DHUP). Prix : DVF ' + meta.months + ' mois'
-        + (meta.dataThrough ? ' — données jusqu’à ' + fmtMY(meta.dataThrough) : '') + '.');
+      const s = await (async () => {
+        setStatus('Localisation…', 'loading');
+        const r = await fetch('https://geo.api.gouv.fr/communes/' + selected.code + '?fields=nom,code,centre,codeDepartement').then(x => x.json());
+        selected.centre = [r.centre.coordinates[1], r.centre.coordinates[0]];
+        return r;
+      })();
+      if (mode === 'grid') await runGrid(s);
+      else await runCommune(s);
     }catch(err){
       setStatus(err.message || 'Erreur.', 'error');
     }finally{
@@ -317,83 +362,290 @@
     }
   }
 
-  function fmtMY(iso){
-    const [y,m] = String(iso).split('-'); const M = ['janv.','févr.','mars','avr.','mai','juin','juil.','août','sept.','oct.','nov.','déc.'];
-    return (M[(+m||1)-1] || '') + ' ' + y;
+  // ============ MODE COMMUNES (choroplèthe) ============
+  async function runCommune(s){
+    const radiusKm = +$('rayon').value;
+    const dep = s.codeDepartement, c0 = selected.centre;
+
+    setStatus('Communes du secteur…', 'loading');
+    const cs = await fetch('https://geo.api.gouv.fr/communes?codeDepartement=' + dep + '&fields=nom,code,centre,population&format=json').then(r => r.json());
+    let near = cs
+      .filter(c => c.centre && c.centre.coordinates)
+      .map(c => ({ code:c.code, nom:c.nom, ll:[c.centre.coordinates[1], c.centre.coordinates[0]] }))
+      .map(c => ({ ...c, d: hav(c0, c.ll) }))
+      .filter(c => c.d <= radiusKm * 1000)
+      .sort((a, b) => a.d - b.d);
+    if (!near.some(c => c.code === selected.code)) near.unshift({ code:selected.code, nom:selected.nom, ll:c0, d:0 });
+    const capped = near.slice(0, 40);
+
+    setStatus('Contours (' + capped.length + ' communes)…', 'loading');
+    const feats = await pLimit(capped, 12, (c) =>
+      fetch('https://geo.api.gouv.fr/communes/' + c.code + '?fields=nom,code&format=geojson&geometry=contour')
+        .then(r => r.ok ? r.json() : null).catch(() => null));
+
+    setStatus('Loyers + prix de vente (DVF)…', 'loading');
+    const codes = capped.map(c => c.code).join(',');
+    const d = await fetch(API + '/api/loyers?communes=' + codes + '&months=' + meta.months).then(r => r.json());
+    if (d.error) throw new Error(d.error);
+    meta.dataThrough = d.data_through || null;
+    const byCode = new Map(d.communes.map(r => [r.insee, r]));
+
+    rows = [];
+    const gj = { type:'FeatureCollection', features:[] };
+    feats.forEach((f, i) => {
+      if (!f || !f.geometry) return;
+      const code = capped[i].code, r = byCode.get(code);
+      if (!r) return;
+      r.nom = r.nom || capped[i].nom;
+      r.dist_km = Math.round(capped[i].d / 100) / 10;
+      r.is_center = code === selected.code;
+      f.properties = Object.assign({}, f.properties, r);
+      gj.features.push(f); rows.push(r);
+    });
+    if (!rows.length) throw new Error('Aucune donnée de loyer sur ce secteur.');
+
+    if (layer) map.removeLayer(layer);
+    layer = L.geoJSON(gj, {
+      style: styleCommune,
+      onEachFeature: (f, ly) => { ly.on('click', () => openRow(f.properties.insee)); ly.bindPopup(popupCommune(f.properties)); },
+    }).addTo(map);
+    try{ map.fitBounds(layer.getBounds(), { padding:[24,24] }); }catch(e){}
+
+    sortKey = indicator; sortDir = indicator === 'prix' ? 1 : -1;
+    paint(); renderLegend(); renderPanel();
+    legend.hidden = false; panel.hidden = false;
+    const withRdt = rows.filter(r => valOf(r, 'rdt') != null).length;
+    setStatus(rows.length + ' communes · rendement calculé pour ' + withRdt + '. Loyers : carte des loyers 2023 (DHUP). '
+      + 'Prix : DVF ' + meta.months + ' mois' + (meta.dataThrough ? ' — jusqu’à ' + fmtMY(meta.dataThrough) : '') + '.');
   }
 
-  // ---- rendu carte ----
+  // ============ MODE GRILLE FINE ============
+  async function runGrid(s){
+    const radiusKm = +$('rayon').value, c0 = selected.centre;
+    setStatus('Communes du secteur…', 'loading');
+    const comm = (await communesAround(c0[0], c0[1], radiusKm)).filter(isInsee).slice(0, 25);
+    if (!comm.length) throw new Error('Secteur non localisé.');
+
+    // Une requête /api/dvf par commune (renvoie toutes ses mutations géocodées),
+    // fusionnées puis filtrées au rayon : couvre réellement plusieurs communes,
+    // contrairement à dvf-around qui plafonne aux N ventes les plus proches.
+    setStatus('Ventes DVF (' + comm.length + ' communes)…', 'loading');
+    const parts = await pLimit(comm, 6, (code) =>
+      fetch(API + '/api/dvf?insee=' + code + '&months=' + meta.months).then(r => r.ok ? r.json() : null).catch(() => null));
+
+    const seen = new Set(), ventes = [];
+    let dataThrough = '';
+    parts.forEach(p => {
+      if (!p || !p.mutations) return;
+      const dt = p.stats && p.stats.data_through;
+      if (dt && dt > dataThrough) dataThrough = dt;
+      p.mutations.forEach(m => {
+        if (seen.has(m.id)) return;
+        seen.add(m.id);
+        if (m.lat == null || m.lon == null) return;
+        if (!/^Vente/i.test(m.nature || '')) return;
+        if (m.categorie !== 'Maison' && m.categorie !== 'Appartement') return;
+        if (!Number.isFinite(m.prix_m2) || m.prix_m2 <= 0) return;
+        if (hav(c0, [m.lat, m.lon]) > radiusKm * 1000) return;
+        ventes.push(m);
+      });
+    });
+    meta.dataThrough = dataThrough || null;
+    if (ventes.length < 12) throw new Error('Trop peu de ventes DVF exploitables ici pour une grille (' + ventes.length + ').');
+
+    const codes = [...new Set(ventes.map(v => (v.parcelles && v.parcelles[0] || '').slice(0, 5)).filter(isInsee))].slice(0, 40);
+    setStatus('Loyers communaux (' + codes.length + ' communes)…', 'loading');
+    const dl = await fetch(API + '/api/loyers?communes=' + codes.join(',') + '&months=' + meta.months).then(r => r.json());
+    if (dl.error) throw new Error(dl.error);
+    loyByCommune = new Map(dl.communes.map(r => [r.insee, r]));
+
+    gridSales = ventes.map(v => ({
+      lat:v.lat, lon:v.lon, prix_m2:v.prix_m2,
+      insee:(v.parcelles && v.parcelles[0] || '').slice(0, 5),
+    }));
+    recomputeGrid(true);
+  }
+
+  // (re)calcule loy_est par vente + la grille, sans refetch
+  function recomputeGrid(fit){
+    if (!gridSales.length) return;
+    let withLoy = 0;
+    gridSales.forEach(v => {
+      const lc = loyByCommune.get(v.insee);
+      v.loy_est = null;
+      if (lc){
+        const base = bienLoy(lc), ref = lc.prix_m2;
+        if (base && ref && v.prix_m2){
+          // Le loyer suit le prix local mais amorti (élasticité ~0,5) : les
+          // écarts de loyer intra-urbains sont plus faibles que ceux de prix.
+          // Sans amortissement, loy ∝ prix ⇒ rendement constant sur la commune.
+          let r = base * Math.pow(v.prix_m2 / ref, 0.5);
+          r = Math.max(base * 0.6, Math.min(base * 1.8, r));  // garde-fou
+          v.loy_est = r;
+        } else if (base){ v.loy_est = base; }
+      }
+      if (v.loy_est != null) withLoy++;
+    });
+    if (withLoy < 8){ setStatus('Loyers communaux indisponibles sur ce secteur.', 'error'); return; }
+
+    const pts = gridSales.filter(v => Number.isFinite(v.loy_est));
+    let minLat = Infinity, maxLat = -Infinity, minLon = Infinity, maxLon = -Infinity;
+    pts.forEach(p => { if (p.lat<minLat)minLat=p.lat; if (p.lat>maxLat)maxLat=p.lat; if (p.lon<minLon)minLon=p.lon; if (p.lon>maxLon)maxLon=p.lon; });
+    const midLat = (minLat + maxLat) / 2, mLat = 111320, mLon = 111320 * Math.cos(midLat*Math.PI/180);
+    let cellM = +$('maille').value;
+    const searchM = Math.max(cellM, 300);
+    minLat -= searchM/mLat; maxLat += searchM/mLat; minLon -= searchM/mLon; maxLon += searchM/mLon;
+    let nx = Math.ceil((maxLon-minLon)*mLon/cellM), ny = Math.ceil((maxLat-minLat)*mLat/cellM);
+    while (nx*ny > 6000){ cellM *= 1.3; nx = Math.ceil((maxLon-minLon)*mLon/cellM); ny = Math.ceil((maxLat-minLat)*mLat/cellM); }
+    const dLat = cellM/mLat, dLon = cellM/mLon;
+
+    const bk = (x,y) => x + ':' + y, buckets = new Map();
+    pts.forEach(p => {
+      const bx = Math.floor((p.lon-minLon)*mLon/searchM), by = Math.floor((p.lat-minLat)*mLat/searchM), k = bk(bx,by);
+      if (!buckets.has(k)) buckets.set(k, []);
+      buckets.get(k).push(p);
+    });
+
+    const minN = 3, cells = [];
+    for (let iy = 0; iy < ny; iy++) for (let ix = 0; ix < nx; ix++){
+      const cLat = minLat + (iy+0.5)*dLat, cLon = minLon + (ix+0.5)*dLon;
+      const bx = Math.floor((cLon-minLon)*mLon/searchM), by = Math.floor((cLat-minLat)*mLat/searchM);
+      const near = [];
+      for (let dx = -1; dx <= 1; dx++) for (let dy = -1; dy <= 1; dy++){ const a = buckets.get(bk(bx+dx, by+dy)); if (a) near.push(...a); }
+      if (near.length < minN) continue;
+      const inR = [];
+      for (const p of near){ const ex = (p.lon-cLon)*mLon, ey = (p.lat-cLat)*mLat; if (ex*ex + ey*ey <= searchM*searchM) inR.push(p); }
+      if (inR.length < minN) continue;
+      const loy = medF(inR.map(p => p.loy_est)), prix = medF(inR.map(p => p.prix_m2));
+      if (!loy || !prix) continue;
+      cells.push({ s:minLat + iy*dLat, w:minLon + ix*dLon, n:minLat + (iy+1)*dLat, e:minLon + (ix+1)*dLon, loy_m2:loy, prix_m2:prix, cnt:inR.length });
+    }
+    if (!cells.length){ setStatus('Pas assez de ventes pour cette maille. Élargissez la maille ou le rayon.', 'error'); return; }
+
+    gridCells = cells;
+    gridMeta = { cellM: Math.round(cellM), searchM, nSales: pts.length };
+
+    if (layer) map.removeLayer(layer);
+    layer = L.layerGroup(cells.map(c => {
+      const rect = L.rectangle([[c.s, c.w], [c.n, c.e]], { stroke:false, fillOpacity:0.62 });
+      rect._cell = c;
+      rect.bindPopup(popupCell(c));
+      return rect;
+    })).addTo(map);
+
+    sortKey = indicator; sortDir = indicator === 'prix' ? 1 : -1;
+    paint(); renderLegend(); renderPanel();
+    legend.hidden = false; panel.hidden = false;
+    if (fit){ try{ map.fitBounds(L.latLngBounds(pts.map(p => [p.lat, p.lon])), { padding:[24,24], maxZoom:15 }); }catch(e){} }
+
+    setStatus(cells.length + ' mailles de ~' + gridMeta.cellM + ' m · ' + gridMeta.nSales + ' ventes DVF '
+      + meta.months + ' mois' + (meta.dataThrough ? ' (jusqu’à ' + fmtMY(meta.dataThrough) + ')' : '')
+      + '. Loyer estimé = loyer communal DHUP ajusté par le prix de vente local.');
+  }
+
+  // ---- couleurs / domaine ----
   let domain = [0, 1];
+  function currentValues(){
+    return mode === 'grid'
+      ? gridCells.map(c => cellVal(c, indicator)).filter(v => v != null && Number.isFinite(v))
+      : rows.map(r => valOf(r, indicator)).filter(v => v != null && Number.isFinite(v));
+  }
   function computeDomain(){
-    const vals = rows.map(r => valOf(r, indicator)).filter(v => v != null && Number.isFinite(v)).sort((a,b) => a-b);
-    if (vals.length < 3){ domain = vals.length ? [vals[0], vals[vals.length-1] || vals[0] + 1] : [0,1]; return; }
-    domain = [quantile(vals, 0.10), quantile(vals, 0.90)];
+    const v = currentValues().sort((a,b) => a-b);
+    if (v.length < 3){ domain = v.length ? [v[0], v[v.length-1] || v[0] + 1] : [0,1]; return; }
+    domain = [quantile(v, 0.10), quantile(v, 0.90)];
     if (domain[0] === domain[1]) domain[1] = domain[0] + 1;
   }
-  function colorFor(r){
-    const v = valOf(r, indicator);
-    if (v == null || !Number.isFinite(v)) return '#d9dde1';
-    const t = (v - domain[0]) / (domain[1] - domain[0]);
-    return interp(RAMPS[indicator], t);
-  }
-  function styleFor(f){
-    const r = f.properties;
+  const colorAt = (val) => {
+    if (val == null || !Number.isFinite(val)) return '#d9dde1';
+    return interp(RAMPS[indicator], (val - domain[0]) / (domain[1] - domain[0]));
+  };
+  function styleCommune(f){
+    const r = f.properties, v = valOf(r, indicator);
     return { color: r.is_center ? '#1f2328' : '#ffffff', weight: r.is_center ? 2.4 : 0.8,
-             fillColor: colorFor(r), fillOpacity: valOf(r, indicator) == null ? 0.28 : 0.72 };
+             fillColor: colorAt(v), fillOpacity: v == null ? 0.28 : 0.72 };
   }
-  function paint(){ computeDomain(); if (layer) layer.setStyle(styleFor); }
+  function paint(){
+    computeDomain();
+    if (!layer) return;
+    if (mode === 'grid') layer.eachLayer(ly => ly.setStyle({ fillColor: colorAt(cellVal(ly._cell, indicator)) }));
+    else layer.setStyle(styleCommune);
+  }
 
-  function popupHtml(r){
-    const b = meta.bien;
-    const loy = b === 'mai' ? r.loy_mai : b === 'mix' ? r.loy_mix : r.loy_app;
-    const rdt = b === 'mai' ? r.rdt_mai : b === 'mix' ? r.rdt_mix : r.rdt_app;
-    const typ = (b === 'mai' ? r.typ_mai : r.typ_app) === 'commune' ? 'annonces communales' : 'estimé (maille)';
-    return '<b>' + (r.nom || r.insee) + (r.is_center ? ' — commune choisie' : '') + '</b>'
-      + '<table>'
-      + '<tr><td>Loyer ' + ({app:'appart.',mai:'maison',mix:'moyen'}[b]) + '</td><td><b>' + fmt(loy,1) + ' €/m²/mois</b> <span class="pill">' + typ + '</span></td></tr>'
-      + (r.ic_app && b === 'app' ? '<tr><td>Fourchette</td><td>' + fmt(r.ic_app[0],1) + ' – ' + fmt(r.ic_app[1],1) + ' €/m²</td></tr>' : '')
+  // ---- popups ----
+  function popupCommune(r){
+    const loy = bienLoy(r), rdt = meta.bien === 'mai' ? r.rdt_mai : meta.bien === 'mix' ? r.rdt_mix : r.rdt_app;
+    const typ = (meta.bien === 'mai' ? r.typ_mai : r.typ_app) === 'commune' ? 'annonces communales' : 'estimé (maille)';
+    return '<b>' + (r.nom || r.insee) + (r.is_center ? ' — commune choisie' : '') + '</b><table>'
+      + '<tr><td>Loyer ' + BIEN_LB[meta.bien] + '</td><td><b>' + fmt(loy,1) + ' €/m²/mois</b> <span class="pill">' + typ + '</span></td></tr>'
+      + '<tr><td>Loyer ' + meta.surf + ' m²</td><td><b>' + (loy != null ? fmt(Math.round(loy*meta.surf)) + ' €/mois' : '—') + '</b></td></tr>'
       + '<tr><td>Prix de vente</td><td>' + (r.prix_m2 != null ? '<b>' + fmt(r.prix_m2) + ' €/m²</b> · ' + r.ventes_n + ' ventes' : '<i>DVF indisponible</i>') + '</td></tr>'
-      + '<tr><td>Rendement brut</td><td><b>' + (rdt != null ? fmt(rdt,2) + ' %/an' : '—') + '</b></td></tr>'
-      + '</table>'
+      + '<tr><td>Rendement brut</td><td><b>' + (rdt != null ? fmt(rdt,2) + ' %/an' : '—') + '</b></td></tr></table>'
       + '<span style="color:#54606b;font-size:11.5px">Brut = loyer annuel/m² ÷ prix/m². Hors charges, taxe foncière, vacance et frais.</span>';
   }
+  function popupCell(c){
+    const rdt = c.prix_m2 ? (c.loy_m2*12)/c.prix_m2*100 : null;
+    return '<b>Loyer estimé ≈ ' + fmt(c.loy_m2,1) + ' €/m²/mois</b><table>'
+      + '<tr><td>T2 45 m²</td><td>≈ ' + fmt(Math.round(c.loy_m2*45)) + ' €/mois</td></tr>'
+      + '<tr><td>T3 65 m²</td><td>≈ ' + fmt(Math.round(c.loy_m2*65)) + ' €/mois</td></tr>'
+      + '<tr><td>Maison 100 m²</td><td>≈ ' + fmt(Math.round(c.loy_m2*100)) + ' €/mois</td></tr>'
+      + '<tr><td>Prix vente médian</td><td><b>' + fmt(c.prix_m2) + ' €/m²</b></td></tr>'
+      + '<tr><td>Rendement brut</td><td><b>' + (rdt != null ? fmt(rdt,2) + ' %/an' : '—') + '</b></td></tr>'
+      + '<tr><td>Ventes DVF</td><td>' + c.cnt + ' dans ~' + gridMeta.searchM + ' m</td></tr></table>'
+      + '<span style="color:#54606b;font-size:11px">Loyer estimé = loyer communal DHUP × (prix local ÷ prix médian commune)<sup>0,5</sup>. Approximation, pas un loyer observé.</span>';
+  }
 
+  // ---- légende ----
   function renderLegend(){
-    $('seg'); // present
-    $('legend-t').textContent = IND_LABEL[indicator] + ' — ' + ({app:'appartement',mai:'maison',mix:'moy. app./maison'}[meta.bien]);
+    const label = (mode === 'grid' && indicator === 'loyer') ? 'Loyer estimé' : IND_LABEL[indicator];
+    $('legend-t').textContent = label + (indicator === 'prix' ? '' : ' — ' + BIEN_LB[meta.bien])
+      + (indicator === 'mois' ? ' · ' + meta.surf + ' m²' : '')
+      + (mode === 'grid' ? ' · maille ~' + (gridMeta.cellM || $('maille').value) + ' m' : '');
     $('legend-bar').style.background = 'linear-gradient(90deg,' + RAMPS[indicator].join(',') + ')';
-    const d = (indicator === 'rdt') ? 2 : (indicator === 'loyer' ? 1 : 0);
+    const d = indicator === 'rdt' ? 2 : (indicator === 'loyer' ? 1 : 0);
     $('legend-lo').textContent = fmt(domain[0], d) + IND_UNIT[indicator];
     $('legend-hi').textContent = fmt(domain[1], d) + IND_UNIT[indicator];
     $('legend-note').textContent = indicator === 'rdt'
-      ? 'Repères indicatifs : < 4 % tendu, 5–7 % courant en secteur détendu, > 8 % à vérifier (vacance, état). Brut, hors frais.'
-      : (indicator === 'prix' ? 'Médiane DVF des ventes maison + appartement sur la période.' :
-         'Loyer d’annonce prédit (charges comprises) — carte des loyers 2023, DHUP.');
+      ? 'Repères : < 4 % tendu, 5–7 % courant en secteur détendu, > 8 % à vérifier (vacance, état). Brut.'
+      : indicator === 'prix' ? 'Médiane DVF des ventes maison + appartement.'
+      : indicator === 'mois' ? 'Loyer €/m² × ' + meta.surf + ' m². ' + (mode === 'grid' ? 'Loyer estimé localement.' : 'Loyer d’annonce communal (DHUP).')
+      : (mode === 'grid'
+          ? 'Loyer communal DHUP modulé (élasticité 0,5) par le prix de vente local de chaque maille — estimation.'
+          : 'Loyer d’annonce prédit (charges comprises) — carte des loyers 2023, DHUP.');
   }
 
+  // ---- panneau ----
   function renderPanel(){
+    if (mode === 'grid'){
+      const vals = { loyer:gridCells.map(c => c.loy_m2), prix:gridCells.map(c => c.prix_m2),
+        rdt:gridCells.map(c => cellVal(c, 'rdt')), mois:gridCells.map(c => cellVal(c, 'mois')) };
+      $('panel-hd').textContent = gridCells.length + ' mailles · ' + selected.nom;
+      $('panel-m').textContent = 'Maille ~' + gridMeta.cellM + ' m · rayon ' + $('rayon').value + ' km · loyer ' + BIEN_LB[meta.bien] + ' · prix DVF ' + meta.months + ' mois';
+      const line = (lb, arr, dg, u) => '<tr><td>' + lb + '</td><td>' + fmt(quantile(arr.slice().filter(Number.isFinite).sort((a,b)=>a-b),.1),dg)
+        + '</td><td>' + fmt(medF(arr),dg) + '</td><td>' + fmt(quantile(arr.slice().filter(Number.isFinite).sort((a,b)=>a-b),.9),dg) + '</td><td>' + u + '</td></tr>';
+      $('panel-list').innerHTML = '<table class="t"><thead><tr><th>Indicateur</th><th>P10</th><th>Médiane</th><th>P90</th><th></th></tr></thead><tbody>'
+        + line('Loyer', vals.loyer, 1, '€/m²')
+        + line('Loyer ' + meta.surf + ' m²', vals.mois, 0, '€/mois')
+        + line('Prix vente', vals.prix, 0, '€/m²')
+        + line('Rendement', vals.rdt, 2, '%')
+        + '</tbody></table><div class="pad">Chaque maille = médiane des ventes DVF dans ~' + gridMeta.searchM
+        + ' m. Le loyer est <b>estimé</b> (loyer communal DHUP modulé par le prix de vente local), ce n’est pas un loyer observé.</div>';
+      return;
+    }
     $('panel-hd').textContent = rows.length + ' communes · ' + selected.nom;
-    $('panel-m').textContent = 'Rayon ' + $('rayon').value + ' km · loyer ' + ({app:'appartement',mai:'maison',mix:'moyen'}[meta.bien]) + ' · prix DVF ' + meta.months + ' mois';
-    const cols = [
-      { k:'nom',    t:'Commune' },
-      { k:'loyer',  t:'Loyer €/m²' },
-      { k:'prix',   t:'Prix €/m²' },
-      { k:'rdt',    t:'Rdt %' },
-    ];
+    $('panel-m').textContent = 'Rayon ' + $('rayon').value + ' km · loyer ' + BIEN_LB[meta.bien] + ' · prix DVF ' + meta.months + ' mois';
+    const cols = [{ k:'nom', t:'Commune' }, { k:'loyer', t:'Loyer €/m²' }, { k:'mois', t:meta.surf + ' m² €' }, { k:'prix', t:'Prix €/m²' }, { k:'rdt', t:'Rdt %' }];
     const sorted = rows.slice().sort((a,b) => {
-      let va, vb;
-      if (sortKey === 'nom'){ va = a.nom || ''; vb = b.nom || ''; return sortDir * va.localeCompare(vb); }
-      va = valOf(a, sortKey); vb = valOf(b, sortKey);
+      if (sortKey === 'nom') return sortDir * (a.nom || '').localeCompare(b.nom || '');
+      const va = valOf(a, sortKey), vb = valOf(b, sortKey);
       if (va == null) return 1; if (vb == null) return -1;
       return sortDir * (va - vb);
     });
     let h = '<table class="t"><thead><tr>' + cols.map(c => '<th data-k="' + c.k + '">' + c.t + (sortKey === c.k ? (sortDir < 0 ? ' ↓' : ' ↑') : '') + '</th>').join('') + '</tr></thead><tbody>';
     sorted.forEach(r => {
       h += '<tr data-code="' + r.insee + '"' + (r.is_center ? ' class="sel"' : '') + '>'
-        + '<td>' + (r.nom || r.insee) + '</td>'
-        + '<td>' + fmt(valOf(r,'loyer'),1) + '</td>'
-        + '<td>' + fmt(r.prix_m2) + '</td>'
-        + '<td>' + fmt(valOf(r,'rdt'),2) + '</td></tr>';
+        + '<td>' + (r.nom || r.insee) + '</td><td>' + fmt(valOf(r,'loyer'),1) + '</td><td>' + fmt(valOf(r,'mois'))
+        + '</td><td>' + fmt(r.prix_m2) + '</td><td>' + fmt(valOf(r,'rdt'),2) + '</td></tr>';
     });
     h += '</tbody></table>';
     const list = $('panel-list'); list.innerHTML = h;
@@ -406,7 +658,7 @@
   }
 
   function openRow(code){
-    if (!layer) return;
+    if (!layer || mode !== 'commune') return;
     layer.eachLayer(ly => {
       if (ly.feature && ly.feature.properties.insee === code){
         try{ map.fitBounds(ly.getBounds(), { padding:[40,40], maxZoom:13 }); }catch(e){}
@@ -415,17 +667,28 @@
     });
   }
 
+  // ---- export CSV ----
   $('csv').addEventListener('click', () => {
-    const head = ['insee','commune','dist_km','loy_app_eur_m2_mois','loy_mai_eur_m2_mois','prix_vente_eur_m2','ventes_dvf','rdt_brut_app_pct','rdt_brut_mai_pct','rdt_brut_mix_pct','fiabilite_loyer_app'];
-    const lines = [head.join(';')].concat(rows.map(r => [
-      r.insee, '"' + (r.nom || '').replace(/"/g,'') + '"', r.dist_km ?? '',
-      r.loy_app ?? '', r.loy_mai ?? '', r.prix_m2 ?? '', r.ventes_n ?? '',
-      r.rdt_app ?? '', r.rdt_mai ?? '', r.rdt_mix ?? '', r.typ_app ?? '',
-    ].join(';')));
-    const blob = new Blob(["﻿" + lines.join('\n')], { type:'text/csv;charset=utf-8' });
+    let head, lines;
+    if (mode === 'grid'){
+      head = ['centre_lat','centre_lon','loyer_estime_eur_m2_mois','loyer_' + meta.surf + 'm2_eur_mois','prix_vente_eur_m2','rdt_brut_pct','ventes_dvf'];
+      lines = gridCells.map(c => [
+        ((c.s + c.n) / 2).toFixed(5), ((c.w + c.e) / 2).toFixed(5),
+        c.loy_m2.toFixed(2), Math.round(c.loy_m2 * meta.surf), Math.round(c.prix_m2),
+        (c.prix_m2 ? (c.loy_m2*12)/c.prix_m2*100 : 0).toFixed(2), c.cnt,
+      ].join(';'));
+    } else {
+      head = ['insee','commune','dist_km','loy_app','loy_mai','loy_' + meta.surf + 'm2_app_eur_mois','prix_vente_eur_m2','ventes_dvf','rdt_app_pct','rdt_mai_pct','fiabilite_app'];
+      lines = rows.map(r => [
+        r.insee, '"' + (r.nom || '').replace(/"/g,'') + '"', r.dist_km ?? '',
+        r.loy_app ?? '', r.loy_mai ?? '', r.loy_app != null ? Math.round(r.loy_app*meta.surf) : '',
+        r.prix_m2 ?? '', r.ventes_n ?? '', r.rdt_app ?? '', r.rdt_mai ?? '', r.typ_app ?? '',
+      ].join(';'));
+    }
+    const blob = new Blob(["﻿" + [head.join(';')].concat(lines).join('\n')], { type:'text/csv;charset=utf-8' });
     const a = document.createElement('a');
     a.href = URL.createObjectURL(blob);
-    a.download = 'loyers-rendement-' + selected.nom.replace(/\s+/g,'-').toLowerCase() + '.csv';
+    a.download = (mode === 'grid' ? 'loyers-grille-' : 'loyers-communes-') + selected.nom.replace(/\s+/g,'-').toLowerCase() + '.csv';
     a.click(); URL.revokeObjectURL(a.href);
   });
 
