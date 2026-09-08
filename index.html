@@ -341,6 +341,17 @@
   .leaflet-popup-content{ font-size:15px; }
   .leaflet-popup-content a{ color:var(--accent-dark); }
 
+  /* ---- Écran de démarrage (logo Arpent) ---- */
+  #splash{
+    position:fixed; inset:0; z-index:4000; background:#ffffff;
+    display:flex; align-items:center; justify-content:center;
+    transition:opacity .5s ease;
+  }
+  #splash.hide{ opacity:0; pointer-events:none; }
+  #splash svg{ width:min(64vw, 300px); height:auto; animation:splashIn .5s ease-out both; }
+  @keyframes splashIn{ from{ opacity:0; transform:scale(.93); } to{ opacity:1; transform:none; } }
+  @media (prefers-reduced-motion: reduce){ #splash svg{ animation:none; } #splash{ transition:none; } }
+
   /* Sur grand écran : colonne centrée type "app mobile sur le web" ;
      les éléments position:fixed sont recadrés sur la colonne. */
   @media (min-width: 640px){
@@ -351,6 +362,16 @@
 </style>
 </head>
 <body>
+
+<div id="splash" aria-hidden="true">
+  <svg viewBox="0 0 300 188" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Arpent">
+    <path fill="#3fae3a" d="M150 40 L176 94 L124 94 Z"/>
+    <path fill="#1f2b3a" d="M150 6 L250 128 L214 128 L150 42 L86 128 L50 128 Z"/>
+    <text x="150" y="180" text-anchor="middle" fill="#1f2b3a"
+      font-family="'Arial Black','Helvetica Neue',Arial,sans-serif" font-weight="900"
+      font-size="46" letter-spacing="3">ARPENT</text>
+  </svg>
+</div>
 
 <header class="app-header">
   <button type="button" class="help-btn" id="help-btn" aria-label="Comment fonctionne cet onglet ?">?</button>
@@ -2492,6 +2513,16 @@
   });
 
   setStatus('Prêt. Choisissez une commune et lancez la recherche.');
+
+  // Écran de démarrage : on affiche le logo ~1 s puis on fond en fondu sur l'app.
+  (function fadeSplash(){
+    const sp = $('splash');
+    if (!sp) return;
+    setTimeout(() => {
+      sp.classList.add('hide');
+      setTimeout(() => { sp.remove(); map.invalidateSize(); }, 600);
+    }, 1050);
+  })();
 
   // PWA : service worker minimal (installation « écran d'accueil »). Aucun cache.
   if ('serviceWorker' in navigator) {
