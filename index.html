@@ -214,12 +214,12 @@
   }
   .tabbar button{
     flex:1; min-width:0; min-height:var(--nav-h); display:flex; flex-direction:column; align-items:center; justify-content:center;
-    gap:2px; border:0; background:none; cursor:pointer; color:var(--muted); font-size:11px; font-weight:600;
+    gap:2px; border:0; background:none; cursor:pointer; color:var(--muted); font-size:10px; font-weight:600;
     white-space:nowrap; padding:0 1px;
   }
-  .tabbar button .ic{ font-size:20px; line-height:1; }
-  .tabbar button .ic-hm, .tabbar button .ic-loupe, .tabbar button .ic-calc{ display:inline-flex; }
-  .tabbar button .ic-hm svg, .tabbar button .ic-loupe svg, .tabbar button .ic-calc svg{ display:block; width:20px; height:20px; }
+  .tabbar button .ic{ font-size:19px; line-height:1; }
+  .tabbar button .ic-hm, .tabbar button .ic-loupe, .tabbar button .ic-calc, .tabbar button .ic-key{ display:inline-flex; }
+  .tabbar button .ic-hm svg, .tabbar button .ic-loupe svg, .tabbar button .ic-calc svg, .tabbar button .ic-key svg{ display:block; width:19px; height:19px; }
   .hm-legend .bar{ height:12px; border-radius:3px; margin:5px 0; }
   .hm-legend .lbls{ display:flex; justify-content:space-between; color:var(--muted); font-size:12px; }
   .plu-checks{ display:flex; gap:16px; align-items:center; flex-wrap:wrap; min-height:44px; }
@@ -275,6 +275,18 @@
   .es-months-lbl span{ flex:1; text-align:center; font-size:9px; color:var(--muted); }
   .tabbar button[aria-current="page"]{ color:var(--accent); }
   .tabbar button:active{ background:#f0f2f4; }
+
+  /* ---- Onglet LOC (loyers & rendement) ---- */
+  .loc-legend .bar{ height:12px; border-radius:3px; margin:5px 0; }
+  .loc-legend .lbls{ display:flex; justify-content:space-between; color:var(--muted); font-size:12px; }
+  .loc-legend .note{ margin-top:7px; color:var(--muted); font-size:11.5px; line-height:1.45; }
+  .loc-tbl{ width:100%; border-collapse:collapse; font-size:12.5px; }
+  .loc-tbl th, .loc-tbl td{ text-align:right; padding:5px 6px; border-bottom:1px solid var(--border); white-space:nowrap; }
+  .loc-tbl th:first-child, .loc-tbl td:first-child{ text-align:left; }
+  .loc-tbl th{ color:var(--muted); font-weight:600; cursor:pointer; }
+  .loc-tbl tbody tr{ cursor:pointer; }
+  .loc-tbl tbody tr:active{ background:#fbf4f0; }
+  .loc-tbl tr.sel{ background:#fdeee6; }
 
   .leaflet-popup-content{ font-size:15px; }
   .leaflet-popup-content a{ color:var(--accent-dark); }
@@ -502,6 +514,44 @@
       <button class="btn btn-ghost" id="plu-libres" type="button" aria-pressed="false">Parcelles non bâties</button>
     </div>
 
+    <div class="grp" id="grp-loc" hidden>
+      <p class="tip">Loyer d’annonce au m² (carte des loyers 2023, DHUP) croisé au prix de vente DVF → loyer mensuel et rendement locatif brut. Par commune du secteur, ou en grille fine.</p>
+      <div class="row">
+        <div class="field">
+          <label for="loc-mode">Niveau</label>
+          <select id="loc-mode"><option value="commune" selected>Communes</option><option value="grid">Grille fine</option></select>
+        </div>
+        <div class="field">
+          <label for="loc-rayon">Rayon</label>
+          <select id="loc-rayon"><option value="4">4 km</option><option value="8">8 km</option><option value="12" selected>12 km</option><option value="20">20 km</option></select>
+        </div>
+      </div>
+      <div class="row">
+        <div class="field" id="loc-maille-field" hidden>
+          <label for="loc-maille">Maille</label>
+          <select id="loc-maille"><option value="250">250 m</option><option value="500" selected>500 m</option><option value="1000">1 km</option><option value="2000">2 km</option></select>
+        </div>
+        <div class="field">
+          <label for="loc-bien">Bien</label>
+          <select id="loc-bien"><option value="app" selected>Appartement</option><option value="mai">Maison</option><option value="mix">Moyenne</option></select>
+        </div>
+      </div>
+      <div class="row">
+        <div class="field">
+          <label for="loc-surf">Surface réf.</label>
+          <select id="loc-surf"><option value="30">Studio 30 m²</option><option value="45" selected>T2 45 m²</option><option value="65">T3 65 m²</option><option value="85">T4 85 m²</option><option value="100">Maison 100 m²</option></select>
+        </div>
+        <div class="field">
+          <label for="loc-months">Prix DVF</label>
+          <select id="loc-months"><option value="36">3 ans</option><option value="60" selected>5 ans</option><option value="72">6 ans</option></select>
+        </div>
+      </div>
+      <div class="field">
+        <label for="loc-ind">Indicateur</label>
+        <select id="loc-ind"><option value="rdt" selected>Rendement brut %</option><option value="loyer">Loyer €/m²</option><option value="mois">Loyer /mois €</option><option value="prix">Prix vente €/m²</option></select>
+      </div>
+    </div>
+
     <button class="btn btn-primary" id="go" type="submit">Rechercher</button>
     <button class="btn btn-ghost" id="reset" type="button">Réinitialiser</button>
   </form>
@@ -522,6 +572,16 @@
       <button type="button" data-layer="price" aria-pressed="true">Prix €/m²</button>
       <button type="button" data-layer="volume">Volume</button>
       <button type="button" data-layer="evo">Évolution</button>
+    </div>
+  </div>
+
+  <div class="hm-mini" id="loc-mini" hidden>
+    <span class="hm-mini-lbl">Indicateur</span>
+    <div class="seg" id="loc-seg">
+      <button type="button" data-ind="rdt" aria-pressed="true">Rdt %</button>
+      <button type="button" data-ind="loyer">€/m²</button>
+      <button type="button" data-ind="mois">€/mois</button>
+      <button type="button" data-ind="prix">Prix</button>
     </div>
   </div>
 
@@ -551,6 +611,7 @@
   <button type="button" data-tab="heatmap"><span class="ic ic-hm" aria-hidden="true"><svg width="22" height="22" viewBox="0 0 22 22"><defs><radialGradient id="hmIco" cx="34%" cy="38%" r="80%"><stop offset="0" stop-color="#ffe58f"/><stop offset=".42" stop-color="#fd8d3c"/><stop offset=".78" stop-color="#e02d1b"/><stop offset="1" stop-color="#7a1a10"/></radialGradient></defs><rect x="1.5" y="1.5" width="19" height="19" rx="6" fill="url(#hmIco)"/><circle cx="14.6" cy="14" r="2.7" fill="#fff3cf" fill-opacity=".85"/></svg></span>Chaleur</button>
   <button type="button" data-tab="plu"><span class="ic ic-loupe" aria-hidden="true"><svg width="22" height="22" viewBox="0 0 22 22" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><circle cx="9.3" cy="9.3" r="6.4"/><line x1="14" y1="14" x2="19.5" y2="19.5"/><rect x="6.1" y="6.1" width="6.4" height="6.4" rx="0.8" stroke-width="1.1" stroke-dasharray="1.7 1.4"/></svg></span>PLU</button>
   <button type="button" data-tab="estim"><span class="ic ic-calc" aria-hidden="true"><svg width="22" height="22" viewBox="0 0 22 22" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><rect x="3.8" y="2" width="14.4" height="18" rx="2.4"/><rect x="6.6" y="4.6" width="8.8" height="3.6" rx="0.7" fill="currentColor" stroke="none"/><text x="11" y="7.75" font-size="4.4" font-weight="700" fill="#fff" text-anchor="middle" stroke="none">€</text><circle cx="7.6" cy="12" r=".95" fill="currentColor" stroke="none"/><circle cx="11" cy="12" r=".95" fill="currentColor" stroke="none"/><circle cx="14.4" cy="12" r=".95" fill="currentColor" stroke="none"/><circle cx="7.6" cy="15.4" r=".95" fill="currentColor" stroke="none"/><circle cx="11" cy="15.4" r=".95" fill="currentColor" stroke="none"/><circle cx="14.4" cy="15.4" r=".95" fill="currentColor" stroke="none"/></svg></span>Estim.</button>
+  <button type="button" data-tab="loc"><span class="ic ic-key" aria-hidden="true"><svg width="22" height="22" viewBox="0 0 22 22" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="7.6" cy="7.6" r="4.1"/><line x1="10.5" y1="10.5" x2="18.5" y2="18.5"/><line x1="16.6" y1="16.6" x2="18.7" y2="14.5"/><line x1="14" y1="14" x2="16" y2="12"/></svg></span>LOC</button>
 </nav>
 
 <script>
@@ -562,6 +623,8 @@
   const hMonths = $('h-months'), hType = $('h-type'), hLayer = $('h-layer'), hRadius = $('h-radius'), hRadiusHint = $('h-radius-hint');
   const pluMin = $('plu-min'), pluU = $('plu-u'), pluAu = $('plu-au'), pluA = $('plu-a'), pluN = $('plu-n'), pluLibresBtn = $('plu-libres');
   const grpEstim = $('grp-estim'), esAddr = $('es-addr'), esSug = $('es-suggestions'), esSurf = $('es-surf'), esType = $('es-type'), esRadius = $('es-radius'), esYears = $('es-years');
+  const grpLoc = $('grp-loc'), locMode = $('loc-mode'), locRayon = $('loc-rayon'), locMaille = $('loc-maille'),
+        locBien = $('loc-bien'), locSurf = $('loc-surf'), locMonths = $('loc-months'), locInd = $('loc-ind');
   const goBtn = $('go'), resetBtn = $('reset');
   const statusEl = $('status');
   const sheet = $('sheet'), sheetBody = $('sheet-body'), sheetStats = $('sheet-stats'), sheetTitle = $('sheet-title');
@@ -579,8 +642,17 @@
     volume: ['#eff3ff','#c6dbef','#9ecae1','#6baed6','#3182bd','#08519c'],
     evo:    ['#2166ac','#67a9cf','#d1e5f0','#fddbc7','#ef8a62','#b2182b']
   };
-  const TITLES = { parcelles:'Parcelles cadastrales', dvf:'Transactions immobilières', autour:'Autour d’une parcelle', heatmap:'Prix & dynamique par zone', plu:'Zonage PLU & foncier', estim:'Estimation à l’adresse' };
-  const SHEET_TITLES = { parcelles:'Parcelles', dvf:'Transactions (DVF)', autour:'Ventes autour du point', heatmap:'Synthèse de la commune', plu:'PLU & foncier', estim:'Estimation' };
+  const TITLES = { parcelles:'Parcelles cadastrales', dvf:'Transactions immobilières', autour:'Autour d’une parcelle', heatmap:'Prix & dynamique par zone', plu:'Zonage PLU & foncier', estim:'Estimation à l’adresse', loc:'Loyers & rendement locatif' };
+  const SHEET_TITLES = { parcelles:'Parcelles', dvf:'Transactions (DVF)', autour:'Ventes autour du point', heatmap:'Synthèse de la commune', plu:'PLU & foncier', estim:'Estimation', loc:'Loyers & rendement' };
+  const LOC_RAMPS = {
+    rdt:   ['#f7fcf5','#c7e9c0','#74c476','#31a354','#006d2c'],
+    loyer: ['#fff7ec','#fdd49e','#fc8d59','#e34a33','#b30000'],
+    mois:  ['#fff7ec','#fdd49e','#fc8d59','#e34a33','#b30000'],
+    prix:  ['#f7fbff','#c6dbef','#6baed6','#3182bd','#08519c'],
+  };
+  const LOC_LABEL = { rdt:'Rendement locatif brut', loyer:'Loyer d’annonce', mois:'Loyer mensuel estimé', prix:'Prix de vente médian' };
+  const LOC_UNIT  = { rdt:' %', loyer:' €/m²/mois', mois:' €/mois', prix:' €/m²' };
+  const LOC_BIENLB = { app:'appartement', mai:'maison', mix:'moyenne app./maison' };
   const MONTHS_FR = ['J','F','M','A','M','J','J','A','S','O','N','D'];
   const MONTHS_FULL = ['janvier','février','mars','avril','mai','juin','juillet','août','septembre','octobre','novembre','décembre'];
   const PLU_COL = { U:'#e34a33', AU:'#8856a7', A:'#78c679', N:'#238443', autre:'#969696' };
@@ -594,7 +666,7 @@
   };
 
   let activeTab = 'parcelles';
-  let selected = { code:'53130', nom:'Laval', cp:'53000' };
+  let selected = { code:'53130', nom:'Laval', cp:'53000', centre:[48.0578, -0.7692] };
   let debounce = null;
 
   // état par onglet
@@ -605,9 +677,12 @@
     heatmap:{ layer:null, data:null, dataThrough:null, collapsed:false, userSetRadius:false },
     plu:{ zonesLayer:null, libresLayer:null, zonesShown:false, libresShown:false, gpuUrl:null,
           zonesCount:0, zonesNom:'', zonesPartial:false, matched:[], meta:null, collapsed:false },
-    estim:{ layer:null, circle:null, refMarker:null, ref:null, data:null, collapsed:false }
+    estim:{ layer:null, circle:null, refMarker:null, ref:null, data:null, collapsed:false },
+    loc:{ mode:'commune', layer:null, communeRows:[], gridSales:[], gridCells:[], gridMeta:{},
+          loyByCommune:null, data:false, indicator:'rdt', bien:'app', surf:45, months:60,
+          sortKey:'rdt', sortDir:-1, dataThrough:null, collapsed:false }
   };
-  const cacheP = {}, cacheD = {}, cacheA = {}, communesCache = {}, addrCache = {};
+  const cacheP = {}, cacheD = {}, cacheA = {}, communesCache = {}, addrCache = {}, cacheLocDvf = {};
 
   // ---------- utilitaires ----------
   function setStatus(msg, kind){
@@ -701,6 +776,9 @@
       const r = st.estim.ref;
       return (r ? (r.short || r.label || 'adresse') : 'adresse') + '  ·  ' + selText(esType) + '  ·  ' + selText(esRadius);
     }
+    if (activeTab === 'loc'){
+      return (selected ? selected.nom : '—') + '  ·  ' + selText(locMode) + '  ·  ' + selText(locInd) + '  ·  ' + selText(locBien);
+    }
     return (selected ? selected.nom : '—') + '  ·  ' + pMin.value + '–' + pMax.value + ' m²';
   }
   function applyControlsVisibility(){
@@ -713,11 +791,14 @@
     grpHeatmap.hidden = activeTab !== 'heatmap';
     grpPlu.hidden = activeTab !== 'plu';
     grpEstim.hidden = activeTab !== 'estim';
+    grpLoc.hidden = activeTab !== 'loc';
     // Estimation : la commune découle de l'adresse saisie, pas de champ Commune.
     $('commune-field').hidden = activeTab === 'estim';
     $('plu-mini').hidden = !(activeTab === 'plu' && collapsed);
     $('hm-mini').hidden = !(activeTab === 'heatmap' && collapsed);
+    $('loc-mini').hidden = !(activeTab === 'loc' && collapsed && st.loc.data);
     if (activeTab === 'heatmap' && collapsed) syncHmSeg();
+    if (activeTab === 'loc' && collapsed) syncLocSeg();
   }
   function collapseControls(){ st[activeTab].collapsed = true; summaryText.textContent = summaryFor(); applyControlsVisibility(); setTimeout(() => map.invalidateSize(), 140); }
   function expandControls(){ st[activeTab].collapsed = false; applyControlsVisibility(); setTimeout(() => map.invalidateSize(), 140); }
@@ -730,6 +811,7 @@
     if (activeTab === 'heatmap'){ has = !!st.heatmap.data; label = '≡ Synthèse'; }
     if (activeTab === 'plu'){ has = !!(st.plu.zonesShown || st.plu.libresShown); label = '≡ PLU'; }
     if (activeTab === 'estim'){ has = !!st.estim.data; label = '≡ Estimation'; }
+    if (activeTab === 'loc'){ has = !!st.loc.data; label = '≡ Loyers'; }
     fabList.hidden = !(has && !sheet.classList.contains('open'));
     fabList.textContent = label;
   }
@@ -764,10 +846,11 @@
       const b = document.createElement('button'); b.type = 'button';
       b.innerHTML = '<span>' + c.nom + '</span><span class="sub">' + [cp, dep].filter(Boolean).join(' · ') + '</span>';
       b.addEventListener('click', () => {
-        selected = { code:c.code, nom:c.nom, cp:cp };
+        const ctr = c.centre && c.centre.coordinates ? [c.centre.coordinates[1], c.centre.coordinates[0]] : null;
+        selected = { code:c.code, nom:c.nom, cp:cp, centre:ctr };
         communeInput.value = c.nom + (cp ? ' (' + cp + ')' : '');
         suggestions.hidden = true;
-        if (c.centre && c.centre.coordinates) map.setView([c.centre.coordinates[1], c.centre.coordinates[0]], 13);
+        if (ctr) map.setView(ctr, 13);
       });
       suggestions.appendChild(b);
     });
@@ -1047,10 +1130,11 @@
     if (tab === 'heatmap') return [st.heatmap.layer];
     if (tab === 'plu') return [st.plu.zonesShown && st.plu.zonesLayer, st.plu.libresShown && st.plu.libresLayer].filter(Boolean);
     if (tab === 'estim') return [st.estim.circle, st.estim.layer, st.estim.refMarker];
+    if (tab === 'loc') return [st.loc.layer];
     return [st.autour.parcLayer, st.autour.circle, st.autour.ventes, st.autour.refMarker];
   }
   function syncLayers(){
-    ['parcelles','dvf','autour','heatmap','plu','estim'].forEach(tab => layersFor(tab).forEach(l => {
+    ['parcelles','dvf','autour','heatmap','plu','estim','loc'].forEach(tab => layersFor(tab).forEach(l => {
       if (!l) return;
       const show = tab === activeTab;
       if (show && !map.hasLayer(l)) l.addTo(map);
@@ -1065,6 +1149,7 @@
     else if (activeTab === 'heatmap' && st.heatmap.data) renderHeatmap(false);
     else if (activeTab === 'plu' && (st.plu.zonesShown || st.plu.libresShown)) renderPluSheet();
     else if (activeTab === 'estim' && st.estim.data) renderEstim(st.estim.data);
+    else if (activeTab === 'loc' && st.loc.data) renderLoc();
     else { closeSheet(); updateFab(); }
   }
 
@@ -1081,6 +1166,7 @@
       : activeTab === 'heatmap' ? 'Afficher la carte de chaleur'
       : activeTab === 'plu' ? (st.plu.zonesShown ? 'Masquer le zonage PLU' : 'Afficher le zonage PLU')
       : activeTab === 'estim' ? 'Estimer'
+      : activeTab === 'loc' ? 'Afficher les loyers'
       : 'Rechercher';
     if (activeTab === 'plu') syncPluControls();
     applyControlsVisibility();
@@ -1102,6 +1188,10 @@
       setStatus('Estimation — dashboard via « Estimation ».');
     else if (activeTab === 'estim')
       setStatus('Saisissez une adresse (ou touchez la carte) puis « Estimer ».');
+    else if (activeTab === 'loc' && st.loc.data)
+      setStatus('Loyers & rendement — détail via « Loyers ».');
+    else if (activeTab === 'loc')
+      setStatus('Choisissez une commune puis « Afficher les loyers ».');
     else
       setStatus('Prêt. Choisissez une commune et lancez la recherche.');
     setTimeout(() => map.invalidateSize(), 120);
@@ -1138,6 +1228,8 @@
 
     if (activeTab === 'estim'){ await runEstim(); return; }
 
+    if (activeTab === 'loc'){ await runLoc(); return; }
+
     if (activeTab === 'autour'){
       const min = parseInt(aMin.value, 10) || 0, max = parseInt(aMax.value, 10) || 999999;
       if (min > max){ setStatus('Surfaces invalides.', 'error'); return; }
@@ -1153,7 +1245,7 @@
   });
 
   resetBtn.addEventListener('click', () => {
-    ['parcelles','dvf','autour','heatmap','plu','estim'].forEach(t => { layersFor(t).forEach(l => { if (l && map.hasLayer(l)) map.removeLayer(l); }); });
+    ['parcelles','dvf','autour','heatmap','plu','estim','loc'].forEach(t => { layersFor(t).forEach(l => { if (l && map.hasLayer(l)) map.removeLayer(l); }); });
     st.parcelles = { layer:null, data:null, collapsed:false };
     st.dvf = { layer:null, data:null, collapsed:false };
     st.autour = { layer:null, ventes:null, circle:null, refMarker:null, ref:null, parcLayer:null, data:null, collapsed:false };
@@ -1161,7 +1253,11 @@
     st.plu = { zonesLayer:null, libresLayer:null, zonesShown:false, libresShown:false, gpuUrl:null,
                zonesCount:0, zonesNom:'', zonesPartial:false, matched:[], meta:null, collapsed:false };
     st.estim = { layer:null, circle:null, refMarker:null, ref:null, data:null, collapsed:false };
+    st.loc = { mode:locMode.value, layer:null, communeRows:[], gridSales:[], gridCells:[], gridMeta:{},
+               loyByCommune:null, data:false, indicator:locInd.value, bien:locBien.value, surf:+locSurf.value,
+               months:+locMonths.value, sortKey:locInd.value, sortDir:locInd.value === 'prix' ? 1 : -1, dataThrough:null, collapsed:false };
     if (activeTab === 'plu'){ goBtn.textContent = 'Afficher le zonage PLU'; syncPluControls(); }
+    if (activeTab === 'loc'){ $('loc-mini').hidden = true; }
     sheetBody.innerHTML = ''; sheetStats.innerHTML = ''; sheetStats.hidden = true;
     closeSheet();
     applyControlsVisibility();
@@ -1794,6 +1890,404 @@
 
   [esType, esRadius, esYears].forEach(el => el.addEventListener('change', () => { if (activeTab === 'estim' && st.estim.ref) runEstim(); }));
   esSurf.addEventListener('input', () => { if (activeTab === 'estim' && st.estim.data){ renderEstim(st.estim.data); if (st.estim.collapsed) summaryText.textContent = summaryFor(); } });
+
+  // ================= Onglet « LOC » (loyers d'annonce + rendement locatif) =================
+  // Loyer d'annonce €/m²/mois (carte des loyers 2023, DHUP) × prix de vente médian
+  // DVF → loyer mensuel estimé et rendement brut. Deux niveaux : par commune du
+  // secteur (choroplèthe) ou en grille fine (loyer communal modulé localement).
+
+  function syncLocSeg(){
+    [...$('loc-seg').children].forEach(b => b.setAttribute('aria-pressed', b.dataset.ind === st.loc.indicator ? 'true' : 'false'));
+  }
+  async function locPLimit(items, limit, fn){
+    const out = new Array(items.length); let i = 0;
+    async function w(){ while (i < items.length){ const k = i++; out[k] = await fn(items[k], k); } }
+    await Promise.all(Array.from({ length: Math.min(limit, items.length) }, w));
+    return out;
+  }
+  // Communes dont le territoire touche le cercle : centre + 2 anneaux × 8 azimuts.
+  async function locCommunesAround(lat, lon, radiusKm){
+    const pts = [[lat, lon]];
+    for (const frac of [0.5, 1]) for (let b = 0; b < 360; b += 45) pts.push(destPoint(lat, lon, b, radiusKm * 1000 * frac));
+    const set = new Set();
+    await locPLimit(pts, 6, async ([la, lo]) => {
+      try{
+        const r = await fetch('https://geo.api.gouv.fr/communes?lat=' + la + '&lon=' + lo + '&fields=code');
+        if (!r.ok) return;
+        const arr = await r.json();
+        (Array.isArray(arr) ? arr : [arr]).forEach(c => c && c.code && set.add(c.code));
+      }catch(e){}
+    });
+    return [...set];
+  }
+  async function locFetchDvf(insee, months){
+    const key = insee + '|' + months;
+    if (cacheLocDvf[key]) return cacheLocDvf[key];
+    try{
+      const r = await withTimeout('/api/dvf?insee=' + encodeURIComponent(insee) + '&months=' + months, 90000);
+      if (!r.ok) return (cacheLocDvf[key] = null);
+      return (cacheLocDvf[key] = await r.json());
+    }catch(e){ return (cacheLocDvf[key] = null); }
+  }
+  async function ensureSelectedCentre(){
+    if (selected.centre) return selected.centre;
+    try{
+      const r = await fetch('https://geo.api.gouv.fr/communes/' + selected.code + '?fields=centre').then(x => x.json());
+      if (r && r.centre && r.centre.coordinates) selected.centre = [r.centre.coordinates[1], r.centre.coordinates[0]];
+    }catch(e){}
+    return selected.centre;
+  }
+
+  const locBienLoyOf = (r) => st.loc.bien === 'mai' ? r.loy_mai : st.loc.bien === 'mix' ? r.loy_mix : r.loy_app;
+  function locValCommune(r, ind){
+    if (ind === 'prix') return r.prix_m2;
+    if (ind === 'loyer') return locBienLoyOf(r);
+    if (ind === 'mois'){ const l = locBienLoyOf(r); return l != null ? Math.round(l * st.loc.surf) : null; }
+    return st.loc.bien === 'mai' ? r.rdt_mai : st.loc.bien === 'mix' ? r.rdt_mix : r.rdt_app;
+  }
+  function locCellVal(c, ind){
+    if (ind === 'prix') return c.prix_m2;
+    if (ind === 'loyer') return c.loy_m2;
+    if (ind === 'mois') return Math.round(c.loy_m2 * st.loc.surf);
+    return c.prix_m2 ? (c.loy_m2 * 12) / c.prix_m2 * 100 : null;
+  }
+  function locValues(){
+    const ind = st.loc.indicator;
+    return (st.loc.mode === 'grid'
+      ? st.loc.gridCells.map(c => locCellVal(c, ind))
+      : st.loc.communeRows.map(r => locValCommune(r, ind))
+    ).filter(v => v != null && Number.isFinite(v));
+  }
+  function computeLocDomain(){
+    const v = locValues().sort((a, b) => a - b);
+    if (v.length < 3) return v.length ? [v[0], (v[v.length - 1] || v[0]) + 1] : [0, 1];
+    let lo = quantile(v, 0.10), hi = quantile(v, 0.90);
+    if (hi <= lo) hi = lo + 1;
+    return [lo, hi];
+  }
+  function locColorAt(val, lo, hi){
+    if (val == null || !Number.isFinite(val)) return '#d9dde1';
+    return interp(LOC_RAMPS[st.loc.indicator], (val - lo) / (hi - lo));
+  }
+  function paintLoc(){
+    if (!st.loc.layer) return;
+    const [lo, hi] = computeLocDomain();
+    if (st.loc.mode === 'grid'){
+      st.loc.layer.eachLayer(ly => ly.setStyle({ fillColor: locColorAt(locCellVal(ly._cell, st.loc.indicator), lo, hi) }));
+    } else {
+      st.loc.layer.setStyle(f => {
+        const r = f.properties, v = locValCommune(r, st.loc.indicator);
+        return { color: r._center ? '#1f2328' : '#ffffff', weight: r._center ? 2.4 : 0.8,
+                 fillColor: locColorAt(v, lo, hi), fillOpacity: v == null ? 0.28 : 0.72 };
+      });
+    }
+  }
+
+  async function runLoc(){
+    st.loc.mode = locMode.value;
+    st.loc.indicator = locInd.value;
+    st.loc.bien = locBien.value;
+    st.loc.surf = +locSurf.value;
+    st.loc.months = +locMonths.value;
+    st.loc.sortKey = st.loc.indicator;
+    st.loc.sortDir = st.loc.indicator === 'prix' ? 1 : -1;
+    goBtn.disabled = true;
+    try{
+      await ensureSelectedCentre();
+      if (!selected.centre){ setStatus('Commune non localisée.', 'error'); return; }
+      if (st.loc.mode === 'grid') await runLocGrid();
+      else await runLocCommune();
+    }catch(err){ setStatus(err.message || 'Erreur.', 'error'); }
+    finally{ goBtn.disabled = false; }
+  }
+
+  async function runLocCommune(){
+    const radiusKm = +locRayon.value, c0 = selected.centre;
+    setStatus('Communes du secteur…', 'loading');
+    const dep = await fetch('https://geo.api.gouv.fr/communes/' + selected.code + '?fields=codeDepartement').then(r => r.json()).then(d => d.codeDepartement).catch(() => selected.code.slice(0, 2));
+    const cs = await fetch('https://geo.api.gouv.fr/communes?codeDepartement=' + dep + '&fields=nom,code,centre&format=json').then(r => r.json());
+    let near = (cs || [])
+      .filter(c => c.centre && c.centre.coordinates)
+      .map(c => ({ code:c.code, nom:c.nom, ll:[c.centre.coordinates[1], c.centre.coordinates[0]] }))
+      .map(c => ({ ...c, d: L.latLng(c0).distanceTo(L.latLng(c.ll)) }))
+      .filter(c => c.d <= radiusKm * 1000)
+      .sort((a, b) => a.d - b.d);
+    if (!near.some(c => c.code === selected.code)) near.unshift({ code:selected.code, nom:selected.nom, ll:c0, d:0 });
+    const capped = near.slice(0, 40);
+
+    setStatus('Contours + loyers + prix DVF (' + capped.length + ' communes)…', 'loading');
+    const [feats, dl] = await Promise.all([
+      locPLimit(capped, 12, (c) => fetch('https://geo.api.gouv.fr/communes/' + c.code + '?fields=nom,code&format=geojson&geometry=contour').then(r => r.ok ? r.json() : null).catch(() => null)),
+      fetch('/api/loyers?communes=' + capped.map(c => c.code).join(',') + '&months=' + st.loc.months).then(r => r.json()),
+    ]);
+    if (dl.error) throw new Error(dl.error);
+    st.loc.dataThrough = dl.data_through || null;
+    const byCode = new Map((dl.communes || []).map(r => [r.insee, r]));
+
+    const rows = [], gj = { type:'FeatureCollection', features:[] };
+    feats.forEach((f, i) => {
+      if (!f || !f.geometry) return;
+      const code = capped[i].code, r = byCode.get(code);
+      if (!r) return;
+      r.nom = r.nom || capped[i].nom;
+      r._center = code === selected.code;
+      f.properties = Object.assign({}, f.properties, r);
+      gj.features.push(f); rows.push(r);
+    });
+    if (!rows.length) throw new Error('Aucune donnée de loyer sur ce secteur.');
+    st.loc.communeRows = rows;
+    st.loc.gridCells = [];
+
+    if (st.loc.layer){ map.removeLayer(st.loc.layer); }
+    st.loc.layer = L.geoJSON(gj, {
+      style:{ weight:0.8, color:'#fff', fillOpacity:0.7 },
+      onEachFeature: (f, ly) => { ly.on('click', () => openLocRow(f.properties.insee)); ly.bindPopup(popupLocCommune(f.properties)); },
+    });
+    if (activeTab === 'loc') st.loc.layer.addTo(map);
+    try{ map.fitBounds(st.loc.layer.getBounds(), { padding:[24,24] }); }catch(e){}
+
+    st.loc.data = true;
+    paintLoc(); renderLoc(); collapseControls();
+    const withRdt = rows.filter(r => locValCommune(r, 'rdt') != null).length;
+    setStatus(rows.length + ' communes · rendement pour ' + withRdt + ' · loyers DHUP 2023 · prix DVF ' + st.loc.months + ' mois'
+      + (st.loc.dataThrough ? ' (jusqu’à ' + fmtMonthYear(st.loc.dataThrough) + ')' : '') + '.');
+  }
+
+  async function runLocGrid(){
+    const radiusKm = +locRayon.value, c0 = selected.centre;
+    setStatus('Communes du secteur…', 'loading');
+    const comm = (await locCommunesAround(c0[0], c0[1], radiusKm)).slice(0, 25);
+    if (!comm.length) throw new Error('Secteur non localisé.');
+
+    setStatus('Ventes DVF (' + comm.length + ' communes)…', 'loading');
+    const parts = await locPLimit(comm, 6, (code) => locFetchDvf(code, st.loc.months));
+    const seen = new Set(), ventes = [];
+    let dataThrough = '';
+    parts.forEach(p => {
+      if (!p || !p.mutations) return;
+      const dt = p.stats && p.stats.data_through;
+      if (dt && dt > dataThrough) dataThrough = dt;
+      p.mutations.forEach(m => {
+        if (seen.has(m.id)) return;
+        seen.add(m.id);
+        if (m.lat == null || m.lon == null) return;
+        if (!/^Vente/i.test(m.nature || '')) return;
+        if (m.categorie !== 'Maison' && m.categorie !== 'Appartement') return;
+        if (!Number.isFinite(m.prix_m2) || m.prix_m2 <= 0) return;
+        if (L.latLng(c0).distanceTo(L.latLng(m.lat, m.lon)) > radiusKm * 1000) return;
+        ventes.push(m);
+      });
+    });
+    st.loc.dataThrough = dataThrough || null;
+    if (ventes.length < 12) throw new Error('Trop peu de ventes DVF ici pour une grille (' + ventes.length + ').');
+
+    const codes = [...new Set(ventes.map(v => (v.parcelles && v.parcelles[0] || '').slice(0, 5)).filter(c => /^(\d{5}|2[AB]\d{3})$/.test(c)))].slice(0, 40);
+    setStatus('Loyers communaux (' + codes.length + ' communes)…', 'loading');
+    const dl = await fetch('/api/loyers?communes=' + codes.join(',') + '&months=' + st.loc.months).then(r => r.json());
+    if (dl.error) throw new Error(dl.error);
+    st.loc.loyByCommune = new Map((dl.communes || []).map(r => [r.insee, r]));
+    st.loc.gridSales = ventes.map(v => ({ lat:v.lat, lon:v.lon, prix_m2:v.prix_m2, insee:(v.parcelles && v.parcelles[0] || '').slice(0, 5) }));
+    st.loc.communeRows = [];
+    recomputeLocGrid(true);
+  }
+
+  // (re)calcule le loyer estimé par vente + la grille, sans requête réseau.
+  function recomputeLocGrid(fit){
+    const sales = st.loc.gridSales, loyBy = st.loc.loyByCommune;
+    if (!sales.length || !loyBy) return;
+    let withLoy = 0;
+    sales.forEach(v => {
+      const lc = loyBy.get(v.insee);
+      v.loy_est = null;
+      if (lc){
+        const base = st.loc.bien === 'mai' ? lc.loy_mai : st.loc.bien === 'mix' ? lc.loy_mix : lc.loy_app;
+        const ref = lc.prix_m2;
+        if (base && ref && v.prix_m2){
+          // élasticité amortie (0,5) : sans ça loyer ∝ prix ⇒ rendement plat.
+          let r = base * Math.pow(v.prix_m2 / ref, 0.5);
+          v.loy_est = Math.max(base * 0.6, Math.min(base * 1.8, r));
+        } else if (base){ v.loy_est = base; }
+      }
+      if (v.loy_est != null) withLoy++;
+    });
+    if (withLoy < 8){ setStatus('Loyers communaux indisponibles sur ce secteur.', 'error'); return; }
+
+    const pts = sales.filter(v => Number.isFinite(v.loy_est));
+    let minLat = Infinity, maxLat = -Infinity, minLon = Infinity, maxLon = -Infinity;
+    pts.forEach(p => { if (p.lat < minLat) minLat = p.lat; if (p.lat > maxLat) maxLat = p.lat; if (p.lon < minLon) minLon = p.lon; if (p.lon > maxLon) maxLon = p.lon; });
+    const midLat = (minLat + maxLat) / 2, mLat = 111320, mLon = 111320 * Math.cos(midLat * Math.PI / 180);
+    let cellM = +locMaille.value;
+    const searchM = Math.max(cellM, 300);
+    minLat -= searchM / mLat; maxLat += searchM / mLat; minLon -= searchM / mLon; maxLon += searchM / mLon;
+    let nx = Math.ceil((maxLon - minLon) * mLon / cellM), ny = Math.ceil((maxLat - minLat) * mLat / cellM);
+    while (nx * ny > 6000){ cellM *= 1.3; nx = Math.ceil((maxLon - minLon) * mLon / cellM); ny = Math.ceil((maxLat - minLat) * mLat / cellM); }
+    const dLat = cellM / mLat, dLon = cellM / mLon;
+
+    const bk = (x, y) => x + ':' + y, buckets = new Map();
+    pts.forEach(p => {
+      const bx = Math.floor((p.lon - minLon) * mLon / searchM), by = Math.floor((p.lat - minLat) * mLat / searchM), k = bk(bx, by);
+      if (!buckets.has(k)) buckets.set(k, []);
+      buckets.get(k).push(p);
+    });
+
+    const minN = 3, cells = [];
+    for (let iy = 0; iy < ny; iy++) for (let ix = 0; ix < nx; ix++){
+      const cLat = minLat + (iy + 0.5) * dLat, cLon = minLon + (ix + 0.5) * dLon;
+      const bx = Math.floor((cLon - minLon) * mLon / searchM), by = Math.floor((cLat - minLat) * mLat / searchM);
+      const near = [];
+      for (let dx = -1; dx <= 1; dx++) for (let dy = -1; dy <= 1; dy++){ const a = buckets.get(bk(bx + dx, by + dy)); if (a) near.push(...a); }
+      if (near.length < minN) continue;
+      const inR = [];
+      for (const p of near){ const ex = (p.lon - cLon) * mLon, ey = (p.lat - cLat) * mLat; if (ex * ex + ey * ey <= searchM * searchM) inR.push(p); }
+      if (inR.length < minN) continue;
+      const loy = medF(inR.map(p => p.loy_est)), prix = medF(inR.map(p => p.prix_m2));
+      if (!loy || !prix) continue;
+      cells.push({ s:minLat + iy * dLat, w:minLon + ix * dLon, n:minLat + (iy + 1) * dLat, e:minLon + (ix + 1) * dLon, loy_m2:loy, prix_m2:prix, cnt:inR.length });
+    }
+    if (!cells.length){ setStatus('Pas assez de ventes pour cette maille. Élargissez la maille ou le rayon.', 'error'); return; }
+    st.loc.gridCells = cells;
+    st.loc.gridMeta = { cellM: Math.round(cellM), searchM, nSales: pts.length };
+
+    if (st.loc.layer){ map.removeLayer(st.loc.layer); }
+    st.loc.layer = L.layerGroup(cells.map(c => {
+      const rect = L.rectangle([[c.s, c.w], [c.n, c.e]], { stroke:false, fillOpacity:0.62 });
+      rect._cell = c;
+      rect.bindPopup(popupLocCell(c));
+      return rect;
+    }));
+    if (activeTab === 'loc') st.loc.layer.addTo(map);
+    if (fit){ try{ map.fitBounds(L.latLngBounds(pts.map(p => [p.lat, p.lon])), { padding:[24,24], maxZoom:15 }); }catch(e){} }
+
+    st.loc.data = true;
+    paintLoc(); renderLoc(); collapseControls();
+    setStatus(cells.length + ' mailles de ~' + st.loc.gridMeta.cellM + ' m · ' + st.loc.gridMeta.nSales + ' ventes DVF '
+      + st.loc.months + ' mois' + (st.loc.dataThrough ? ' (jusqu’à ' + fmtMonthYear(st.loc.dataThrough) + ')' : '')
+      + '. Loyer estimé localement à partir du loyer communal DHUP.');
+  }
+
+  function popupLocCommune(r){
+    const loy = locBienLoyOf(r), rdt = st.loc.bien === 'mai' ? r.rdt_mai : st.loc.bien === 'mix' ? r.rdt_mix : r.rdt_app;
+    const typ = (st.loc.bien === 'mai' ? r.typ_mai : r.typ_app) === 'commune' ? 'annonces communales' : 'estimé (maille)';
+    return '<b>' + (r.nom || r.insee) + (r._center ? ' — commune choisie' : '') + '</b>'
+      + '<br/>Loyer ' + LOC_BIENLB[st.loc.bien] + ' : <b>' + (loy != null ? loy.toFixed(1).replace('.', ',') + ' €/m²/mois' : '—') + '</b> <span style="color:#54606b">(' + typ + ')</span>'
+      + '<br/>Loyer ' + st.loc.surf + ' m² : <b>' + (loy != null ? fmtEur(loy * st.loc.surf) : '—') + '/mois</b>'
+      + '<br/>Prix de vente : ' + (r.prix_m2 != null ? '<b>' + fmtNum(r.prix_m2) + ' €/m²</b> · ' + r.ventes_n + ' ventes' : '<i>DVF indisponible</i>')
+      + '<br/>Rendement brut : <b>' + (rdt != null ? rdt.toFixed(2).replace('.', ',') + ' %/an' : '—') + '</b>'
+      + '<br/><span style="color:#54606b;font-size:12px">Brut = loyer annuel/m² ÷ prix/m². Hors charges, taxe foncière, vacance, frais.</span>';
+  }
+  function popupLocCell(c){
+    const rdt = c.prix_m2 ? (c.loy_m2 * 12) / c.prix_m2 * 100 : null;
+    return '<b>Loyer estimé ≈ ' + c.loy_m2.toFixed(1).replace('.', ',') + ' €/m²/mois</b>'
+      + '<br/>T2 45 m² ≈ ' + fmtEur(c.loy_m2 * 45) + ' · T3 65 m² ≈ ' + fmtEur(c.loy_m2 * 65) + '/mois'
+      + '<br/>Prix vente médian : <b>' + fmtNum(c.prix_m2) + ' €/m²</b>'
+      + '<br/>Rendement brut : <b>' + (rdt != null ? rdt.toFixed(2).replace('.', ',') + ' %/an' : '—') + '</b>'
+      + '<br/>' + c.cnt + ' ventes DVF dans ~' + st.loc.gridMeta.searchM + ' m'
+      + '<br/><span style="color:#54606b;font-size:12px">Loyer estimé = loyer communal DHUP × (prix local ÷ prix médian commune)^0,5. Approximation, pas un loyer observé.</span>';
+  }
+  function openLocRow(code){
+    if (!st.loc.layer || st.loc.mode !== 'commune') return;
+    st.loc.layer.eachLayer(ly => {
+      if (ly.feature && ly.feature.properties.insee === code){
+        try{ map.fitBounds(ly.getBounds(), { padding:[40,40], maxZoom:13 }); }catch(e){}
+        ly.openPopup(); closeSheet();
+      }
+    });
+  }
+
+  function renderLoc(){
+    const ind = st.loc.indicator, [lo, hi] = computeLocDomain();
+    const dg = ind === 'rdt' ? 2 : (ind === 'loyer' ? 1 : 0);
+    const fmtV = (v) => (v == null || !Number.isFinite(v)) ? '—' : v.toLocaleString('fr-FR', { minimumFractionDigits:dg, maximumFractionDigits:dg });
+    const title = (st.loc.mode === 'grid' && ind === 'loyer' ? 'Loyer estimé' : LOC_LABEL[ind])
+      + (ind === 'prix' ? '' : ' — ' + LOC_BIENLB[st.loc.bien])
+      + (ind === 'mois' ? ' · ' + st.loc.surf + ' m²' : '')
+      + (st.loc.mode === 'grid' ? ' · maille ~' + (st.loc.gridMeta.cellM || locMaille.value) + ' m' : '');
+    const note = ind === 'rdt'
+      ? 'Repères : < 4 % tendu · 5–7 % courant en secteur détendu · > 8 % à vérifier (vacance, état). Brut, hors frais.'
+      : ind === 'prix' ? 'Médiane DVF des ventes maison + appartement sur la période.'
+      : ind === 'mois' ? 'Loyer €/m² × ' + st.loc.surf + ' m². ' + (st.loc.mode === 'grid' ? 'Loyer estimé localement.' : 'Loyer d’annonce communal (DHUP 2023).')
+      : (st.loc.mode === 'grid' ? 'Loyer communal DHUP modulé (élasticité 0,5) par le prix de vente local de chaque maille — estimation.'
+                                : 'Loyer d’annonce prédit, charges comprises — carte des loyers 2023, DHUP.');
+
+    let html = '<div class="loc-legend"><b>' + title + '</b>'
+      + '<div class="bar" style="background:linear-gradient(90deg,' + LOC_RAMPS[ind].join(',') + ')"></div>'
+      + '<div class="lbls"><span>' + fmtV(lo) + LOC_UNIT[ind] + '</span><span>' + fmtV(hi) + LOC_UNIT[ind] + '</span></div>'
+      + '<div class="note">' + note + '</div></div>';
+    sheetStats.innerHTML = html; sheetStats.hidden = false;
+
+    if (st.loc.mode === 'grid'){
+      const cells = st.loc.gridCells;
+      const col = (arr) => { const s = arr.filter(Number.isFinite).sort((a, b) => a - b); return s; };
+      const rowFor = (lb, arr, d, u) => { const s = col(arr);
+        return '<tr><td>' + lb + '</td><td>' + fmtNum(quantile(s, .1)) + '</td><td>' + (d ? (medF(s) || 0).toFixed(d).replace('.', ',') : fmtNum(medF(s))) + '</td><td>' + fmtNum(quantile(s, .9)) + '</td><td>' + u + '</td></tr>'; };
+      sheetBody.innerHTML = '<table class="loc-tbl"><thead><tr><th>Indicateur</th><th>P10</th><th>Médiane</th><th>P90</th><th></th></tr></thead><tbody>'
+        + rowFor('Loyer', cells.map(c => c.loy_m2), 1, '€/m²')
+        + rowFor('Loyer ' + st.loc.surf + ' m²', cells.map(c => c.loy_m2 * st.loc.surf), 0, '€/mois')
+        + rowFor('Prix vente', cells.map(c => c.prix_m2), 0, '€/m²')
+        + rowFor('Rendement', cells.map(c => locCellVal(c, 'rdt')), 2, '%')
+        + '</tbody></table><div class="es-note">' + cells.length + ' mailles · chaque maille = médiane des ventes DVF dans ~'
+        + st.loc.gridMeta.searchM + ' m. Le loyer est <b>estimé</b> (loyer communal DHUP modulé par le prix local), pas un loyer observé.</div>';
+      sheetTitle.textContent = SHEET_TITLES.loc + ' — ' + (selected ? selected.nom : '');
+      updateFab();
+      return;
+    }
+
+    const cols = [['nom', 'Commune'], ['loyer', 'Loyer €/m²'], ['mois', st.loc.surf + ' m² €'], ['prix', 'Prix €/m²'], ['rdt', 'Rdt %']];
+    const sorted = st.loc.communeRows.slice().sort((a, b) => {
+      if (st.loc.sortKey === 'nom') return st.loc.sortDir * (a.nom || '').localeCompare(b.nom || '');
+      const va = locValCommune(a, st.loc.sortKey), vb = locValCommune(b, st.loc.sortKey);
+      if (va == null) return 1; if (vb == null) return -1;
+      return st.loc.sortDir * (va - vb);
+    });
+    let t = '<table class="loc-tbl"><thead><tr>' + cols.map(([k, lb]) => '<th data-k="' + k + '">' + lb + (st.loc.sortKey === k ? (st.loc.sortDir < 0 ? ' ↓' : ' ↑') : '') + '</th>').join('') + '</tr></thead><tbody>';
+    sorted.forEach(r => {
+      t += '<tr data-code="' + r.insee + '"' + (r._center ? ' class="sel"' : '') + '><td>' + (r.nom || r.insee) + '</td>'
+        + '<td>' + fmtV1(locValCommune(r, 'loyer'), 1) + '</td><td>' + fmtNum(locValCommune(r, 'mois'))
+        + '</td><td>' + fmtNum(r.prix_m2) + '</td><td>' + fmtV1(locValCommune(r, 'rdt'), 2) + '</td></tr>';
+    });
+    t += '</tbody></table><div class="es-note">Loyers : carte des loyers 2023 (DHUP), €/m²/mois charges comprises. '
+      + 'Prix &amp; rendement : DVF ' + st.loc.months + ' mois. Rendement brut, hors charges / taxe foncière / vacance / frais.</div>';
+    sheetBody.innerHTML = t;
+    sheetBody.querySelectorAll('th[data-k]').forEach(th => th.addEventListener('click', () => {
+      const k = th.dataset.k;
+      if (st.loc.sortKey === k) st.loc.sortDir *= -1; else { st.loc.sortKey = k; st.loc.sortDir = k === 'nom' ? 1 : -1; }
+      renderLoc();
+    }));
+    sheetBody.querySelectorAll('tr[data-code]').forEach(tr => tr.addEventListener('click', () => openLocRow(tr.dataset.code)));
+    sheetTitle.textContent = SHEET_TITLES.loc + ' — ' + (selected ? selected.nom : '');
+    updateFab();
+  }
+  const fmtV1 = (v, d) => (v == null || !Number.isFinite(+v)) ? '—' : (+v).toLocaleString('fr-FR', { minimumFractionDigits:d, maximumFractionDigits:d });
+
+  // ---- LOC : réglages ----
+  function locApplyLite(){   // rejoué sans requête réseau
+    if (!st.loc.data) return;
+    st.loc.indicator = locInd.value; st.loc.bien = locBien.value; st.loc.surf = +locSurf.value;
+    st.loc.sortKey = st.loc.indicator; st.loc.sortDir = st.loc.indicator === 'prix' ? 1 : -1;
+    syncLocSeg();
+    if (st.loc.mode === 'grid') recomputeLocGrid(false); else { paintLoc(); renderLoc(); }
+    if (st.loc.collapsed) summaryText.textContent = summaryFor();
+  }
+  locInd.addEventListener('change', () => { if (activeTab === 'loc') locApplyLite(); });
+  locSurf.addEventListener('change', () => { if (activeTab === 'loc' && st.loc.indicator === 'mois') locApplyLite(); });
+  locBien.addEventListener('change', () => { if (activeTab === 'loc') locApplyLite(); });
+  locMaille.addEventListener('change', () => { if (activeTab === 'loc' && st.loc.data && st.loc.mode === 'grid') recomputeLocGrid(false); });
+  [locRayon, locMonths].forEach(el => el.addEventListener('change', () => { if (activeTab === 'loc' && st.loc.data) runLoc(); }));
+  locMode.addEventListener('change', () => {
+    $('loc-maille-field').hidden = locMode.value !== 'grid';
+    if (activeTab !== 'loc') return;
+    st.loc.mode = locMode.value;
+    const haveIt = st.loc.mode === 'grid' ? st.loc.gridCells.length : st.loc.communeRows.length;
+    if (st.loc.data && haveIt){ syncLayers(); paintLoc(); renderLoc(); }
+    else if (st.loc.data){ runLoc(); }
+    else { setStatus('« Afficher les loyers » pour ce niveau.'); }
+  });
+  $('loc-seg').addEventListener('click', (e) => {
+    const b = e.target.closest('button[data-ind]');
+    if (!b || b.dataset.ind === st.loc.indicator) return;
+    locInd.value = b.dataset.ind;
+    locApplyLite();
+  });
 
   setStatus('Prêt. Choisissez une commune et lancez la recherche.');
 
