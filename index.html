@@ -50,7 +50,6 @@
     padding:calc(12px + var(--safe-top)) max(16px, env(safe-area-inset-left)) 12px max(16px, env(safe-area-inset-right));
   }
   .app-header h1{ margin:0; font-size:18px; padding-right:40px; }
-  .app-header p{ margin:2px 0 0; font-size:14px; color:var(--muted); padding-right:40px; }
   .help-btn{
     position:absolute; top:calc(10px + var(--safe-top)); right:max(12px, env(safe-area-inset-right));
     width:30px; height:30px; border-radius:50%; border:1.5px solid var(--border); background:var(--card);
@@ -73,6 +72,18 @@
   .help-body code{ font-size:12px; background:#f0f2f4; border-radius:4px; padding:0 3px; }
   .help-body .warn{ color:#b3261e; }
   @media (min-width:640px){ .help-overlay{ align-items:center; } .help-card{ border-radius:16px; max-height:80vh; } }
+
+  /* ---------- Échelle de couleurs posée sur la carte ---------- */
+  .map-legend{
+    background:rgba(255,255,255,.95); border:1px solid var(--border); border-radius:8px;
+    padding:7px 9px; font-size:11px; line-height:1.3; color:var(--ink);
+    box-shadow:0 2px 8px rgba(0,0,0,.18); max-width:180px;
+  }
+  .map-legend .ml-t{ font-weight:700; margin-bottom:4px; }
+  .map-legend .ml-bar{ height:10px; border-radius:3px; border:1px solid rgba(0,0,0,.15); }
+  .map-legend .ml-lb{ display:flex; justify-content:space-between; color:var(--muted); margin-top:2px; }
+  .map-legend .ml-row{ display:flex; align-items:center; gap:5px; margin:2px 0; }
+  .map-legend .ml-sw{ width:11px; height:11px; border-radius:2px; border:1px solid rgba(0,0,0,.25); flex:none; }
 
   .screen{
     flex:1 1 auto; display:flex; flex-direction:column; min-height:0;
@@ -327,7 +338,6 @@
 <header class="app-header">
   <button type="button" class="help-btn" id="help-btn" aria-label="Comment fonctionne cet onglet ?">?</button>
   <h1 id="app-title">Parcelles cadastrales</h1>
-  <p>Cadastre, transactions immobilières (DVF) et prix au m² alentour — France entière.</p>
 </header>
 
 <div class="screen">
@@ -828,6 +838,56 @@
     if (activeTab === 'estim'){ setEstimRef(e.latlng.lat, e.latlng.lng, null); return; }
   });
 
+  // ---------- échelle de couleurs posée sur la carte ----------
+  const mapLegend = L.control({ position:'bottomleft' });
+  mapLegend.onAdd = function(){
+    const d = L.DomUtil.create('div', 'map-legend');
+    L.DomEvent.disableClickPropagation(d); L.DomEvent.disableScrollPropagation(d);
+    this._d = d; return d;
+  };
+  let mapLegendShown = false;
+  function setMapLegend(html){
+    if (html){
+      if (!mapLegendShown){ mapLegend.addTo(map); mapLegendShown = true; }
+      mapLegend._d.innerHTML = html;
+    } else if (mapLegendShown){
+      map.removeControl(mapLegend); mapLegendShown = false;
+    }
+  }
+  const gradientBar = (ramp) => '<div class="ml-bar" style="background:linear-gradient(90deg,' + ramp.join(',') + ')"></div>';
+  function heatmapLegendHtml(){
+    const s = st.heatmap.scale;
+    if (!s) return '';
+    let loL, hiL;
+    if (s.layerKey === 'price'){ loL = fmtNum(s.lo); hiL = fmtNum(s.hi); }
+    else if (s.layerKey === 'volume'){ loL = s.lo.toFixed(1); hiL = s.hi.toFixed(1); }
+    else { loL = fmtPct(s.lo); hiL = fmtPct(s.hi); }
+    return '<div class="ml-t">' + selText(hLayer) + '</div>' + gradientBar(s.ramp) +
+      '<div class="ml-lb"><span>' + loL + '</span>' + (s.diverging ? '<span>0</span>' : '') + '<span>' + hiL + '</span></div>';
+  }
+  function locLegendHtml(){
+    const ind = st.loc.indicator, dom = computeLocDomain(), dg = ind === 'rdt' ? 2 : (ind === 'loyer' ? 1 : 0);
+    const f = (v) => (v == null || !Number.isFinite(v)) ? '—' : v.toLocaleString('fr-FR', { minimumFractionDigits:dg, maximumFractionDigits:dg });
+    const lbl = ((st.loc.mode === 'grid' && ind === 'loyer') ? 'Loyer estimé' : LOC_LABEL[ind]) + ' (' + LOC_UNIT[ind].trim() + ')';
+    return '<div class="ml-t">' + lbl + '</div>' + gradientBar(LOC_RAMPS[ind]) +
+      '<div class="ml-lb"><span>' + f(dom[0]) + '</span><span>' + f(dom[1]) + '</span></div>';
+  }
+  function pluLegendHtml(){
+    if (!st.plu.zonesLayer) return '';
+    const present = new Set();
+    st.plu.zonesLayer.eachLayer(l => { const c = l.feature && l.feature.properties && l.feature.properties.cat; if (c) present.add(PLU_COL[c] ? c : 'autre'); });
+    const order = ['U','AU','A','N','autre'].filter(c => present.has(c));
+    if (!order.length) return '';
+    return '<div class="ml-t">Zonage PLU</div>' + order.map(c =>
+      '<div class="ml-row"><span class="ml-sw" style="background:' + PLU_COL[c] + '"></span>' + PLU_NAME[c] + '</div>').join('');
+  }
+  function updateMapLegend(){
+    if (activeTab === 'heatmap' && st.heatmap.data && st.heatmap.layer) setMapLegend(heatmapLegendHtml());
+    else if (activeTab === 'loc' && st.loc.data && st.loc.layer) setMapLegend(locLegendHtml());
+    else if (activeTab === 'plu' && st.plu.zonesShown && st.plu.zonesLayer) setMapLegend(pluLegendHtml());
+    else setMapLegend(null);
+  }
+
   // ---------- repli / expansion des contrôles ----------
   function activeGrp(){ return activeTab === 'dvf' ? grpDvf : activeTab === 'autour' ? grpAutour : grpParcelles; }
   function summaryFor(){
@@ -1256,6 +1316,7 @@
     if (activeTab === 'plu') syncPluControls();
     applyControlsVisibility();
     syncLayers();
+    updateMapLegend();
     restoreSheetForTab();
     if (activeTab === 'parcelles' && Array.isArray(st.parcelles.data))
       setStatus(st.parcelles.data.length + ' parcelle(s) à ' + (selected ? selected.nom : '') + ' — liste via « Liste ».');
@@ -1343,6 +1404,7 @@
                months:+locMonths.value, sortKey:locInd.value, sortDir:locInd.value === 'prix' ? 1 : -1, dataThrough:null, collapsed:false };
     if (activeTab === 'plu'){ goBtn.textContent = 'Afficher le zonage PLU'; syncPluControls(); }
     if (activeTab === 'loc'){ $('loc-mini').hidden = true; }
+    setMapLegend(null);
     sheetBody.innerHTML = ''; sheetStats.innerHTML = ''; sheetStats.hidden = true;
     closeSheet();
     applyControlsVisibility();
@@ -1454,7 +1516,7 @@
       '<text x="0" y="' + H + '" font-size="9" fill="#54606b">' + last[0].replace('-', '/') + '</text>' +
       '<text x="' + W + '" y="' + H + '" font-size="9" fill="#54606b" text-anchor="end">' + last[last.length-1].replace('-', '/') + '</text></svg>';
   }
-  function clearHeatmap(){ if (st.heatmap.layer){ map.removeLayer(st.heatmap.layer); st.heatmap.layer = null; } }
+  function clearHeatmap(){ if (st.heatmap.layer){ map.removeLayer(st.heatmap.layer); st.heatmap.layer = null; } if (activeTab === 'heatmap') setMapLegend(null); }
 
   async function runHeatmap(){
     if (!selected){ setStatus('Choisissez une commune dans la liste.', 'error'); return; }
@@ -1558,6 +1620,8 @@
     if (fit){ map.fitBounds(L.latLngBounds(base.map(m => [m.lat, m.lon])), { padding:[24,24], maxZoom:15 }); }
 
     renderHeatmapPanel(forPrice, muts, pf, lo, hi, ramp, diverging, cells.length);
+    st.heatmap.scale = { layerKey, lo, hi, ramp, diverging };
+    updateMapLegend();
     setStatus(cells.length + ' zones · ' + selText(hLayer).toLowerCase() + ' · rayon ' + (radiusM >= 1000 ? '1 km' : radiusM + ' m') +
       ' · maille ' + Math.round(cellM) + ' m · ' + Math.round(performance.now() - t0) + ' ms');
     updateFab();
@@ -1706,6 +1770,7 @@
   function pluSheetOrClose(){
     if (st.plu.zonesShown || st.plu.libresShown) renderPluSheet();
     else { sheetStats.hidden = true; sheetStats.innerHTML = ''; sheetBody.innerHTML = ''; closeSheet(); }
+    updateMapLegend();
   }
 
   // Charge (si besoin) le zonage PLU dans st.plu.zonesLayer. Renvoie true si dispo.
@@ -2066,6 +2131,7 @@
                  fillColor: locColorAt(v, lo, hi), fillOpacity: v == null ? 0.28 : 0.72 };
       });
     }
+    updateMapLegend();
   }
 
   async function runLoc(){
