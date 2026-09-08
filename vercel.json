@@ -24,6 +24,10 @@
     "api/loyers.js": {
       "maxDuration": 60,
       "memory": 1024
+    },
+    "api/dpe.js": {
+      "maxDuration": 30,
+      "memory": 1024
     }
   },
   "headers": [
