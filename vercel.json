@@ -20,6 +20,10 @@
     "api/parcelles-libres.js": {
       "maxDuration": 60,
       "memory": 1769
+    },
+    "api/loyers.js": {
+      "maxDuration": 60,
+      "memory": 1024
     }
   },
   "headers": [
