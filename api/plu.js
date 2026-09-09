@@ -1,5 +1,6 @@
 // GET /api/plu?insee=53130
-//   -> { insee, nom, centre, hasPlu, features:[ {geometry, properties:{typezone,cat,libelle,libelong}} ], sources }
+//   -> { insee, nom, centre, hasPlu, docType:'PLU'|'CC', clipped,
+//        features:[ {geometry, properties:{typezone,cat,libelle,libelong}} ], sources }
 
 import { getPluZones } from '../lib/plu.js';
 
@@ -14,15 +15,15 @@ export default async function handler(req, res) {
   }
 
   try {
-    const { nom, centre, hasPlu, zones } = await getPluZones(insee);
+    const { nom, centre, hasPlu, docType, clipped, reason, zones } = await getPluZones(insee);
     const c0 = centre && centre.coordinates;
     const gpuUrlBase = c0
       ? `https://www.geoportail-urbanisme.gouv.fr/map/#tile=1&lon=${c0[0]}&lat=${c0[1]}&zoom=15&mlon=${c0[0]}&mlat=${c0[1]}`
       : 'https://www.geoportail-urbanisme.gouv.fr/';
     if (!hasPlu) {
       res.status(200).json({
-        insee, nom, centre, hasPlu: false, features: [], gpu_url: gpuUrlBase,
-        message: "Aucun document d'urbanisme numérisé pour cette emprise dans le Géoportail de l'Urbanisme (commune au RNU, ou PLU non versé au GPU).",
+        insee, nom, centre, hasPlu: false, docType: null, features: [], gpu_url: gpuUrlBase,
+        message: reason || "Aucun document d'urbanisme numérisé pour cette emprise dans le Géoportail de l'Urbanisme (commune au RNU, ou PLU non versé au GPU).",
       });
       return;
     }
@@ -37,12 +38,15 @@ export default async function handler(req, res) {
     }));
     // Lien vers le PLU officiel : carte du Géoportail de l'Urbanisme centrée sur la commune.
     const gpu_url = gpuUrlBase;
-    let body = JSON.stringify({ insee, nom, centre, hasPlu: true, count: feats.length, gpu_url, features: feats, source: "Géoportail de l'Urbanisme (wfs_du:zone_urba)" });
+    const src = docType === 'CC'
+      ? "Géoportail de l'Urbanisme (wfs_du:secteur_cc)"
+      : "Géoportail de l'Urbanisme (wfs_du:zone_urba)";
+    let body = JSON.stringify({ insee, nom, centre, hasPlu: true, docType, clipped: !!clipped, count: feats.length, gpu_url, features: feats, source: src });
 
     if (Buffer.byteLength(body) > MAX_BYTES) {
       // simplifie : ne garde que les zones U / AU si le zonage complet est trop lourd
       const light = feats.filter((f) => f.properties.cat === 'U' || f.properties.cat === 'AU');
-      body = JSON.stringify({ insee, nom, centre, hasPlu: true, count: light.length, gpu_url, features: light, partial: true, source: "Géoportail de l'Urbanisme" });
+      body = JSON.stringify({ insee, nom, centre, hasPlu: true, docType, clipped: !!clipped, count: light.length, gpu_url, features: light, partial: true, source: src });
     }
 
     res.setHeader('Cache-Control', 'public, s-maxage=86400, stale-while-revalidate=604800');

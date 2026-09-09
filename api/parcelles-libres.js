@@ -49,7 +49,14 @@ export default async function handler(req, res) {
     if (!plu.hasPlu) {
       res.status(200).json({
         insee, nom: plu.nom, hasPlu: false, min: minSurf, cats, features: [],
-        message: "Aucun zonage PLU numérisé pour cette commune (RNU ou document non versé au Géoportail de l'Urbanisme). Le filtre U/AU n'est pas applicable.",
+        message: plu.reason || "Aucun zonage PLU numérisé pour cette commune (RNU ou document non versé au Géoportail de l'Urbanisme). Le filtre U/AU n'est pas applicable.",
+      });
+      return;
+    }
+    if (plu.docType === 'CC') {
+      res.status(200).json({
+        insee, nom: plu.nom, hasPlu: false, docType: 'CC', min: minSurf, cats, features: [],
+        message: "Commune en carte communale : pas de zonage U/AU. Le filtre foncier par zone n'est pas applicable ici — reportez-vous au Géoportail de l'Urbanisme.",
       });
       return;
     }

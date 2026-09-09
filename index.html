@@ -826,10 +826,10 @@
       '<h4>Indicateurs</h4><p><b>Prix</b> : €/m² moyen. <b>Volume</b> : ventes par an. <b>Évolution</b> : €/m² médian des 12 derniers mois vs 12–36 mois avant. Couleur = quantiles P5–P95 des mailles affichées. Rayon de moyennage : auto (espacement typique entre ventes) ou manuel.</p>' +
       '<h4>Effet de maille</h4><p>Une maille n’apparaît que si elle contient assez de ventes (4 pour le prix, 3 pour le volume, 6 pour l’évolution) : les secteurs peu vendus restent vides. La maille s’agrandit d’elle-même si la grille est trop dense. Plafond 1 500 mutations.</p>',
     plu:
-      '<h4>Principe</h4><p>Affiche le zonage du PLU(i) de la commune, et les parcelles non bâties d’au moins X m² situées en zone U ou AU.</p>' +
-      '<h4>Source</h4><p><b>Géoportail de l’Urbanisme</b> (GPU, IGN) — flux <code>zone_urba</code>. Cadastre Etalab (parcelles + bâtiments) pour le foncier.</p>' +
-      '<h4>Indicateurs</h4><p>Catégorie de zone d’après le champ <code>typezone</code> : <b>U</b> urbaine, <b>AU</b> à urbaniser, <b>A</b> agricole, <b>N</b> naturelle, autre. « Parcelle non bâtie » = contenance ≥ seuil, aucun bâtiment cadastral à l’intérieur, centroïde en zone U/AU.</p>' +
-      '<h4>Représentativité</h4><p>Couverture GPU incomplète : commune au RNU → pas de zonage. Document trop lourd → version allégée U/AU. Le libellé de zone ne suffit pas : se reporter au <b>règlement écrit</b> (lien fourni) pour la constructibilité réelle.</p>',
+      '<h4>Principe</h4><p>Affiche le document d’urbanisme de la commune, et les parcelles non bâties d’au moins X m² situées en zone U ou AU.</p>' +
+      '<h4>Source</h4><p><b>Géoportail de l’Urbanisme</b> (GPU, IGN) — flux <code>zone_urba</code> (PLU/PLUi) ou <code>secteur_cc</code> (carte communale). Cadastre Etalab (parcelles + bâtiments) pour le foncier.</p>' +
+      '<h4>Indicateurs</h4><p>Catégorie de zone d’après le champ <code>typezone</code> : <b>U</b> urbaine, <b>AU</b> à urbaniser, <b>A</b> agricole, <b>N</b> naturelle, autre. Une <b>carte communale</b> n’a pas de zones U/AU : seulement des secteurs <b>constructibles</b> / <b>non constructibles</b> (règles du RNU). « Parcelle non bâtie » = contenance ≥ seuil, aucun bâtiment cadastral à l’intérieur, centroïde en zone U/AU.</p>' +
+      '<h4>Représentativité</h4><p>Les zones sont <b>découpées sur le contour communal</b> : celles des communes voisines sont écartées. Couverture GPU incomplète : commune au RNU, POS ou document non versé → pas de zonage affiché (message + lien GPU). Document trop lourd → version allégée U/AU. Le libellé de zone ne suffit pas : se reporter au <b>règlement écrit</b> (lien fourni) pour la constructibilité réelle.</p>',
     estim:
       '<h4>Principe</h4><p>À partir d’une adresse, un tableau de bord des prix, du rythme de ventes et des mois favorables dans un rayon.</p>' +
       '<h4>Sources</h4><p>Géocodage <b>BAN</b> (api-adresse.data.gouv.fr) ; ventes <b>DVF</b> (geo-dvf) autour du point (jusqu’à 3 000).</p>' +
@@ -859,13 +859,16 @@
   };
   const MONTHS_FR = ['J','F','M','A','M','J','J','A','S','O','N','D'];
   const MONTHS_FULL = ['janvier','février','mars','avril','mai','juin','juillet','août','septembre','octobre','novembre','décembre'];
-  const PLU_COL = { U:'#e34a33', AU:'#8856a7', A:'#78c679', N:'#238443', autre:'#969696' };
-  const PLU_NAME = { U:'Zone urbaine (U)', AU:'À urbaniser (AU)', A:'Agricole (A)', N:'Naturelle (N)', autre:'Autre zonage' };
+  const PLU_COL = { U:'#e34a33', AU:'#8856a7', A:'#78c679', N:'#238443', CCu:'#e34a33', CCn:'#238443', autre:'#969696' };
+  const PLU_NAME = { U:'Zone urbaine (U)', AU:'À urbaniser (AU)', A:'Agricole (A)', N:'Naturelle (N)',
+    CCu:'Secteur constructible (CC)', CCn:'Secteur non constructible (CC)', autre:'Autre zonage' };
   const PLU_DEF = {
     U: "Secteurs déjà urbanisés + ceux où les équipements publics (voirie, réseaux) ont une capacité suffisante pour desservir les constructions. Constructible selon le règlement de zone (art. R.151-18).",
     AU: "Secteurs naturels destinés à être ouverts à l'urbanisation. AU « ouverte » (1AU / AUc) : constructible via une opération d'aménagement d'ensemble. AU « fermée » (2AU / AUs) : urbanisation différée, nécessite une évolution du PLU.",
     A: "Terres agricoles protégées (potentiel agronomique, biologique, économique). Seules les constructions nécessaires à l'exploitation agricole ou aux services publics y sont admises.",
     N: "Espaces naturels et forestiers protégés (sites, paysages, écologie, risques). Constructibilité très limitée ; des STECAL peuvent être délimités.",
+    CCu: "Carte communale — secteur où les constructions sont autorisées. Pas de règlement de zone : ce sont les règles du RNU qui s'appliquent (art. L.161-4).",
+    CCn: "Carte communale — secteur où les constructions ne sont pas autorisées, hormis l'adaptation, la réfection ou l'extension de bâtiments existants et les constructions agricoles ou d'intérêt collectif.",
     autre: "Zonage spécifique du document (secteur, sous-secteur, indice) — se reporter au règlement écrit."
   };
 
@@ -880,6 +883,7 @@
     autour:{ layer:null, ventes:null, circle:null, refMarker:null, ref:null, parcLayer:null, data:null, collapsed:false },
     heatmap:{ layer:null, data:null, dataThrough:null, collapsed:false, userSetRadius:false },
     plu:{ zonesLayer:null, libresLayer:null, zonesShown:false, libresShown:false, gpuUrl:null,
+          zonesCode:null, libresCode:null, docType:null, zonesClipped:false,
           zonesCount:0, zonesNom:'', zonesPartial:false, matched:[], meta:null, collapsed:false },
     estim:{ layer:null, circle:null, refMarker:null, ref:null, data:null, collapsed:false },
     dpe:{ layer:null, data:null, indicator:'dpe', hidden:new Set(), sortKey:'date', sortDir:-1, collapsed:false },
@@ -1002,9 +1006,9 @@
     if (!st.plu.zonesLayer) return '';
     const present = new Set();
     st.plu.zonesLayer.eachLayer(l => { const c = l.feature && l.feature.properties && l.feature.properties.cat; if (c) present.add(PLU_COL[c] ? c : 'autre'); });
-    const order = ['U','AU','A','N','autre'].filter(c => present.has(c));
+    const order = ['U','AU','A','N','CCu','CCn','autre'].filter(c => present.has(c));
     if (!order.length) return '';
-    return '<div class="ml-t">Zonage PLU</div>' + order.map(c =>
+    return '<div class="ml-t">' + (st.plu.docType === 'CC' ? 'Carte communale' : 'Zonage PLU') + '</div>' + order.map(c =>
       '<div class="ml-row"><span class="ml-sw" style="background:' + PLU_COL[c] + '"></span>' + PLU_NAME[c] + '</div>').join('');
   }
   function dpeLegendHtml(){
@@ -1037,7 +1041,8 @@
       const bits = [];
       if (st.plu.zonesShown) bits.push('zonage');
       if (st.plu.libresShown) bits.push((st.plu.meta ? st.plu.meta.matched : st.plu.matched.length) + ' parcelles');
-      return (selected ? selected.nom : '—') + '  ·  PLU' + (bits.length ? ' (' + bits.join(' + ') + ')' : '');
+      const doc = st.plu.docType === 'CC' ? 'Carte communale' : 'PLU';
+      return (selected ? selected.nom : '—') + '  ·  ' + doc + (bits.length ? ' (' + bits.join(' + ') + ')' : '');
     }
     if (activeTab === 'estim'){
       const r = st.estim.ref;
@@ -1141,14 +1146,35 @@
       b.innerHTML = '<span>' + c.nom + '</span><span class="sub">' + [cp, dep].filter(Boolean).join(' · ') + '</span>';
       b.addEventListener('click', () => {
         const ctr = c.centre && c.centre.coordinates ? [c.centre.coordinates[1], c.centre.coordinates[0]] : null;
+        const changed = !selected || selected.code !== c.code;
         selected = { code:c.code, nom:c.nom, cp:cp, centre:ctr };
         communeInput.value = c.nom + (cp ? ' (' + cp + ')' : '');
         suggestions.hidden = true;
+        if (changed) onCommuneChanged();
         if (ctr) map.setView(ctr, 13);
       });
       suggestions.appendChild(b);
     });
     suggestions.hidden = false;
+  }
+
+  // La commune sélectionnée a changé : on purge le zonage PLU en mémoire pour
+  // qu'il soit rechargé (sinon l'ancienne commune resterait affichée).
+  function onCommuneChanged(){
+    ['zonesLayer','libresLayer'].forEach(k => {
+      if (st.plu[k] && map.hasLayer(st.plu[k])) map.removeLayer(st.plu[k]);
+      st.plu[k] = null;
+    });
+    st.plu.zonesCode = st.plu.libresCode = null;
+    st.plu.docType = null; st.plu.zonesClipped = false;
+    st.plu.matched = []; st.plu.meta = null;
+    const wasShown = st.plu.zonesShown || st.plu.libresShown;
+    st.plu.zonesShown = st.plu.libresShown = false;
+    if (activeTab === 'plu'){
+      syncPluControls();
+      if (wasShown){ sheetStats.hidden = true; sheetStats.innerHTML = ''; sheetBody.innerHTML = ''; closeSheet(); }
+      updateFab(); updateMapLegend();
+    }
   }
 
   // ---------- réseau ----------
@@ -1586,6 +1612,7 @@
     st.autour = { layer:null, ventes:null, circle:null, refMarker:null, ref:null, parcLayer:null, data:null, collapsed:false };
     st.heatmap = { layer:null, data:null, dataThrough:null, collapsed:false, userSetRadius:false };
     st.plu = { zonesLayer:null, libresLayer:null, zonesShown:false, libresShown:false, gpuUrl:null,
+               zonesCode:null, libresCode:null, docType:null, zonesClipped:false,
                zonesCount:0, zonesNom:'', zonesPartial:false, matched:[], meta:null, collapsed:false };
     st.estim = { layer:null, circle:null, refMarker:null, ref:null, data:null, collapsed:false };
     st.loc = { mode:locMode.value, layer:null, communeRows:[], gridSales:[], gridCells:[], gridMeta:{},
@@ -1921,12 +1948,17 @@
   }
 
   function renderPluSheet(){
-    const cats = ['U','AU','A','N'];
-    let html = '<div class="plu-legend"><b>Zonage PLU — que veut dire…</b>' +
+    const isCC = st.plu.docType === 'CC';
+    const cats = isCC ? ['CCu','CCn'] : ['U','AU','A','N'];
+    const legTitle = isCC ? 'Carte communale — que veut dire…' : 'Zonage PLU — que veut dire…';
+    const gpuLabel = isCC ? 'Consulter la carte communale (Géoportail de l’Urbanisme) ↗' : 'Consulter le PLU officiel (Géoportail de l’Urbanisme) ↗';
+    let html = '<div class="plu-legend"><b>' + legTitle + '</b>' +
       cats.map(c => '<div class="it"><span class="sw" style="background:' + PLU_COL[c] + '"></span><span>' + PLU_NAME[c] + '</span>' +
         '<button class="q" type="button" data-cat="' + c + '">?</button></div>' +
         '<div class="def" data-cat="' + c + '" hidden>' + PLU_DEF[c] + '</div>').join('') +
-      '<div class="gpu"><a href="' + pluGpuLink() + '" target="_blank" rel="noopener">Consulter le PLU officiel (Géoportail de l’Urbanisme) ↗</a></div></div>';
+      (isCC ? '<div class="def" style="margin:2px 0 6px 0">Une carte communale ne définit pas de zones U/AU/A/N : seulement des secteurs constructibles ou non. Les règles sont celles du règlement national d’urbanisme (RNU).</div>' : '') +
+      (st.plu.zonesClipped ? '<div class="def" style="margin:2px 0 6px 0">Zones découpées sur le contour communal : celles des communes voisines ont été retirées.</div>' : '') +
+      '<div class="gpu"><a href="' + pluGpuLink() + '" target="_blank" rel="noopener">' + gpuLabel + '</a></div></div>';
     if (st.plu.meta && st.plu.libresShown){
       const m = st.plu.meta;
       html += '<div style="margin-top:8px"><b>' + m.matched + ' parcelle(s) non bâtie(s)</b> ≥ ' + fmtNum(m.min) + ' m² · zone ' + (m.cats || []).join('/') +
@@ -1967,25 +1999,38 @@
 
   // Charge (si besoin) le zonage PLU dans st.plu.zonesLayer. Renvoie true si dispo.
   async function ensurePluZones(){
-    if (st.plu.zonesLayer) return true;
     if (!selected){ setStatus('Choisissez une commune dans la liste.', 'error'); return false; }
+    // Commune inchangée + couche déjà en mémoire → on réutilise.
+    if (st.plu.zonesLayer && st.plu.zonesCode === selected.code) return true;
+    // Commune différente : on jette la couche périmée avant de recharger.
+    if (st.plu.zonesLayer){
+      if (map.hasLayer(st.plu.zonesLayer)) map.removeLayer(st.plu.zonesLayer);
+      st.plu.zonesLayer = null;
+    }
     setStatus('Chargement du zonage PLU (Géoportail de l’Urbanisme)…', 'loading');
     const r = await withTimeout('/api/plu?insee=' + encodeURIComponent(selected.code), 90000);
     const d = await r.json();
     if (!r.ok) throw new Error((d && d.error) || 'Erreur serveur.');
     st.plu.gpuUrl = d.gpu_url || null;
-    if (!d.hasPlu){ setStatus('⚠ ' + (d.message || 'Aucun zonage numérisé pour cette commune.'), 'error'); return false; }
+    if (!d.hasPlu){ st.plu.docType = null; setStatus('⚠ ' + (d.message || 'Aucun zonage numérisé pour cette commune.'), 'error'); return false; }
     st.plu.zonesLayer = L.geoJSON({ type:'FeatureCollection', features: d.features }, {
       style: (f) => { const c = PLU_COL[f.properties.cat] || PLU_COL.autre; return { color:c, weight:1, fillColor:c, fillOpacity:0.22 }; },
       onEachFeature: (f, ly) => ly.bindPopup(pluZonePopup(f.properties)),
     });
+    st.plu.zonesCode = selected.code;
+    st.plu.docType = d.docType || 'PLU';
+    st.plu.zonesClipped = !!d.clipped;
     st.plu.zonesCount = d.count; st.plu.zonesNom = d.nom || selected.nom; st.plu.zonesPartial = !!d.partial;
     return true;
   }
   // Charge (si besoin) les parcelles non bâties U/AU dans st.plu.libresLayer.
   async function ensurePluLibres(){
-    if (st.plu.libresLayer) return true;
     if (!selected){ setStatus('Choisissez une commune dans la liste.', 'error'); return false; }
+    if (st.plu.libresLayer && st.plu.libresCode === selected.code) return true;
+    if (st.plu.libresLayer){
+      if (map.hasLayer(st.plu.libresLayer)) map.removeLayer(st.plu.libresLayer);
+      st.plu.libresLayer = null;
+    }
     const cats = [];
     if (pluU.checked) cats.push('U');
     if (pluAu.checked) cats.push('AU');
@@ -2006,6 +2051,7 @@
         ly._idu = p.idu;
       }
     });
+    st.plu.libresCode = selected.code;
     return true;
   }
 
@@ -2017,7 +2063,10 @@
         if (!map.hasLayer(st.plu.zonesLayer)) st.plu.zonesLayer.addTo(map);
         st.plu.zonesShown = true;
         if (!st.plu.libresShown){ try{ map.fitBounds(st.plu.zonesLayer.getBounds(), { padding:[20,20] }); }catch(e){} }
-        setStatus(st.plu.zonesCount + ' zone(s) PLU à ' + st.plu.zonesNom + (st.plu.zonesPartial ? ' (zonage allégé U/AU)' : '') + '.');
+        const kind = st.plu.docType === 'CC' ? 'secteur(s) de carte communale' : 'zone(s) PLU';
+        setStatus(st.plu.zonesCount + ' ' + kind + ' à ' + st.plu.zonesNom +
+          (st.plu.zonesPartial ? ' (zonage allégé U/AU)' : '') +
+          (st.plu.docType === 'CC' ? ' — pas de zonage U/AU en carte communale' : '') + '.');
       } else {
         if (st.plu.zonesLayer && map.hasLayer(st.plu.zonesLayer)) map.removeLayer(st.plu.zonesLayer);
         st.plu.zonesShown = false;
