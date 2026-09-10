@@ -404,9 +404,26 @@
   table.sm-tbl th{ color:var(--muted); font-weight:700; }
   table.sm-tbl th:first-child, table.sm-tbl td:first-child{ text-align:left; }
   table.sm-tbl td.pos{ color:#1a7f37; } table.sm-tbl td.neg{ color:#b3261e; }
-  svg.sm-chart{ width:100%; height:140px; display:block; margin-top:8px; }
-  .sm-chart-leg{ display:flex; gap:12px; flex-wrap:wrap; font-size:11px; color:var(--muted); margin-top:4px; }
-  .sm-chart-leg i{ display:inline-block; width:10px; height:10px; border-radius:2px; vertical-align:-1px; margin-right:4px; }
+  .sm-chartbox{ position:relative; margin-top:8px; }
+  svg.sm-chart{ display:block; width:100%; height:auto; overflow:visible; touch-action:pan-y; }
+  svg.sm-chart text{ fill:var(--muted); font-size:10px; }
+  svg.sm-chart .gl{ stroke:var(--border); stroke-dasharray:2 3; }
+  svg.sm-chart .sm-hit{ fill:transparent; cursor:crosshair; }
+  .sm-tip{
+    position:absolute; z-index:5; pointer-events:none;
+    background:var(--card); border:1px solid var(--border); border-radius:8px;
+    box-shadow:0 6px 18px rgba(0,0,0,.18); padding:7px 9px; font-size:11.5px; line-height:1.5;
+    color:var(--ink); width:184px;
+  }
+  .sm-tip b{ display:block; margin-bottom:3px; }
+  .sm-tip .r{ display:flex; justify-content:space-between; gap:10px; }
+  .sm-tip .r span:last-child{ font-weight:700; font-variant-numeric:tabular-nums; }
+  .sm-tip .r.pos span:last-child{ color:#1a7f37; } .sm-tip .r.neg span:last-child{ color:#b3261e; }
+  .sm-tip .sub{ color:var(--muted); font-size:10.5px; margin:1px 0 3px; }
+  .sm-chart-leg{ display:flex; flex-direction:column; gap:4px; font-size:11.5px; color:var(--muted); margin-top:8px; }
+  .sm-chart-leg span{ display:flex; align-items:flex-start; gap:7px; }
+  .sm-chart-leg i{ flex:none; margin-top:5px; width:14px; height:0; border-top:3px solid var(--accent); border-radius:2px; }
+  .sm-chart-leg i.bar{ width:11px; height:11px; border:0; border-radius:2px; margin-top:1px; }
   .sm-note{ font-size:11.5px; color:var(--muted); line-height:1.5; margin-top:8px; }
   .sm-warn{ background:#fdf3e7; border:1px solid #f0d3a8; color:#7a4a00; border-radius:10px; padding:8px 10px; font-size:12px; margin-top:8px; line-height:1.5; }
   details.sm-hyp{ margin-top:10px; font-size:12px; }
@@ -3375,8 +3392,11 @@
       + '<dt>Gain net total (vs apport ' + smEur(inp.apport) + ')</dt><dd class="' + smCls(res.netRevente + res.cumCf - inp.apport) + '">' + smEur(res.netRevente + res.cumCf - inp.apport) + '</dd>'
       + '</dl></div>'
       + '<div class="sm-card"><h3>Projection annuelle</h3>'
-      + '<svg class="sm-chart" id="sm-chart" viewBox="0 0 320 140" preserveAspectRatio="none" aria-hidden="true"></svg>'
-      + '<div class="sm-chart-leg"><span><i style="background:#1a7f37"></i>cash-flow &gt; 0</span><span><i style="background:#b3261e"></i>cash-flow &lt; 0</span><span><i style="background:var(--accent)"></i>patrimoine net</span></div>'
+      + '<div class="sm-chartbox" id="sm-chartbox"><svg class="sm-chart" id="sm-chart" aria-hidden="true"></svg><div class="sm-tip" id="sm-tip" hidden></div></div>'
+      + '<div class="sm-chart-leg">'
+      +   '<span><i class="bar" style="background:#1a7f37"></i><i class="bar" style="background:#b3261e"></i><span>Cash-flow annuel après impôt (barres) — positif ou négatif. Échelle à droite.</span></span>'
+      +   '<span><i></i><span>Patrimoine net (courbe) = valeur estimée du bien − capital restant dû sur le prêt. Échelle à gauche.</span></span>'
+      + '</div>'
       + '<div class="sm-tblwrap"><table class="sm-tbl"><thead><tr><th>An</th><th>Loyers</th><th>Charges</th><th>Intérêts</th><th>Capital</th><th>CRD</th><th>Impôt</th><th>Réduc.</th><th>Cash-flow</th><th>CF cumulé</th><th>Patrim. net</th></tr></thead><tbody>'
       + res.rows.map(x => '<tr><td>' + x.y + '</td><td>' + smEur(x.loyerEncaisse) + '</td><td>' + smEur(x.chargesCash) + '</td><td>' + smEur(x.interets) + '</td><td>' + smEur(x.capital) + '</td><td>' + smEur(x.crd) + '</td>'
         + '<td class="' + smCostCls(x.impot) + '">' + smCostTxt(x.impot) + '</td>'
@@ -3427,25 +3447,106 @@
       + '</tbody></table></div></div>' + smHyp();
   }
 
+  let smChart = null;
+  const smK = (v) => Math.abs(v) >= 10000 ? Math.round(v/1000).toLocaleString('fr-FR') + ' k€'
+    : Math.abs(v) >= 1000 ? (v/1000).toLocaleString('fr-FR',{maximumFractionDigits:1}) + ' k€'
+    : Math.round(v).toLocaleString('fr-FR') + ' €';
+
   function smDrawChart(rows){
-    const svg = $('sm-chart'); if (!svg || !rows.length) return;
-    const W=320, H=140, padB=14, padT=8, areaH = H-padB-padT;
-    const cfs = rows.map(r=>r.cf), pats = rows.map(r=>r.patrimoineNet);
-    const maxCf = Math.max(1, ...cfs.map(Math.abs)), maxPat = Math.max(1, ...pats);
-    const n = rows.length, bw = W/n;
-    const hasPos = cfs.some(v=>v>0), hasNeg = cfs.some(v=>v<0);
-    const zeroY = padT + ((hasPos && hasNeg) ? areaH/2 : hasNeg ? areaH*0.16 : areaH*0.84);
-    const barMax = (hasPos && hasNeg) ? areaH/2 : areaH*0.82;
+    const svg = $('sm-chart'), box = $('sm-chartbox');
+    if (!svg || !box || !rows.length) return;
+    const W = Math.max(260, Math.round(box.clientWidth || 320)), H = 214;
+    const ML = 48, MR = 48, MT = 20, MB = 30;
+    const pw = W - ML - MR, ph = H - MT - MB;
+    const n = rows.length, bw = pw / n;
+    const xc = (i) => ML + (i + 0.5) * bw;
+    const patTop = Math.max(1, ...rows.map(r => r.patrimoineNet)) * 1.12;
+    const yPat = (v) => MT + ph * (1 - v / patTop);
+    const cfMax = Math.max(1, ...rows.map(r => Math.abs(r.cf))) * 1.18;
+    const yCf = (v) => MT + ph * (1 - (v + cfMax) / (2 * cfMax));
+    const cfZero = yCf(0);
+
     let g = '';
-    rows.forEach((r,i)=>{
-      const h = barMax * (Math.abs(r.cf)/maxCf), x = i*bw + bw*0.18, w = bw*0.64;
-      g += '<rect x="' + x.toFixed(1) + '" y="' + (r.cf>=0 ? (zeroY-h) : zeroY).toFixed(1) + '" width="' + w.toFixed(1) + '" height="' + Math.max(0.5,h).toFixed(1) + '" fill="' + (r.cf>=0?'#1a7f37':'#b3261e') + '" opacity="0.85"/>';
+    for (let t = 0; t <= 4; t++){
+      const v = patTop * t / 4, y = yPat(v);
+      g += '<line class="gl" x1="' + ML + '" y1="' + y.toFixed(1) + '" x2="' + (W-MR) + '" y2="' + y.toFixed(1) + '"/>';
+      g += '<text x="' + (ML-6) + '" y="' + (y+3).toFixed(1) + '" text-anchor="end">' + smK(v) + '</text>';
+    }
+    [cfMax, 0, -cfMax].forEach(v => {
+      g += '<text x="' + (W-MR+6) + '" y="' + (yCf(v)+3).toFixed(1) + '" text-anchor="start">' + (v>0?'+':'') + smK(v) + '</text>';
     });
-    g += '<line x1="0" y1="' + zeroY.toFixed(1) + '" x2="' + W + '" y2="' + zeroY.toFixed(1) + '" stroke="#c9ced4" stroke-width="1"/>';
-    const px = (i)=> i*bw + bw/2, py = (v)=> padT + areaH * (1 - v/maxPat);
-    g += '<polyline points="' + rows.map((r,i)=> px(i).toFixed(1)+','+py(r.patrimoineNet).toFixed(1)).join(' ') + '" fill="none" stroke="var(--accent)" stroke-width="2"/>';
-    rows.forEach((r,i)=>{ g += '<circle cx="' + px(i).toFixed(1) + '" cy="' + py(r.patrimoineNet).toFixed(1) + '" r="2" fill="var(--accent)"/>'; });
+    g += '<line x1="' + ML + '" y1="' + cfZero.toFixed(1) + '" x2="' + (W-MR) + '" y2="' + cfZero.toFixed(1) + '" stroke="var(--muted)" stroke-width="1" stroke-dasharray="3 2" opacity=".55"/>';
+    g += '<text x="' + ML + '" y="12" text-anchor="start" style="font-weight:700;fill:var(--accent)">Patrimoine net</text>';
+    g += '<text x="' + (W-MR) + '" y="12" text-anchor="end" style="font-weight:700">Cash-flow</text>';
+
+    rows.forEach((r,i) => {
+      const y1 = yCf(r.cf), yy = Math.min(cfZero, y1), hh = Math.max(1, Math.abs(y1 - cfZero));
+      g += '<rect x="' + (xc(i) - bw*0.3).toFixed(1) + '" y="' + yy.toFixed(1) + '" width="' + (bw*0.6).toFixed(1) + '" height="' + hh.toFixed(1) + '" rx="1.5" fill="' + (r.cf>=0?'#1a7f37':'#b3261e') + '" opacity="0.8"/>';
+    });
+    g += '<polyline points="' + rows.map((r,i) => xc(i).toFixed(1) + ',' + yPat(r.patrimoineNet).toFixed(1)).join(' ') + '" fill="none" stroke="var(--accent)" stroke-width="2.5"/>';
+    rows.forEach((r,i) => { g += '<circle cx="' + xc(i).toFixed(1) + '" cy="' + yPat(r.patrimoineNet).toFixed(1) + '" r="2.4" fill="var(--accent)"/>'; });
+
+    const step = n > 20 ? Math.ceil(n/8) : (n > 12 ? 3 : (n > 7 ? 2 : 1));
+    rows.forEach((r,i) => {
+      if (i % step !== 0) return;
+      g += '<text x="' + xc(i).toFixed(1) + '" y="' + (H-MB+14) + '" text-anchor="middle">' + (i+1) + '</text>';
+    });
+    g += '<text x="' + ((ML + W - MR)/2).toFixed(1) + '" y="' + (H-3) + '" text-anchor="middle" style="font-size:9px">année</text>';
+
+    g += '<line id="sm-guide" x1="0" y1="' + MT + '" x2="0" y2="' + (MT+ph).toFixed(1) + '" stroke="var(--ink)" stroke-width="1" stroke-dasharray="3 2" visibility="hidden"/>';
+    g += '<circle id="sm-gdot" r="4" fill="var(--accent)" stroke="#fff" stroke-width="1.5" visibility="hidden"/>';
+    g += '<rect class="sm-hit" x="' + ML + '" y="' + MT + '" width="' + pw.toFixed(1) + '" height="' + ph.toFixed(1) + '"/>';
+
+    svg.setAttribute('viewBox', '0 0 ' + W + ' ' + H);
+    svg.setAttribute('width', W); svg.setAttribute('height', H);
     svg.innerHTML = g;
+
+    smChart = { rows, W, ML, MT, ph, bw, n, xc, yPat, box };
+    const hit = svg.querySelector('.sm-hit');
+    hit.addEventListener('pointermove', smChartHover);
+    hit.addEventListener('pointerdown', smChartHover);
+    hit.addEventListener('pointerleave', smChartHide);
+    hit.addEventListener('pointercancel', smChartHide);
+  }
+
+  function smChartHide(){
+    const tip = $('sm-tip'), gd = $('sm-guide'), dot = $('sm-gdot');
+    if (tip) tip.hidden = true;
+    if (gd) gd.setAttribute('visibility', 'hidden');
+    if (dot) dot.setAttribute('visibility', 'hidden');
+  }
+
+  function smChartHover(e){
+    const c = smChart; if (!c) return;
+    const svg = $('sm-chart'), rect = svg.getBoundingClientRect();
+    if (!rect.width) return;
+    const scale = rect.width / c.W;                 // CSS px per viewBox unit
+    const mxView = (e.clientX - rect.left) / scale;
+    let i = Math.round((mxView - c.ML - c.bw/2) / c.bw);
+    i = Math.max(0, Math.min(c.n - 1, i));
+    const r = c.rows[i], gx = c.xc(i), gy = c.yPat(r.patrimoineNet);
+    const gd = $('sm-guide'), dot = $('sm-gdot');
+    gd.setAttribute('x1', gx); gd.setAttribute('x2', gx); gd.setAttribute('visibility', 'visible');
+    dot.setAttribute('cx', gx); dot.setAttribute('cy', gy); dot.setAttribute('visibility', 'visible');
+
+    const row = (lbl, val, signed) => {
+      const cls = signed ? (val > 0.5 ? ' pos' : val < -0.5 ? ' neg' : '') : '';
+      const txt = signed ? ((val > 0 ? '+' : '') + smEur(val)) : smEur(val);
+      return '<div class="r' + cls + '"><span>' + lbl + '</span><span>' + txt + '</span></div>';
+    };
+    const tip = $('sm-tip');
+    tip.innerHTML = '<b>Année ' + (i+1) + '</b>'
+      + row('Patrimoine net', r.patrimoineNet)
+      + '<div class="sub">valeur ' + smEur(r.valeurBien) + ' · dette ' + smEur(r.crd) + '</div>'
+      + row('Cash-flow', r.cf, true)
+      + row('CF cumulé', r.cumCf, true);
+    tip.hidden = false;
+    // épinglé en haut du graphe, suit horizontalement le repère
+    const boxW = c.box.clientWidth, tw = tip.offsetWidth;
+    let left = gx * scale - tw / 2;
+    left = Math.max(2, Math.min(left, boxW - tw - 2));
+    tip.style.left = Math.round(left) + 'px';
+    tip.style.top = '2px';
   }
 
   let smTimer = null;
