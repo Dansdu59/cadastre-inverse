@@ -367,6 +367,14 @@
   .eau-chip{ display:inline-block; font-size:11px; font-weight:700; border-radius:4px; padding:1px 6px; }
   .eau-chip.ok{ background:#e4f2e6; color:#1a7f37; } .eau-chip.bad{ background:#fde8e8; color:#b3261e; } .eau-chip.info{ background:#eef0f2; color:var(--muted); }
 
+  /* ---- Onglet Autour : écran d'accueil (avant le clic carte) ---- */
+  .au-cta{ font-size:17px; font-weight:800; color:var(--accent); }
+  .au-cta span{ display:block; font-size:13px; font-weight:600; color:var(--muted); margin-top:2px; }
+  .au-crit{ margin-top:10px; display:flex; flex-wrap:wrap; gap:6px 8px; }
+  .au-crit > span{ background:var(--bg); border:1px solid var(--border); border-radius:999px; padding:4px 10px; font-size:12.5px; color:var(--muted); }
+  .au-crit > span b{ color:var(--ink); }
+  .au-hint{ margin-top:10px; font-size:12px; color:var(--muted); line-height:1.5; }
+
   /* ---- Onglet SIMU (simulation d'achat) ---- */
   body.tab-simu #map{ display:none; }
   body.tab-simu form.controls{ flex:1 1 auto; min-height:0; overflow-y:auto; -webkit-overflow-scrolling:touch; overscroll-behavior:contain; }
@@ -516,7 +524,7 @@
 
     <!-- AUTOUR -->
     <div class="grp" id="grp-autour" hidden>
-      <p class="tip">Touchez la carte pour choisir un point, ou chargez les parcelles pour en toucher une précisément.</p>
+      <p class="tip">Clic sur la carte pour choisir un point, ou chargez les parcelles pour en viser une précisément.</p>
       <div class="row">
         <div class="field">
           <label for="a-radius">Rayon</label>
@@ -1313,6 +1321,7 @@
     if (activeTab === 'loc'){ has = !!st.loc.data; label = '≡ Loyers'; }
     if (activeTab === 'dpe'){ has = !!st.dpe.data; label = '≡ DPE'; }
     if (activeTab === 'eau'){ has = !!st.eau.data; label = '≡ Eau'; }
+    if (activeTab === 'autour' && !st.autour.data && !st.autour.ref){ has = true; label = '≡ Critères'; }
     if (activeTab === 'simu'){ has = false; }
     fabList.hidden = !(has && !sheet.classList.contains('open'));
     fabList.textContent = label;
@@ -1611,6 +1620,27 @@
     }catch(err){ setStatus(err.message || 'Erreur pendant l’analyse.', 'error'); }
     finally{ goBtn.disabled = false; }
   }
+  // Écran d'accueil de l'onglet « Autour » : rappel des critères + invite au clic,
+  // affiché tant qu'aucun point de référence n'est choisi.
+  function renderAutourIntro(){
+    if (activeTab !== 'autour' || st.autour.ref) return;
+    sheetStats.hidden = false;
+    sheetStats.innerHTML =
+      '<div class="au-cta">📍 Clic sur la carte<span>pour choisir le point de référence</span></div>' +
+      '<div class="au-crit">' +
+        '<span>Rayon <b>' + selText(aRadius) + '</b></span>' +
+        '<span>Type <b>' + selText(aType) + '</b></span>' +
+        '<span>Période <b>' + selText(aMonths) + '</b></span>' +
+        '<span>Parcelles <b>' + (aMin.value || '0') + '–' + (aMax.value || '∞') + ' m²</b></span>' +
+      '</div>' +
+      '<div class="au-hint">Les ventes DVF situées dans le rayon s’afficheront ici avec leur synthèse €/m². ' +
+        'Vous pouvez aussi toucher « Charger les parcelles » pour cliquer une parcelle précise.</div>';
+    sheetBody.innerHTML = '';
+    sheetTitle.textContent = 'Autour — critères';
+    openSheet();
+    updateFab();
+  }
+
   function renderAround(data){
     clearLayer('autourVentes');
     const s = data.synthese || {}, ventes = data.ventes || [], type = data.type || 'tous';
@@ -1687,6 +1717,7 @@
     if (activeTab === 'parcelles' && Array.isArray(st.parcelles.data)) renderParcelles(st.parcelles.data);
     else if (activeTab === 'dvf' && st.dvf.data) renderDvf(st.dvf.data);
     else if (activeTab === 'autour' && st.autour.data) renderAround(st.autour.data);
+    else if (activeTab === 'autour') renderAutourIntro();
     else if (activeTab === 'heatmap' && st.heatmap.data) renderHeatmap(false);
     else if (activeTab === 'plu' && (st.plu.zonesShown || st.plu.libresShown)) renderPluSheet();
     else if (activeTab === 'estim' && st.estim.data) renderEstim(st.estim.data);
@@ -1748,7 +1779,7 @@
     else if (activeTab === 'autour' && st.autour.data)
       setStatus(((st.autour.data.synthese || {}).count_type || 0) + ' vente(s) autour — liste via « Liste ».');
     else if (activeTab === 'autour' && !st.autour.ref)
-      setStatus('Touchez la carte pour choisir un point de référence.');
+      setStatus('Clic sur la carte pour choisir le point de référence.');
     else if (activeTab === 'heatmap' && st.heatmap.data)
       setStatus('Carte de chaleur ' + selText(hLayer).toLowerCase() + ' — synthèse via « Synthèse ».');
     else if (activeTab === 'plu' && (st.plu.zonesShown || st.plu.libresShown))
@@ -1851,7 +1882,8 @@
     sheetBody.innerHTML = ''; sheetStats.innerHTML = ''; sheetStats.hidden = true;
     closeSheet();
     applyControlsVisibility();
-    setStatus('Réinitialisé. Lancez une recherche.');
+    if (activeTab === 'autour'){ renderAutourIntro(); setStatus('Clic sur la carte pour choisir le point de référence.'); }
+    else setStatus('Réinitialisé. Lancez une recherche.');
   });
 
   function dvfStatusLine(fromDate){
@@ -1871,9 +1903,12 @@
     finally{ goBtn.disabled = false; }
   }
 
-  aRadius.addEventListener('change', () => { if (activeTab === 'autour' && st.autour.ref) runAutour(); });
-  aType.addEventListener('change', () => { if (activeTab === 'autour' && st.autour.ref) runAutour(); });
-  aMonths.addEventListener('change', () => { if (activeTab === 'autour' && st.autour.ref) runAutour(); });
+  const aChanged = () => { if (activeTab !== 'autour') return; if (st.autour.ref) runAutour(); else renderAutourIntro(); };
+  aRadius.addEventListener('change', aChanged);
+  aType.addEventListener('change', aChanged);
+  aMonths.addEventListener('change', aChanged);
+  aMin.addEventListener('input', () => { if (activeTab === 'autour' && !st.autour.ref) renderAutourIntro(); });
+  aMax.addEventListener('input', () => { if (activeTab === 'autour' && !st.autour.ref) renderAutourIntro(); });
 
   // DVF : re-filtre à la volée sans replier les contrôles (on peut enchaîner les filtres)
   dType.addEventListener('change', () => {
