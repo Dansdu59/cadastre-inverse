@@ -63,11 +63,26 @@
   .bar .track{ flex:1; height:8px; background:var(--bg); border-radius:5px; overflow:hidden; }
   .bar .fill{ height:100%; background:var(--accent); }
   .bar .n{ width:34px; text-align:right; font-weight:700; font-variant-numeric:tabular-nums; }
-  table.t{ width:100%; border-collapse:collapse; font-size:12px; }
-  table.t th, table.t td{ padding:5px 6px; text-align:left; border-bottom:1px solid var(--border); vertical-align:top; }
-  table.t th{ color:var(--muted); font-weight:600; }
-  table.t tbody tr{ cursor:pointer; } table.t tbody tr:hover{ background:#fbf4f0; }
-  .chip{ display:inline-block; font-size:10px; font-weight:800; border-radius:4px; padding:1px 5px; color:#fff; }
+  .pc-list{ display:flex; flex-direction:column; gap:6px; }
+  .pc-card{ border:1px solid var(--border); border-radius:9px; background:#fff; overflow:hidden; }
+  .pc-hd{ display:flex; align-items:flex-start; gap:8px; padding:7px 9px; cursor:pointer; }
+  .pc-hd:hover{ background:#fbf4f0; }
+  .pc-hd .c1{ flex:1; min-width:0; font-size:12.5px; }
+  .pc-hd .c1 .a{ font-weight:700; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .pc-hd .c1 .m{ color:var(--muted); font-size:11px; margin-top:1px; }
+  .pc-hd .lgt{ flex:none; text-align:right; font-weight:800; font-size:14px; line-height:1.1; }
+  .pc-hd .lgt small{ display:block; font-weight:600; font-size:9px; color:var(--muted); text-transform:uppercase; }
+  .pc-hd .car{ flex:none; color:var(--muted); font-size:15px; align-self:center; transition:transform .15s; }
+  .pc-card.open .pc-hd .car{ transform:rotate(90deg); }
+  .pc-more{ display:none; padding:6px 10px 10px; font-size:12px; line-height:1.5; border-top:1px solid var(--border); }
+  .pc-card.open .pc-more{ display:block; }
+  .pc-more .r{ display:flex; justify-content:space-between; gap:12px; padding:3px 0; border-bottom:1px dashed var(--border); }
+  .pc-more .r:last-of-type{ border-bottom:0; }
+  .pc-more .r span:first-child{ color:var(--muted); }
+  .pc-more .r span:last-child{ font-weight:600; text-align:right; }
+  .pc-more .act{ margin-top:8px; }
+  .pc-more .act button{ width:100%; min-height:32px; font-size:12px; font-weight:700; border:1px solid var(--border); background:#fff; border-radius:7px; cursor:pointer; }
+  .chip{ display:inline-block; font-size:10px; font-weight:800; border-radius:4px; padding:2px 6px; color:#fff; flex:none; }
   .chip.PC{ background:var(--pc); } .chip.DP{ background:var(--dp); } .chip.autre{ background:var(--autre); }
   .etat{ font-size:11px; color:var(--muted); }
   .note{ font-size:11px; color:var(--muted); margin-top:8px; line-height:1.45; }
@@ -327,25 +342,26 @@
     h += '<div class="sec">Nature du projet</div>';
     ['1','2'].forEach(n => { if (byNat[n]) h += barRow(NATURE_LBL[n], byNat[n], maxN); });
 
-    h += '<div class="sec">Derniers permis</div>';
-    h += '<table class="t"><thead><tr><th>Date</th><th>Adresse</th><th>Lgts</th></tr></thead><tbody>';
-    rows.slice(0, 40).forEach((p, i) => {
-      h += '<tr data-i="' + i + '"><td>' + fmtDate(p.date) + '<br/><span class="chip ' + kind(p.type) + '">' + (kind(p.type) === 'autre' ? p.type : kind(p.type)) + '</span></td>'
-        + '<td>' + (p.adr || '<i>adresse n.c.</i>') + (p.ville ? '<br/><span class="etat">' + p.ville + '</span>' : '')
-        + '<br/><span class="etat">' + (ETAT_LBL[p.etat] || '—') + (p.dist != null ? ' · ' + p.dist + ' m' : '') + '</span></td>'
-        + '<td style="text-align:right;font-weight:700">' + (p.lgt || (p.lgtDem ? '−' + p.lgtDem : '—')) + '</td></tr>';
-    });
-    h += '</tbody></table>';
-    if (trunc) h += '<div class="note">Liste plafonnée à ' + fmt(rows.length) + ' sur ' + fmt(total) + ' — resserrez le rayon ou la période.</div>';
+    const CAP = 150;
+    h += '<div class="sec">Permis (' + fmt(rows.length) + ')</div><div class="pc-list">';
+    rows.slice(0, CAP).forEach((p, i) => { h += pcCard(p, i); });
+    h += '</div>';
+    if (rows.length > CAP) h += '<div class="note">' + CAP + ' plus récents affichés sur ' + fmt(rows.length) + ' — liste complète dans l’export CSV.</div>';
+    if (trunc) h += '<div class="note">Résultat plafonné à ' + fmt(rows.length) + ' sur ' + fmt(total) + ' autorisations — resserrez le rayon ou la période.</div>';
     h += '<div class="note">Source : base <b>Sitadel</b> (permis de construire, d’aménager, de démolir et déclarations préalables), volet <b>logements</b>. '
       + 'Position géocodée à l’adresse (Base Adresse Nationale) — précision variable, certains permis manquent de coordonnées. Les permis non résidentiels (bureaux, commerces, industrie) sont dans un jeu de données distinct.</div>';
     $('panel-bd').innerHTML = h;
 
-    $('panel-bd').querySelectorAll('tbody tr').forEach(tr => tr.addEventListener('click', () => {
-      const p = rows[+tr.dataset.i];
-      const mk = layer.getLayers().find(x => x._p === p);
-      if (mk){ map.setView(mk.getLatLng(), 18); mk.openPopup(); }
-    }));
+    $('panel-bd').querySelectorAll('.pc-card').forEach(card => {
+      const i = +card.dataset.i;
+      card.querySelector('.pc-hd').addEventListener('click', () => card.classList.toggle('open'));
+      const mb = card.querySelector('[data-act="map"]');
+      if (mb) mb.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const mk = layer.getLayers().find(x => x._p === rows[i]);
+        if (mk){ map.setView(mk.getLatLng(), 18); mk.openPopup(); }
+      });
+    });
 
     setStatus(fmt(rows.length) + ' autorisation(s) dans ' + (radius >= 1000 ? (radius/1000) + ' km' : radius + ' m')
       + ' · ' + fmt(sumLgt) + ' logement(s) créé(s) · ' + since + '.' + (trunc ? ' (liste tronquée)' : ''));
@@ -354,6 +370,38 @@
   function kpi(k, v){ return '<div class="kpi"><div class="k">' + k + '</div><div class="v">' + v + '</div></div>'; }
   function barRow(lbl, n, max){
     return '<div class="bar"><span style="flex:0 0 40%">' + lbl + '</span><span class="track"><span class="fill" style="width:' + (100*n/max) + '%"></span></span><span class="n">' + n + '</span></div>';
+  }
+  // Carte repliée d'un permis ; se déplie au clic pour montrer tout le détail.
+  function pcCard(p, i){
+    const k = kind(p.type);
+    const lgtVal = p.lgt ? p.lgt : (p.lgtDem ? '−' + p.lgtDem : '—');
+    const d = [];
+    d.push(['Type', TYPE_LBL[p.type] || p.type]);
+    d.push(['État d’avancement', ETAT_LBL[p.etat] || '—']);
+    if (p.nature) d.push(['Nature', NATURE_LBL[p.nature] || p.nature]);
+    d.push(['Date d’autorisation', fmtDate(p.date)]);
+    if (p.doc) d.push(['Ouverture de chantier', fmtDate(p.doc)]);
+    if (p.daact) d.push(['Achèvement des travaux', fmtDate(p.daact)]);
+    if (p.lgt) d.push(['Logements créés', p.lgt + (p.lgtCol ? ' (dont ' + p.lgtCol + ' collectif' + (p.lgtCol > 1 ? 's' : '') + ')' : '')]);
+    if (p.surf) d.push(['Surface habitable créée', Math.round(p.surf) + ' m²']);
+    if (p.lgtDem) d.push(['Logements démolis', p.lgtDem]);
+    if (p.terrain) d.push(['Superficie du terrain', fmt(p.terrain) + ' m²']);
+    if (p.demandeur) d.push(['Demandeur', p.demandeur + (p.archi ? ' · architecte' : '')]);
+    if (p.parcelle) d.push(['Parcelle', p.parcelle]);
+    if (p.num) d.push(['N° d’enregistrement', p.num]);
+    if (p.dist != null) d.push(['Distance au point', p.dist + ' m']);
+    return '<div class="pc-card" data-i="' + i + '">'
+      + '<div class="pc-hd">'
+      +   '<span class="chip ' + k + '">' + (k === 'autre' ? p.type : k) + '</span>'
+      +   '<div class="c1"><div class="a">' + (p.adr || 'Adresse non communiquée') + '</div>'
+      +     '<div class="m">' + [p.ville, fmtDate(p.date), ETAT_LBL[p.etat]].filter(Boolean).join(' · ') + '</div></div>'
+      +   '<div class="lgt">' + lgtVal + '<small>lgts</small></div>'
+      +   '<span class="car">›</span>'
+      + '</div>'
+      + '<div class="pc-more">'
+      +   d.map(x => '<div class="r"><span>' + x[0] + '</span><span>' + x[1] + '</span></div>').join('')
+      +   '<div class="act"><button type="button" data-act="map">Voir sur la carte</button></div>'
+      + '</div></div>';
   }
   function popup(p){
     const l = [];
