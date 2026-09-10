@@ -905,7 +905,7 @@
 
     <!-- PERMIS (autorisations d'urbanisme) -->
     <div class="grp" id="grp-permis" hidden>
-      <p class="tip">Permis de construire &amp; déclarations préalables de logements (base Sitadel). Clic sur la carte pour choisir un point, puis un rayon.</p>
+      <p class="tip">Permis de construire &amp; déclarations préalables (logements <b>et</b> locaux — bureaux, commerces, industrie…), base Sitadel. Clic sur la carte pour choisir un point, puis un rayon.</p>
       <div class="row">
         <div class="field">
           <label for="pm-radius">Rayon</label>
@@ -1125,10 +1125,10 @@
       '<h4>Fiscalité</h4><p>Micro-foncier (30 %), réel foncier / déficit foncier (imputation revenu global ≤ 10 700 €/an), LMNP micro-BIC (50 %) et réel (amortissement), Pinel (9/12/14 %), Denormandie (12/18/21 %), Loc’Avantages (réduction 15–65 % des loyers), <b>Jeanbrun</b> — statut du bailleur privé, LF 2026 (location nue au réel + amortissement plafonné à 8 000–12 000 €/an, base 80 % du prix, déficit imputable au global ≤ 10 700 € / 21 400 €). TMI + prélèvements sociaux 17,2 %. Plus-value à la revente : abattements pour durée de détention ; amortissements réintégrés en LMNP réel et Jeanbrun.</p>' +
       '<h4>Limites</h4><p>Estimation <b>pédagogique</b>, hypothèses simplifiées (charges et taxe foncière constantes, plafonds de loyer/ressources non vérifiés, reports de déficit approchés). Ne remplace pas une étude notariale, comptable ou patrimoniale.</p>',
     permis:
-      '<h4>Principe</h4><p>Clic sur la carte + rayon → les <b>autorisations d’urbanisme</b> (permis de construire et déclarations préalables portant sur des <b>logements</b>) dans le cercle, avec une synthèse et la liste détaillée.</p>' +
-      '<h4>Source</h4><p><b>Base Sitadel</b> (permis de construire, d’aménager, de démolir et déclarations préalables), volet logements, géocodée à l’adresse par la <b>Base Adresse Nationale</b> — servie via l’API ouverte de Koumoul (data-fair). Filtre par distance, par type et par date d’autorisation.</p>' +
-      '<h4>Indicateurs</h4><p><b>PC</b> = permis de construire, <b>DP</b> = déclaration préalable. Avancement : <b>autorisé</b>, <b>chantier ouvert</b> (ouverture de chantier déclarée), <b>travaux achevés</b> (achèvement déclaré). <b>Logements créés</b> et <b>surface habitable créée</b> viennent du dossier. Marqueurs colorés par type, taille selon le nombre de logements, opacité selon l’avancement.</p>' +
-      '<h4>Représentativité</h4><p>Position à l’adresse déclarée : précision variable, quelques permis sans coordonnées n’apparaissent pas. Les autorisations de <b>locaux non résidentiels</b> (bureaux, commerces, industrie…) relèvent d’un jeu Sitadel distinct, non affiché ici. Données rafraîchies mensuellement, avec un décalage de publication.</p>',
+      '<h4>Principe</h4><p>Clic sur la carte + rayon → les <b>autorisations d’urbanisme</b> (permis de construire et déclarations préalables) dans le cercle, avec une synthèse et la liste détaillée. Sont couverts les projets de <b>logements</b> et de <b>locaux non résidentiels</b> (commerce, bureaux, industrie, entrepôt, agricole, équipement public…).</p>' +
+      '<h4>Source</h4><p><b>Base Sitadel</b> (permis de construire, d’aménager, de démolir et déclarations préalables), volets « logements » et « locaux », géocodés à l’adresse par la <b>Base Adresse Nationale</b> — servis via l’API ouverte de Koumoul (data-fair). Filtre par distance, par type et par date d’autorisation.</p>' +
+      '<h4>Indicateurs</h4><p><b>PC</b> = permis de construire, <b>DP</b> = déclaration préalable. Avancement : <b>autorisé</b>, <b>chantier ouvert</b> (ouverture de chantier déclarée), <b>travaux achevés</b> (achèvement déclaré). Pour les logements : nombre de <b>logements créés</b> ; pour les locaux : <b>surface de plancher créée</b> et destination principale. Marqueurs colorés par type, taille selon l’ampleur du projet, opacité selon l’avancement.</p>' +
+      '<h4>Représentativité</h4><p>Position à l’adresse déclarée : précision variable, quelques permis sans coordonnées n’apparaissent pas. Une carrière ou un site industriel apparaît via ses permis de <b>locaux</b> (destination « industrie » ou « entrepôt »). Données rafraîchies mensuellement, avec un décalage de publication.</p>',
     credit:
       '<img class="help-logo" src="logo-arpent.png" alt="Arpent" />' +
       '<h4>Développement</h4><p>Application conçue et développée par <b>William Limousin</b>.</p>' +
@@ -1734,13 +1734,17 @@
   }
 
   // ================= Onglet « Permis » (autorisations d'urbanisme — Sitadel) =================
-  const PM_DS = 'https://opendata.koumoul.com/data-fair/api/v1/datasets/sitadel-logements/lines';
-  const PM_SELECT = ['TYPE_DAU','ETAT_DAU','NATURE_PROJET_DECLAREE','DATE_REELLE_AUTORISATION','DATE_REELLE_DOC','DATE_REELLE_DAACT',
-    'AN_DEPOT','NB_LGT_TOT_CREES','NB_LGT_COL_CREES','NB_LGT_DEMOLIS','SURF_HAB_CREEE','SUPERFICIE_TERRAIN',
-    'ADR_NUM_TER','ADR_LIBVOIE_TER','ADR_LOCALITE_TER','ADR_CODPOST_TER','parcelle','DENOM_DEM','REC_ARCHI','NUM_DAU','latitude','longitude'].join(',');
+  const PM_BASE = 'https://opendata.koumoul.com/data-fair/api/v1/datasets/';
+  const PM_COMMON = ['TYPE_DAU','ETAT_DAU','NATURE_PROJET_DECLAREE','DATE_REELLE_AUTORISATION','DATE_REELLE_DOC','DATE_REELLE_DAACT',
+    'AN_DEPOT','SUPERFICIE_TERRAIN','ADR_NUM_TER','ADR_LIBVOIE_TER','ADR_LIEUDIT_TER','ADR_LOCALITE_TER','ADR_CODPOST_TER',
+    'parcelle','DENOM_DEM','REC_ARCHI','NUM_DAU','latitude','longitude'];
+  const PM_SEL_LOG = PM_COMMON.concat(['NB_LGT_TOT_CREES','NB_LGT_COL_CREES','NB_LGT_DEMOLIS','SURF_HAB_CREEE']).join(',');
+  const PM_SEL_LOC = PM_COMMON.concat(['DESTINATION_PRINCIPALE','SURF_LOC_CREEE','SURF_HAB_CREEE','SURF_BUR_CREEE','SURF_COM_CREEE',
+    'SURF_IND_CREEE','SURF_ENT_CREEE','SURF_PUB_CREEE','SURF_HEB_CREEE','SURF_AGR_CREEE']).join(',');
   const PM_TYPE = { PC:'Permis de construire', PCI:'PC modificatif', DP:'Déclaration préalable', PA:'Permis d’aménager', PD:'Permis de démolir' };
   const PM_ETAT = { '1':'Déposé', '2':'Autorisé', '3':'En cours', '4':'Annulé / abandonné', '5':'Chantier ouvert', '6':'Travaux achevés', '7':'Annulé' };
   const PM_NAT = { '1':'Construction neuve', '2':'Travaux sur existant' };
+  const PM_DEST = { '1':'Habitation', '2':'Hôtel', '3':'Bureaux', '4':'Commerce', '5':'Artisanat', '6':'Industrie', '7':'Agricole / forestier', '8':'Entrepôt', '9':'Équipement public' };
   const PM_OP = { '6':0.92, '5':0.62, '2':0.4, '4':0.25 };
   const pmKind = (t) => (t === 'PC' || t === 'PCI') ? 'PC' : t === 'DP' ? 'DP' : 'autre';
   const pmNum = (n) => (n == null || !Number.isFinite(+n)) ? 0 : +n;
@@ -1752,15 +1756,19 @@
     const a = Math.sin((la2-la1)*t/2)**2 + Math.cos(la1*t)*Math.cos(la2*t)*Math.sin((lo2-lo1)*t/2)**2;
     return Math.round(2*R*Math.asin(Math.sqrt(a)));
   }
-  function pmNorm(r){
+  function pmNorm(r, domaine){
     const ref = st.permis.ref || {};
+    const loc = domaine === 'Locaux';
+    const surfLoc = loc ? (pmNum(r.SURF_LOC_CREEE) || (pmNum(r.SURF_HAB_CREEE) + pmNum(r.SURF_BUR_CREEE) + pmNum(r.SURF_COM_CREEE)
+      + pmNum(r.SURF_IND_CREEE) + pmNum(r.SURF_ENT_CREEE) + pmNum(r.SURF_PUB_CREEE) + pmNum(r.SURF_HEB_CREEE) + pmNum(r.SURF_AGR_CREEE))) : 0;
     return {
+      domaine, dest: loc ? String(r.DESTINATION_PRINCIPALE || '') : '',
       type: r.TYPE_DAU || '?', etat: String(r.ETAT_DAU || ''), nature: String(r.NATURE_PROJET_DECLAREE || ''),
       date: r.DATE_REELLE_AUTORISATION || (r.AN_DEPOT ? r.AN_DEPOT + '-01-01' : ''),
       doc: r.DATE_REELLE_DOC || '', daact: r.DATE_REELLE_DAACT || '',
-      lgt: pmNum(r.NB_LGT_TOT_CREES), lgtCol: pmNum(r.NB_LGT_COL_CREES), lgtDem: pmNum(r.NB_LGT_DEMOLIS),
-      surf: pmNum(r.SURF_HAB_CREEE), terrain: pmNum(r.SUPERFICIE_TERRAIN),
-      adr: [r.ADR_NUM_TER, r.ADR_LIBVOIE_TER].filter(Boolean).join(' ').trim(),
+      lgt: loc ? 0 : pmNum(r.NB_LGT_TOT_CREES), lgtCol: loc ? 0 : pmNum(r.NB_LGT_COL_CREES), lgtDem: loc ? 0 : pmNum(r.NB_LGT_DEMOLIS),
+      surf: loc ? surfLoc : pmNum(r.SURF_HAB_CREEE), terrain: pmNum(r.SUPERFICIE_TERRAIN),
+      adr: [r.ADR_NUM_TER, r.ADR_LIBVOIE_TER].filter(Boolean).join(' ').trim() || r.ADR_LIEUDIT_TER || '',
       ville: r.ADR_LOCALITE_TER || '', cp: r.ADR_CODPOST_TER || '', parcelle: r.parcelle || '',
       demandeur: r.DENOM_DEM || '', archi: r.REC_ARCHI === true, num: r.NUM_DAU || '',
       lat: r.latitude != null ? +r.latitude : null, lon: r.longitude != null ? +r.longitude : null,
@@ -1795,27 +1803,42 @@
         sinceLabel = selText(pmDepuis);
       }
       if (type !== 'tous') qsParts.push('TYPE_DAU:' + type);
-      const u = new URL(PM_DS);
-      u.searchParams.set('geo_distance', lon + ',' + lat + ',' + radius);
-      u.searchParams.set('size', '2000');
-      u.searchParams.set('select', PM_SELECT);
-      u.searchParams.set('sort', '-DATE_REELLE_AUTORISATION');
-      if (qsParts.length) u.searchParams.set('qs', qsParts.map(p => '(' + p + ')').join(' AND '));
-      const d = await withTimeout(u.toString(), 30000).then(r => r.json());
+      const qs = qsParts.length ? qsParts.map(p => '(' + p + ')').join(' AND ') : null;
+      const url = (slug, select) => {
+        const u = new URL(PM_BASE + slug + '/lines');
+        u.searchParams.set('geo_distance', lon + ',' + lat + ',' + radius);
+        u.searchParams.set('size', '1500');
+        u.searchParams.set('select', select);
+        u.searchParams.set('sort', '-DATE_REELLE_AUTORISATION');
+        if (qs) u.searchParams.set('qs', qs);
+        return u.toString();
+      };
+      const [dLog, dLoc] = await Promise.all([
+        withTimeout(url('sitadel-logements', PM_SEL_LOG), 30000).then(r => r.json()),
+        withTimeout(url('sitadel-locaux', PM_SEL_LOC), 30000).then(r => r.json()),
+      ]);
       if (my !== pmReqId) return;
-      if (d.error) throw new Error(typeof d.error === 'string' ? d.error : 'Réponse Sitadel invalide.');
-      st.permis.data = { rows: (d.results || []).map(pmNorm).filter(r => r.lat != null), total: d.total || 0, radius, sinceLabel };
+      const e = (dLog && dLog.error) || (dLoc && dLoc.error);
+      if (e) throw new Error(typeof e === 'string' ? e : 'Réponse Sitadel invalide.');
+      let rows = (dLog.results || []).map(r => pmNorm(r, 'Logements'))
+        .concat((dLoc.results || []).map(r => pmNorm(r, 'Locaux')))
+        .filter(r => r.lat != null);
+      rows.sort((a, b) => String(b.date).localeCompare(String(a.date)));
+      const total = (dLog.total || 0) + (dLoc.total || 0);
+      if (rows.length > 2500) rows = rows.slice(0, 2500);
+      st.permis.data = { rows, total, radius, sinceLabel };
       renderPermis();
       collapseControls();
-      const n = st.permis.data.rows.length, lg = st.permis.data.rows.reduce((s, p) => s + p.lgt, 0);
+      const n = rows.length, lg = rows.reduce((s, p) => s + p.lgt, 0);
       const rd = radius >= 1000 ? (radius / 1000) + ' km' : radius + ' m';
-      setStatus(fmtNum(n) + ' autorisation(s) dans ' + rd + ' · ' + fmtNum(lg) + ' logement(s) créé(s) — détail via « Permis ».');
+      setStatus(fmtNum(n) + ' autorisation(s) dans ' + rd + (lg ? ' · ' + fmtNum(lg) + ' logement(s) créé(s)' : '') + ' — détail via « Permis ».');
     }catch(err){ if (my === pmReqId) setStatus(err.name === 'AbortError' ? 'Sitadel : délai dépassé, réessayez.' : (err.message || 'Erreur.'), 'error'); }
   }
 
   function pmMarker(p){
     const k = pmKind(p.type);
-    const rad = 4 + Math.min(11, Math.sqrt(Math.max(1, p.lgt)) * 1.7);
+    const mag = p.domaine === 'Locaux' ? Math.sqrt(Math.max(1, p.surf / 90)) : Math.sqrt(Math.max(1, p.lgt));
+    const rad = 4 + Math.min(11, mag * 1.7);
     const mk = L.circleMarker([p.lat, p.lon], {
       radius: rad, weight:1, color:'#fff',
       fillColor: k === 'PC' ? '#c1440e' : k === 'DP' ? '#2563eb' : '#7c3aed',
@@ -1828,10 +1851,11 @@
     const l = [];
     l.push('<b>' + (PM_TYPE[p.type] || p.type) + '</b>' + (p.num ? ' <span style="color:var(--muted)">' + p.num + '</span>' : ''));
     l.push(fmtDate(p.date) + ' — ' + (PM_ETAT[p.etat] || 'état n.c.') + (p.nature ? ' · ' + (PM_NAT[p.nature] || '') : ''));
+    l.push('<span style="color:var(--muted)">' + (p.domaine === 'Locaux' ? 'Locaux — ' + (PM_DEST[p.dest] || 'destination n.c.') : 'Logements') + '</span>');
     if (p.adr || p.ville) l.push([p.adr, p.cp, p.ville].filter(Boolean).join(' '));
     const b = [];
     if (p.lgt) b.push(p.lgt + ' logement' + (p.lgt > 1 ? 's' : '') + ' créé' + (p.lgt > 1 ? 's' : ''));
-    if (p.surf) b.push(Math.round(p.surf) + ' m² hab.');
+    if (p.surf) b.push(Math.round(p.surf) + ' m²' + (p.domaine === 'Locaux' ? ' créés' : ' hab.'));
     if (p.lgtDem) b.push(p.lgtDem + ' démoli' + (p.lgtDem > 1 ? 's' : ''));
     if (p.terrain) b.push('terrain ' + fmtNum(p.terrain) + ' m²');
     if (b.length) l.push(b.join(' · '));
@@ -1841,16 +1865,19 @@
   }
   function pmCardEl(p){
     const k = pmKind(p.type);
-    const lgtVal = p.lgt ? p.lgt : (p.lgtDem ? '−' + p.lgtDem : '—');
+    const loc = p.domaine === 'Locaux';
+    const bigVal = loc ? (p.surf ? Math.round(p.surf) : '—') : (p.lgt ? p.lgt : (p.lgtDem ? '−' + p.lgtDem : '—'));
+    const bigUnit = loc ? 'm²' : 'lgts';
     const d = [];
     d.push(['Type', PM_TYPE[p.type] || p.type]);
+    d.push(['Destination', loc ? ('Locaux — ' + (PM_DEST[p.dest] || 'n.c.')) : 'Logements']);
     d.push(['État d’avancement', PM_ETAT[p.etat] || '—']);
     if (p.nature) d.push(['Nature', PM_NAT[p.nature] || p.nature]);
     d.push(['Date d’autorisation', fmtDate(p.date)]);
     if (p.doc) d.push(['Ouverture de chantier', fmtDate(p.doc)]);
     if (p.daact) d.push(['Achèvement des travaux', fmtDate(p.daact)]);
     if (p.lgt) d.push(['Logements créés', p.lgt + (p.lgtCol ? ' (dont ' + p.lgtCol + ' collectif' + (p.lgtCol > 1 ? 's' : '') + ')' : '')]);
-    if (p.surf) d.push(['Surface habitable créée', Math.round(p.surf) + ' m²']);
+    if (p.surf) d.push([loc ? 'Surface de plancher créée' : 'Surface habitable créée', Math.round(p.surf) + ' m²']);
     if (p.lgtDem) d.push(['Logements démolis', p.lgtDem]);
     if (p.terrain) d.push(['Superficie du terrain', fmtNum(p.terrain) + ' m²']);
     if (p.demandeur) d.push(['Demandeur', p.demandeur + (p.archi ? ' · architecte' : '')]);
@@ -1863,8 +1890,8 @@
       '<div class="pm-hd">'
       +   '<span class="pm-chip ' + k + '">' + (k === 'autre' ? p.type : k) + '</span>'
       +   '<div class="c1"><div class="a">' + (p.adr || 'Adresse non communiquée') + '</div>'
-      +     '<div class="m">' + [p.ville, fmtDate(p.date), PM_ETAT[p.etat]].filter(Boolean).join(' · ') + '</div></div>'
-      +   '<div class="lgt">' + lgtVal + '<small>lgts</small></div>'
+      +     '<div class="m">' + [p.ville, fmtDate(p.date), PM_ETAT[p.etat], loc ? (PM_DEST[p.dest] || 'locaux') : null].filter(Boolean).join(' · ') + '</div></div>'
+      +   '<div class="lgt">' + bigVal + '<small>' + bigUnit + '</small></div>'
       +   '<span class="car">›</span>'
       + '</div>'
       + '<div class="pm-more">'
@@ -1888,22 +1915,28 @@
 
     const nPC = rows.filter(p => pmKind(p.type) === 'PC').length;
     const nDP = rows.filter(p => pmKind(p.type) === 'DP').length;
-    const sumLgt = rows.reduce((s, p) => s + p.lgt, 0);
-    const sumSurf = rows.reduce((s, p) => s + p.surf, 0);
-    const sumDem = rows.reduce((s, p) => s + p.lgtDem, 0);
+    const log = rows.filter(p => p.domaine === 'Logements');
+    const loc = rows.filter(p => p.domaine === 'Locaux');
+    const sumLgt = log.reduce((s, p) => s + p.lgt, 0);
+    const sumDem = log.reduce((s, p) => s + p.lgtDem, 0);
+    const sumSurfLoc = loc.reduce((s, p) => s + p.surf, 0);
     const nAut = rows.filter(p => p.etat === '2').length;
     const nChan = rows.filter(p => p.etat === '5').length;
     const nFin = rows.filter(p => p.etat === '6').length;
     const rDisp = radius >= 1000 ? (radius / 1000) + ' km' : radius + ' m';
     const since = sinceLabel ? 'depuis ' + sinceLabel : 'depuis 2013';
+    const destCount = {};
+    loc.forEach(p => { const lb = PM_DEST[p.dest] || 'autre'; destCount[lb] = (destCount[lb] || 0) + 1; });
+    const destTop = Object.entries(destCount).sort((a, b) => b[1] - a[1]).slice(0, 4).map(x => x[0] + ' ' + x[1]).join(' · ');
 
     sheetStats.hidden = false;
     sheetStats.innerHTML =
       '<div><b>' + fmtNum(rows.length) + '</b> autorisation' + (rows.length > 1 ? 's' : '')
       + ' — ' + nPC + ' PC · ' + nDP + ' DP · dans ' + rDisp + ', ' + since + '</div>'
-      + '<div style="margin-top:5px"><b>' + fmtNum(sumLgt) + '</b> logement(s) créé(s)'
-      + (sumSurf ? ' · ' + fmtNum(Math.round(sumSurf)) + ' m² hab.' : '')
-      + (sumDem ? ' · ' + sumDem + ' démoli(s)' : '') + '</div>'
+      + (log.length ? '<div style="margin-top:5px"><b>Logements</b> : ' + log.length + ' · ' + fmtNum(sumLgt) + ' créé(s)'
+        + (sumDem ? ' · ' + sumDem + ' démoli(s)' : '') + '</div>' : '')
+      + (loc.length ? '<div style="margin-top:4px"><b>Locaux</b> : ' + loc.length + ' · ' + fmtNum(Math.round(sumSurfLoc)) + ' m² créés'
+        + (destTop ? ' <span style="color:var(--muted)">(' + destTop + ')</span>' : '') + '</div>' : '')
       + '<div style="margin-top:5px;color:var(--muted)">' + nAut + ' autorisé(s) · ' + nChan + ' chantier(s) ouvert(s) · ' + nFin + ' achevé(s)</div>'
       + '<div class="pm-leg"><span><i class="pc"></i>Permis de construire</span><span><i class="dp"></i>Déclaration préalable</span></div>'
       + (total > rows.length ? '<div style="margin-top:5px;color:var(--muted)">Résultat plafonné à ' + fmtNum(rows.length) + ' sur ' + fmtNum(total) + '.</div>' : '');
