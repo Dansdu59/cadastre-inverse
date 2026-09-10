@@ -269,8 +269,8 @@
     white-space:nowrap; padding:0 4px; scroll-snap-align:center;
   }
   .tabbar button .ic{ font-size:19px; line-height:1; }
-  .tabbar button .ic-hm, .tabbar button .ic-loupe, .tabbar button .ic-calc, .tabbar button .ic-key, .tabbar button .ic-tgt, .tabbar button .ic-info, .tabbar button .ic-therm, .tabbar button .ic-drop{ display:inline-flex; }
-  .tabbar button .ic-hm svg, .tabbar button .ic-loupe svg, .tabbar button .ic-calc svg, .tabbar button .ic-key svg, .tabbar button .ic-tgt svg, .tabbar button .ic-info svg, .tabbar button .ic-therm svg, .tabbar button .ic-drop svg{ display:block; width:19px; height:19px; }
+  .tabbar button .ic-hm, .tabbar button .ic-loupe, .tabbar button .ic-calc, .tabbar button .ic-key, .tabbar button .ic-tgt, .tabbar button .ic-info, .tabbar button .ic-therm, .tabbar button .ic-drop, .tabbar button .ic-bank{ display:inline-flex; }
+  .tabbar button .ic-hm svg, .tabbar button .ic-loupe svg, .tabbar button .ic-calc svg, .tabbar button .ic-key svg, .tabbar button .ic-tgt svg, .tabbar button .ic-info svg, .tabbar button .ic-therm svg, .tabbar button .ic-drop svg, .tabbar button .ic-bank svg{ display:block; width:19px; height:19px; }
   .hm-legend .bar{ height:12px; border-radius:3px; margin:5px 0; }
   .hm-legend .lbls{ display:flex; justify-content:space-between; color:var(--muted); font-size:12px; }
   .plu-checks{ display:flex; gap:16px; align-items:center; flex-wrap:wrap; min-height:44px; }
@@ -366,6 +366,52 @@
   .eau-tbl th{ color:var(--muted); font-weight:600; }
   .eau-chip{ display:inline-block; font-size:11px; font-weight:700; border-radius:4px; padding:1px 6px; }
   .eau-chip.ok{ background:#e4f2e6; color:#1a7f37; } .eau-chip.bad{ background:#fde8e8; color:#b3261e; } .eau-chip.info{ background:#eef0f2; color:var(--muted); }
+
+  /* ---- Onglet SIMU (simulation d'achat) ---- */
+  body.tab-simu #map{ display:none; }
+  body.tab-simu form.controls{ flex:1 1 auto; min-height:0; overflow-y:auto; -webkit-overflow-scrolling:touch; overscroll-behavior:contain; }
+  .sm-card{ background:var(--card); border:1px solid var(--border); border-radius:12px; padding:12px; margin-top:10px; }
+  .sm-card > h3{ margin:0 0 8px; font-size:11px; text-transform:uppercase; letter-spacing:.05em; color:var(--muted); }
+  .sm-seg{ display:flex; gap:6px; background:var(--bg); border:1px solid var(--border); border-radius:12px; padding:4px; }
+  .sm-seg button{ flex:1; min-height:44px; border:0; border-radius:9px; background:transparent; font:inherit; font-weight:700; color:var(--muted); cursor:pointer; padding:0 4px; }
+  .sm-seg button[aria-pressed="true"]{ background:var(--accent); color:#fff; }
+  .sm-grid{ display:grid; grid-template-columns:1fr 1fr; gap:10px 12px; }
+  .sm-f{ display:flex; flex-direction:column; gap:4px; min-width:0; }
+  .sm-f.full{ grid-column:1 / -1; }
+  .sm-f > label{ font-size:11px; font-weight:800; color:var(--muted); text-transform:uppercase; letter-spacing:.03em; }
+  .sm-f > label .h{ font-weight:400; text-transform:none; letter-spacing:0; }
+  .sm-f.chk{ flex-direction:row; align-items:center; gap:10px; min-height:44px; }
+  .sm-f.chk input[type=checkbox]{ -webkit-appearance:auto; appearance:auto; accent-color:var(--accent); width:22px; height:22px; min-height:0; flex:none; padding:0; }
+  .sm-f.chk label{ font-size:13px; font-weight:600; color:var(--ink); text-transform:none; letter-spacing:0; }
+  .sm-hero{ border-radius:12px; padding:12px 14px; margin-top:10px; color:#fff; background:var(--accent); }
+  .sm-hero.pos{ background:#1a7f37; } .sm-hero.neg{ background:#b3261e; }
+  .sm-hero .k{ font-size:12px; opacity:.95; }
+  .sm-hero .v{ font-size:24px; font-weight:800; line-height:1.15; }
+  .sm-hero .v small{ font-size:13px; font-weight:600; opacity:.9; }
+  .sm-kpis{ display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:8px; }
+  .sm-kpi{ background:var(--bg); border:1px solid var(--border); border-radius:10px; padding:8px 10px; }
+  .sm-kpi .k{ font-size:10px; text-transform:uppercase; letter-spacing:.03em; color:var(--muted); font-weight:700; }
+  .sm-kpi .v{ font-size:16px; font-weight:800; margin-top:2px; }
+  .sm-kpi .v.pos{ color:#1a7f37; } .sm-kpi .v.neg{ color:#b3261e; }
+  dl.sm-lines{ display:grid; grid-template-columns:1fr auto; gap:4px 10px; font-size:13px; margin:2px 0 0; }
+  dl.sm-lines dt{ color:var(--muted); }
+  dl.sm-lines dd{ margin:0; text-align:right; font-weight:600; font-variant-numeric:tabular-nums; }
+  dl.sm-lines dd.pos{ color:#1a7f37; } dl.sm-lines dd.neg{ color:#b3261e; }
+  dl.sm-lines .sep{ grid-column:1/-1; border-top:1px dashed var(--border); margin:3px 0; }
+  .sm-tblwrap{ overflow-x:auto; -webkit-overflow-scrolling:touch; margin-top:8px; }
+  table.sm-tbl{ width:100%; border-collapse:collapse; font-size:12px; white-space:nowrap; }
+  table.sm-tbl th, table.sm-tbl td{ padding:5px 8px; text-align:right; border-bottom:1px solid var(--border); font-variant-numeric:tabular-nums; }
+  table.sm-tbl th{ color:var(--muted); font-weight:700; }
+  table.sm-tbl th:first-child, table.sm-tbl td:first-child{ text-align:left; }
+  table.sm-tbl td.pos{ color:#1a7f37; } table.sm-tbl td.neg{ color:#b3261e; }
+  svg.sm-chart{ width:100%; height:140px; display:block; margin-top:8px; }
+  .sm-chart-leg{ display:flex; gap:12px; flex-wrap:wrap; font-size:11px; color:var(--muted); margin-top:4px; }
+  .sm-chart-leg i{ display:inline-block; width:10px; height:10px; border-radius:2px; vertical-align:-1px; margin-right:4px; }
+  .sm-note{ font-size:11.5px; color:var(--muted); line-height:1.5; margin-top:8px; }
+  .sm-warn{ background:#fdf3e7; border:1px solid #f0d3a8; color:#7a4a00; border-radius:10px; padding:8px 10px; font-size:12px; margin-top:8px; line-height:1.5; }
+  details.sm-hyp{ margin-top:10px; font-size:12px; }
+  details.sm-hyp summary{ cursor:pointer; font-weight:700; color:var(--muted); min-height:36px; display:flex; align-items:center; }
+  details.sm-hyp ul{ margin:6px 0 0; padding-left:18px; color:var(--muted); line-height:1.5; }
 
   .leaflet-popup-content{ font-size:15px; }
   .leaflet-popup-content a{ color:var(--accent-dark); }
@@ -674,6 +720,141 @@
       <p class="tip">Qualité de l'eau potable — résultats du contrôle sanitaire de l'ARS (Hub'Eau / SISE-Eaux) sur les 2 dernières années, pour le(s) réseau(x) qui desservent la commune.</p>
     </div>
 
+    <!-- SIMU (simulation d'achat) -->
+    <div class="grp" id="grp-simu" hidden>
+      <p class="tip">Simulation d'achat : résidence principale ou investissement locatif (LMNP, Pinel, Denormandie, Loc'Avantages, Jeanbrun). Tout se recalcule en direct.</p>
+
+      <div class="sm-card">
+        <h3>Projet</h3>
+        <div class="sm-seg" id="sm-projet" role="group">
+          <button type="button" data-v="rp" aria-pressed="true">🏠 Résidence principale</button>
+          <button type="button" data-v="invest" aria-pressed="false">📈 Investissement</button>
+        </div>
+      </div>
+
+      <div class="sm-card">
+        <h3>Le bien</h3>
+        <div class="sm-grid">
+          <div class="sm-f full">
+            <button class="btn btn-ghost" id="sm-estimer" type="button">Estimer prix &amp; loyer depuis la commune</button>
+          </div>
+          <div class="sm-f">
+            <label for="sm-etat">État</label>
+            <select id="sm-etat"><option value="ancien" selected>Ancien</option><option value="neuf">Neuf / VEFA</option></select>
+          </div>
+          <div class="sm-f">
+            <label for="sm-surface">Surface (m²)</label>
+            <input id="sm-surface" type="text" inputmode="decimal" value="45" />
+          </div>
+          <div class="sm-f">
+            <label for="sm-prix">Prix d'achat (€)</label>
+            <input id="sm-prix" type="text" inputmode="decimal" value="150000" />
+          </div>
+          <div class="sm-f">
+            <label for="sm-notaire">Frais de notaire (€) <span class="h" id="sm-notaire-h">auto</span></label>
+            <input id="sm-notaire" type="text" inputmode="decimal" value="11250" />
+          </div>
+          <div class="sm-f">
+            <label for="sm-travaux">Travaux (€)</label>
+            <input id="sm-travaux" type="text" inputmode="decimal" value="0" />
+          </div>
+          <div class="sm-f chk full" id="sm-meuble-line" hidden>
+            <input type="checkbox" id="sm-meuble" />
+            <label for="sm-meuble">Loué meublé (régimes LMNP)</label>
+          </div>
+        </div>
+      </div>
+
+      <div class="sm-card">
+        <h3>Financement</h3>
+        <div class="sm-grid">
+          <div class="sm-f"><label for="sm-apport">Apport (€)</label><input id="sm-apport" type="text" inputmode="decimal" value="20000" /></div>
+          <div class="sm-f"><label for="sm-taux">Taux du prêt (%)</label><input id="sm-taux" type="text" inputmode="decimal" value="3,5" /></div>
+          <div class="sm-f"><label for="sm-duree">Durée (ans)</label><input id="sm-duree" type="text" inputmode="numeric" value="20" /></div>
+          <div class="sm-f"><label for="sm-assur">Assurance (% cap./an)</label><input id="sm-assur" type="text" inputmode="decimal" value="0,34" /></div>
+          <div class="sm-f full"><label for="sm-revenus">Revenus nets du foyer (€/mois)</label><input id="sm-revenus" type="text" inputmode="decimal" value="3500" /></div>
+        </div>
+      </div>
+
+      <div class="sm-card" id="sm-sec-loc" hidden>
+        <h3>Location</h3>
+        <div class="sm-grid">
+          <div class="sm-f"><label for="sm-loyer">Loyer HC (€/mois)</label><input id="sm-loyer" type="text" inputmode="decimal" value="600" /></div>
+          <div class="sm-f"><label for="sm-vacance">Vacance (%)</label><input id="sm-vacance" type="text" inputmode="decimal" value="5" /></div>
+          <div class="sm-f"><label for="sm-tf">Taxe foncière (€/an)</label><input id="sm-tf" type="text" inputmode="decimal" value="700" /></div>
+          <div class="sm-f"><label for="sm-copro">Charges non récup. (€/an)</label><input id="sm-copro" type="text" inputmode="decimal" value="500" /></div>
+          <div class="sm-f"><label for="sm-pno">Assurance PNO (€/an)</label><input id="sm-pno" type="text" inputmode="decimal" value="150" /></div>
+          <div class="sm-f"><label for="sm-gestion">Gestion (% loyer)</label><input id="sm-gestion" type="text" inputmode="decimal" value="0" /></div>
+          <div class="sm-f"><label for="sm-entretien">Provision entretien (€/an)</label><input id="sm-entretien" type="text" inputmode="decimal" value="0" /></div>
+        </div>
+      </div>
+
+      <div class="sm-card">
+        <h3>Revente</h3>
+        <div class="sm-grid">
+          <div class="sm-f">
+            <label for="sm-horizon">Revente après</label>
+            <select id="sm-horizon"><option value="5">5 ans</option><option value="9">9 ans</option><option value="10" selected>10 ans</option><option value="12">12 ans</option><option value="15">15 ans</option><option value="20">20 ans</option><option value="25">25 ans</option><option value="30">30 ans</option></select>
+          </div>
+          <div class="sm-f"><label for="sm-fraisvente">Frais de vente (%)</label><input id="sm-fraisvente" type="text" inputmode="decimal" value="5" /></div>
+          <div class="sm-f"><label for="sm-revalo">Revalo. du bien (%/an)</label><input id="sm-revalo" type="text" inputmode="decimal" value="1" /></div>
+          <div class="sm-f" id="sm-f-revaloloy" hidden><label for="sm-revaloloy">Revalo. des loyers (%/an)</label><input id="sm-revaloloy" type="text" inputmode="decimal" value="1" /></div>
+        </div>
+      </div>
+
+      <div class="sm-card" id="sm-sec-fisc" hidden>
+        <h3>Fiscalité</h3>
+        <div class="sm-grid">
+          <div class="sm-f full">
+            <label for="sm-regime">Régime</label>
+            <select id="sm-regime">
+              <optgroup label="Location nue">
+                <option value="micro_foncier">Micro-foncier (abattement 30 %)</option>
+                <option value="nu_reel">Réel foncier / déficit foncier</option>
+              </optgroup>
+              <optgroup label="Location meublée (LMNP)">
+                <option value="lmnp_micro">LMNP — micro-BIC (abattement 50 %)</option>
+                <option value="lmnp_reel">LMNP — réel (amortissement)</option>
+              </optgroup>
+              <optgroup label="Défiscalisation">
+                <option value="pinel">Pinel (neuf, engagement)</option>
+                <option value="denormandie">Denormandie (ancien + travaux)</option>
+                <option value="locavantages">Loc'Avantages (Anah)</option>
+                <option value="jeanbrun">Jeanbrun — bailleur privé (nu, 2026)</option>
+              </optgroup>
+            </select>
+          </div>
+          <div class="sm-f">
+            <label for="sm-tmi">TMI</label>
+            <select id="sm-tmi"><option value="0">0 %</option><option value="11">11 %</option><option value="30" selected>30 %</option><option value="41">41 %</option><option value="45">45 %</option></select>
+          </div>
+          <div class="sm-f" data-sub="pinel denormandie" hidden>
+            <label for="sm-engagement">Engagement</label>
+            <select id="sm-engagement"><option value="6">6 ans</option><option value="9" selected>9 ans</option><option value="12">12 ans</option></select>
+          </div>
+          <div class="sm-f" data-sub="lmnp_reel" hidden>
+            <label for="sm-terrain">Quote-part terrain</label>
+            <select id="sm-terrain"><option value="10">10 %</option><option value="15" selected>15 %</option><option value="20">20 %</option><option value="25">25 %</option></select>
+          </div>
+          <div class="sm-f" data-sub="lmnp_reel" hidden><label for="sm-dureebien">Amort. bâti (ans)</label><input id="sm-dureebien" type="text" inputmode="numeric" value="30" /></div>
+          <div class="sm-f" data-sub="lmnp_reel" hidden><label for="sm-mobilier">Mobilier (€)</label><input id="sm-mobilier" type="text" inputmode="decimal" value="5000" /></div>
+          <div class="sm-f" data-sub="lmnp_reel" hidden><label for="sm-compta">Frais comptables (€/an)</label><input id="sm-compta" type="text" inputmode="decimal" value="400" /></div>
+          <div class="sm-f" data-sub="locavantages" hidden>
+            <label for="sm-locniveau">Niveau de loyer</label>
+            <select id="sm-locniveau"><option value="loc1">Loc1 (intermédiaire)</option><option value="loc2" selected>Loc2 (social)</option><option value="loc3">Loc3 (très social)</option></select>
+          </div>
+          <div class="sm-f chk" data-sub="locavantages" hidden><input type="checkbox" id="sm-iml" /><label for="sm-iml">Intermédiation locative</label></div>
+          <div class="sm-f" data-sub="jeanbrun" hidden>
+            <label for="sm-jbniveau">Niveau de loyer</label>
+            <select id="sm-jbniveau"><option value="interm">Intermédiaire</option><option value="social" selected>Social</option><option value="tsocial">Très social</option></select>
+          </div>
+          <div class="sm-f chk full" data-sub="jeanbrun" hidden><input type="checkbox" id="sm-jbreno" /><label for="sm-jbreno">Déficit issu de travaux de rénovation énergétique (plafond 21 400 € jusqu'à fin 2027)</label></div>
+        </div>
+      </div>
+
+      <div id="simu-out"></div>
+    </div>
+
     <button class="btn btn-primary" id="go" type="submit">Rechercher</button>
     <button class="btn btn-ghost" id="reset" type="button">Réinitialiser</button>
   </form>
@@ -755,6 +936,7 @@
   <button type="button" data-tab="loc"><span class="ic ic-key" aria-hidden="true"><svg width="22" height="22" viewBox="0 0 22 22" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="7.6" cy="7.6" r="4.1"/><line x1="10.5" y1="10.5" x2="18.5" y2="18.5"/><line x1="16.6" y1="16.6" x2="18.7" y2="14.5"/><line x1="14" y1="14" x2="16" y2="12"/></svg></span>LOC</button>
   <button type="button" data-tab="dpe"><span class="ic ic-therm" aria-hidden="true"><svg width="22" height="22" viewBox="0 0 22 22" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M9 3.6a2 2 0 0 1 4 0v7.9a3.5 3.5 0 1 1-4 0Z"/><line x1="11" y1="7" x2="11" y2="12.4"/><circle cx="11" cy="15" r="1.8" fill="currentColor" stroke="none"/></svg></span>DPE</button>
   <button type="button" data-tab="eau"><span class="ic ic-drop" aria-hidden="true"><svg width="22" height="22" viewBox="0 0 22 22" fill="currentColor"><path d="M11 2.4c-.35 0-.67.18-.86.49C8.05 6.2 5 10.95 5 13.7A6 6 0 0 0 17 13.7c0-2.75-3.05-7.5-5.14-10.81A1 1 0 0 0 11 2.4Z"/></svg></span>EAU</button>
+  <button type="button" data-tab="simu"><span class="ic ic-bank" aria-hidden="true"><svg width="22" height="22" viewBox="0 0 22 22" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M2.5 8 11 3l8.5 5"/><line x1="3.6" y1="8.4" x2="18.4" y2="8.4"/><line x1="5.2" y1="9.2" x2="5.2" y2="15.6"/><line x1="9" y1="9.2" x2="9" y2="15.6"/><line x1="13" y1="9.2" x2="13" y2="15.6"/><line x1="16.8" y1="9.2" x2="16.8" y2="15.6"/><line x1="3.4" y1="16.4" x2="18.6" y2="16.4"/><line x1="2.5" y1="18.8" x2="19.5" y2="18.8"/></svg></span>Simu</button>
   <button type="button" id="credit-btn"><span class="ic ic-info" aria-hidden="true"><svg width="22" height="22" viewBox="0 0 22 22" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><circle cx="11" cy="11" r="8.4"/><line x1="11" y1="10" x2="11" y2="15.4"/><circle cx="11" cy="6.9" r="1" fill="currentColor" stroke="none"/></svg></span>Crédit</button>
 </nav>
 </div>
@@ -769,7 +951,7 @@
   const pluMin = $('plu-min'), pluU = $('plu-u'), pluAu = $('plu-au'), pluA = $('plu-a'), pluN = $('plu-n'), pluLibresBtn = $('plu-libres');
   const grpEstim = $('grp-estim'), esAddr = $('es-addr'), esSug = $('es-suggestions'), esSurf = $('es-surf'), esType = $('es-type'), esRadius = $('es-radius'), esYears = $('es-years');
   const grpDpe = $('grp-dpe'), dpeMonths = $('dpe-months'), dpeType = $('dpe-type'), dpeCap = $('dpe-cap'), dpeInd = $('dpe-ind');
-  const grpEau = $('grp-eau');
+  const grpEau = $('grp-eau'), grpSimu = $('grp-simu');
   const grpLoc = $('grp-loc'), locMode = $('loc-mode'), locRayon = $('loc-rayon'), locMaille = $('loc-maille'),
         locBien = $('loc-bien'), locSurf = $('loc-surf'), locMonths = $('loc-months'), locInd = $('loc-ind');
   const goBtn = $('go'), resetBtn = $('reset');
@@ -789,8 +971,8 @@
     volume: ['#eff3ff','#c6dbef','#9ecae1','#6baed6','#3182bd','#08519c'],
     evo:    ['#2166ac','#67a9cf','#d1e5f0','#fddbc7','#ef8a62','#b2182b']
   };
-  const TITLES = { parcelles:'Parcelles cadastrales', dvf:'Transactions immobilières', autour:'Autour d’une parcelle', heatmap:'Prix & dynamique par zone', plu:'Zonage PLU & foncier', estim:'Estimation à l’adresse', loc:'Loyers & rendement locatif', dpe:'DPE — performance énergétique', eau:'Qualité de l’eau potable' };
-  const SHEET_TITLES = { parcelles:'Parcelles', dvf:'Transactions (DVF)', autour:'Ventes autour du point', heatmap:'Synthèse de la commune', plu:'PLU & foncier', estim:'Estimation', loc:'Loyers & rendement', dpe:'DPE de la commune', eau:'Qualité de l’eau' };
+  const TITLES = { parcelles:'Parcelles cadastrales', dvf:'Transactions immobilières', autour:'Autour d’une parcelle', heatmap:'Prix & dynamique par zone', plu:'Zonage PLU & foncier', estim:'Estimation à l’adresse', loc:'Loyers & rendement locatif', dpe:'DPE — performance énergétique', eau:'Qualité de l’eau potable', simu:'Simulation d’achat' };
+  const SHEET_TITLES = { parcelles:'Parcelles', dvf:'Transactions (DVF)', autour:'Ventes autour du point', heatmap:'Synthèse de la commune', plu:'PLU & foncier', estim:'Estimation', loc:'Loyers & rendement', dpe:'DPE de la commune', eau:'Qualité de l’eau', simu:'Simulation d’achat' };
   const DPE_COL = { A:'#00a06e', B:'#5bb349', C:'#c3d545', D:'#ffe200', E:'#f7a600', F:'#ec6f2a', G:'#d3121a' };
   const DPE_LETTERS = ['A','B','C','D','E','F','G'];
   const LOC_RAMPS = {
@@ -850,6 +1032,11 @@
       '<h4>Source</h4><p><b>Hub’Eau</b> — API « qualité de l’eau potable » (données SISE-Eaux du ministère de la Santé / ARS). Réseaux desservant la commune + résultats des prélèvements.</p>' +
       '<h4>Indicateurs</h4><p>La conformité affichée est celle des <b>limites de qualité</b> (santé : bactéries, nitrates, pesticides…). Les <b>références de qualité</b> (goût, fer, chlore, température…) sont comptées à part : un dépassement n’est pas un risque sanitaire. Les paramètres clés montrent la dernière valeur mesurée et, quand elle existe, la limite. Les pesticides sont résumés (recherchés / détectés / au-dessus de 0,1 µg/L).</p>' +
       '<h4>Représentativité</h4><p>Contrôle effectué <b>sur le réseau de distribution</b>, pas au robinet du logement (le plomb ou la stagnation dans les canalisations privées ne sont pas couverts). Une commune peut être alimentée par plusieurs réseaux : les valeurs sont agrégées. La conformité porte sur les prélèvements de la période.</p>',
+    simu:
+      '<h4>Principe</h4><p>Simulateur d’achat, en <b>résidence principale</b> ou en <b>investissement locatif</b>. Tous les résultats se recalculent en direct. Le champ Commune (en haut) permet de pré-remplir le prix et le loyer.</p>' +
+      '<h4>Calculs</h4><p>Prêt amortissable à taux fixe + assurance sur capital initial. <b>Rendements</b> brut / net de charges / net-net (après impôt). <b>Cash-flow</b> mensuel, effort d’épargne, <b>TRI</b> sur la durée de détention (avec produit net de revente). Projection année par année.</p>' +
+      '<h4>Fiscalité</h4><p>Micro-foncier (30 %), réel foncier / déficit foncier (imputation revenu global ≤ 10 700 €/an), LMNP micro-BIC (50 %) et réel (amortissement), Pinel (9/12/14 %), Denormandie (12/18/21 %), Loc’Avantages (réduction 15–65 % des loyers), <b>Jeanbrun</b> — statut du bailleur privé, LF 2026 (location nue au réel + amortissement plafonné à 8 000–12 000 €/an, base 80 % du prix, déficit imputable au global ≤ 10 700 € / 21 400 €). TMI + prélèvements sociaux 17,2 %. Plus-value à la revente : abattements pour durée de détention ; amortissements réintégrés en LMNP réel et Jeanbrun.</p>' +
+      '<h4>Limites</h4><p>Estimation <b>pédagogique</b>, hypothèses simplifiées (charges et taxe foncière constantes, plafonds de loyer/ressources non vérifiés, reports de déficit approchés). Ne remplace pas une étude notariale, comptable ou patrimoniale.</p>',
     credit:
       '<img class="help-logo" src="logo-arpent.png" alt="Arpent" />' +
       '<h4>Développement</h4><p>Application conçue et développée par <b>William Limousin</b>.</p>' +
@@ -888,6 +1075,7 @@
     estim:{ layer:null, circle:null, refMarker:null, ref:null, data:null, collapsed:false },
     dpe:{ layer:null, data:null, indicator:'dpe', hidden:new Set(), sortKey:'date', sortDir:-1, collapsed:false },
     eau:{ contour:null, data:null, collapsed:false },
+    simu:{ collapsed:false, ready:false },
     loc:{ mode:'commune', layer:null, communeRows:[], gridSales:[], gridCells:[], gridMeta:{},
           loyByCommune:null, data:false, indicator:'rdt', bien:'app', surf:45, months:60,
           sortKey:'rdt', sortDir:-1, dataThrough:null, collapsed:false }
@@ -1057,6 +1245,7 @@
     if (activeTab === 'eau'){
       return (selected ? selected.nom : '—') + '  ·  qualité de l’eau  ·  2 ans';
     }
+    if (activeTab === 'simu'){ return 'Simulation d’achat'; }
     return (selected ? selected.nom : '—') + '  ·  ' + pMin.value + '–' + pMax.value + ' m²';
   }
   function applyControlsVisibility(){
@@ -1072,6 +1261,9 @@
     grpLoc.hidden = activeTab !== 'loc';
     grpDpe.hidden = activeTab !== 'dpe';
     grpEau.hidden = activeTab !== 'eau';
+    grpSimu.hidden = activeTab !== 'simu';
+    document.body.classList.toggle('tab-simu', activeTab === 'simu');
+    goBtn.hidden = activeTab === 'simu';   // la simulation se recalcule en direct
     // Estimation : la commune découle de l'adresse saisie, pas de champ Commune.
     $('commune-field').hidden = activeTab === 'estim';
     $('plu-mini').hidden = !(activeTab === 'plu' && collapsed);
@@ -1096,6 +1288,7 @@
     if (activeTab === 'loc'){ has = !!st.loc.data; label = '≡ Loyers'; }
     if (activeTab === 'dpe'){ has = !!st.dpe.data; label = '≡ DPE'; }
     if (activeTab === 'eau'){ has = !!st.eau.data; label = '≡ Eau'; }
+    if (activeTab === 'simu'){ has = false; }
     fabList.hidden = !(has && !sheet.classList.contains('open'));
     fabList.textContent = label;
   }
@@ -1453,6 +1646,7 @@
     if (tab === 'loc') return [st.loc.layer];
     if (tab === 'dpe') return [st.dpe.layer];
     if (tab === 'eau') return [st.eau.contour];
+    if (tab === 'simu') return [];
     return [st.autour.parcLayer, st.autour.circle, st.autour.ventes, st.autour.refMarker];
   }
   function syncLayers(){
@@ -1474,6 +1668,7 @@
     else if (activeTab === 'loc' && st.loc.data) renderLoc();
     else if (activeTab === 'dpe' && st.dpe.data) renderDpe();
     else if (activeTab === 'eau' && st.eau.data) renderEau();
+    else if (activeTab === 'simu'){ closeSheet(); updateFab(); smEnter(); }
     else { closeSheet(); updateFab(); }
   }
 
@@ -1549,6 +1744,8 @@
       setStatus('Qualité de l’eau à ' + (selected ? selected.nom : '') + ' — détail via « Eau ».');
     else if (activeTab === 'eau')
       setStatus('Choisissez une commune puis « Voir la qualité de l’eau ».');
+    else if (activeTab === 'simu')
+      setStatus('Ajustez les paramètres — tout se recalcule. Une commune pré-remplit prix & loyer.');
     else
       setStatus('Prêt. Choisissez une commune et lancez la recherche.');
     setTimeout(() => map.invalidateSize(), 120);
@@ -1559,6 +1756,7 @@
     e.preventDefault();
     document.activeElement && document.activeElement.blur();
     suggestions.hidden = true;
+    if (activeTab === 'simu') return;   // calcul en direct, pas de soumission
     if (!selected){ setStatus('Choisissez une commune dans la liste.', 'error'); return; }
 
     if (activeTab === 'parcelles'){
@@ -1620,6 +1818,7 @@
                months:+locMonths.value, sortKey:locInd.value, sortDir:locInd.value === 'prix' ? 1 : -1, dataThrough:null, collapsed:false };
     st.dpe = { layer:null, data:null, indicator:dpeInd.value, hidden:new Set(), sortKey:'date', sortDir:-1, collapsed:false };
     st.eau = { contour:null, data:null, collapsed:false };
+    if (activeTab === 'simu') smReset();
     if (activeTab === 'plu'){ goBtn.textContent = 'Afficher le zonage PLU'; syncPluControls(); }
     if (activeTab === 'loc'){ $('loc-mini').hidden = true; }
     if (activeTab === 'dpe'){ $('dpe-mini').hidden = true; }
@@ -2906,6 +3105,421 @@
 
     sheetTitle.textContent = SHEET_TITLES.eau + ' — ' + (d.nom || selected.nom);
     updateFab();
+  }
+
+  // ================= Onglet « SIMU » (simulation d'achat) =================
+  const smState = { projet:'rp', notaireTouched:false };
+  const SM_DEF = { 'sm-etat':'ancien','sm-surface':'45','sm-prix':'150000','sm-notaire':'11250','sm-travaux':'0',
+    'sm-apport':'20000','sm-taux':'3,5','sm-duree':'20','sm-assur':'0,34','sm-revenus':'3500',
+    'sm-loyer':'600','sm-vacance':'5','sm-tf':'700','sm-copro':'500','sm-pno':'150','sm-gestion':'0','sm-entretien':'0',
+    'sm-horizon':'10','sm-fraisvente':'5','sm-revalo':'1','sm-revaloloy':'1',
+    'sm-regime':'micro_foncier','sm-tmi':'30','sm-engagement':'9','sm-terrain':'15','sm-dureebien':'30','sm-mobilier':'5000','sm-compta':'400',
+    'sm-locniveau':'loc2','sm-jbniveau':'social' };
+
+  const smNum = (id, def=0) => { const v = parseFloat(String($(id).value).replace(/\s/g,'').replace(',','.')); return Number.isFinite(v) ? v : def; };
+  const smEur = (x) => (x==null||!Number.isFinite(x)) ? '—' : Math.round(x).toLocaleString('fr-FR') + ' €';
+  const smPc = (x,d=1) => (x==null||!Number.isFinite(x)) ? '—' : x.toLocaleString('fr-FR',{minimumFractionDigits:d,maximumFractionDigits:d}) + ' %';
+  const smCls = (x) => x>0 ? 'pos' : x<0 ? 'neg' : '';
+  const smCostTxt = (x) => (x==null||!Number.isFinite(x)) ? '—' : x>0.5 ? '−'+smEur(x) : x<-0.5 ? '+'+smEur(-x) : '0 €';
+  const smCostCls = (x) => x>0.5 ? 'neg' : x<-0.5 ? 'pos' : '';
+
+  function smAutoNotaire(){
+    if (smState.notaireTouched) return;
+    const rate = $('sm-etat').value === 'neuf' ? 0.025 : 0.075;
+    $('sm-notaire').value = Math.round(smNum('sm-prix') * rate);
+    $('sm-notaire-h').textContent = 'auto ' + (rate*100).toFixed(1).replace('.',',') + ' %';
+  }
+  function smSyncSubs(){
+    const r = $('sm-regime').value;
+    grpSimu.querySelectorAll('[data-sub]').forEach(el => { el.hidden = !el.dataset.sub.split(' ').includes(r); });
+  }
+  function smProjet(v){
+    smState.projet = v;
+    [...$('sm-projet').children].forEach(b => b.setAttribute('aria-pressed', b.dataset.v === v));
+    $('sm-sec-loc').hidden = v !== 'invest';
+    $('sm-sec-fisc').hidden = v !== 'invest';
+    $('sm-meuble-line').hidden = v !== 'invest';
+    $('sm-f-revaloloy').hidden = v !== 'invest';
+  }
+
+  function smBuildLoan(principal, tauxPct, dureeAns){
+    const n = Math.max(1, Math.round(dureeAns*12));
+    const r = tauxPct/100/12;
+    const m = principal <= 0 ? 0 : (r === 0 ? principal/n : principal * r / (1 - Math.pow(1+r, -n)));
+    let bal = Math.max(0, principal);
+    const months = [];
+    for (let i=1;i<=n;i++){ const int = bal*r, cap = Math.min(bal, m-int); bal = Math.max(0, bal-cap); months.push({ int, cap, bal }); }
+    return { n, mensualite:m, year(y){
+      let int=0, cap=0;
+      for (let k=(y-1)*12; k<y*12 && k<n; k++){ int+=months[k].int; cap+=months[k].cap; }
+      const idx = Math.min(y*12, n) - 1;
+      return { int, cap, crd: idx>=0 ? months[idx].bal : Math.max(0,principal) };
+    } };
+  }
+
+  function smTaxYear(inp, S, y, ctx){
+    const psTmi = inp.tmi + 17.2;
+    const loyBrut = ctx.loyerEncaisse, chargesDed = ctx.chargesDeductibles, interets = ctx.interets;
+    let impot = 0, reduction = 0, base = null;
+    if (inp.regime === 'micro_foncier'){ base = loyBrut * 0.70; impot = base * psTmi/100; }
+    else if (inp.regime === 'lmnp_micro'){ base = loyBrut * 0.50; impot = base * psTmi/100; }
+    else if (inp.regime === 'lmnp_reel'){
+      const avantAmort = loyBrut - chargesDed - interets;
+      const amortDispo = ctx.amortAnnuel + S.amortStock;
+      const amortUtil = Math.max(0, Math.min(amortDispo, avantAmort));
+      S.amortStock = Math.max(0, amortDispo - amortUtil);
+      S.amortCumulDeduit += amortUtil;
+      base = Math.max(0, avantAmort - amortUtil);
+      impot = base * psTmi/100;
+    }
+    else { // nu_reel, pinel, denormandie, locavantages, jeanbrun → réel foncier
+      const isJb = inp.regime === 'jeanbrun';
+      const amort = isJb ? (ctx.jbAmort || 0) : 0;
+      const capGlobal = isJb && inp.jbReno ? 21400 : 10700;
+      if (isJb) S.amortCumulDeduit += amort;
+      let net = loyBrut - chargesDed - interets - amort;
+      if (net > 0 && S.reportFoncier > 0){ const u = Math.min(net, S.reportFoncier); net -= u; S.reportFoncier -= u; }
+      if (net >= 0){ base = net; impot = net * psTmi/100; }
+      else {
+        const deficit = -net;
+        const partInt = Math.min(interets, deficit);
+        const imputGlobal = Math.min(deficit - partInt, capGlobal);
+        impot = -(imputGlobal * inp.tmi/100);
+        S.reportFoncier += (deficit - imputGlobal);
+        base = net;
+      }
+      if ((inp.regime === 'pinel' || inp.regime === 'denormandie') && y <= inp.engagement){
+        const rates = inp.regime === 'denormandie' ? {6:12,9:18,12:21} : {6:9,9:12,12:14};
+        const assiette = Math.min(inp.coutTotal, 300000, 5500 * inp.surface);
+        reduction = Math.min(assiette * (rates[inp.engagement]/100) / inp.engagement, 10000);
+      }
+      if (inp.regime === 'locavantages'){
+        const T = inp.iml ? {loc1:20,loc2:40,loc3:65} : {loc1:15,loc2:35,loc3:0};
+        reduction = loyBrut * (T[inp.locNiveau] || 0)/100;
+      }
+    }
+    return { impot, reduction, base };
+  }
+
+  function smSimulate(inp){
+    const emprunt = Math.max(0, inp.coutTotal - inp.apport);
+    const loan = smBuildLoan(emprunt, inp.taux, inp.duree);
+    const assurAnnuelle = emprunt * inp.assur/100;
+    const mensualiteTot = loan.mensualite + assurAnnuelle/12;
+    const baseBati = inp.coutTotal * (1 - inp.terrainPct/100);
+    const amortBatiAnnuel = inp.dureeBien > 0 ? baseBati / inp.dureeBien : 0;
+    const amortMobAnnuel = inp.dureeMob > 0 ? inp.mobilier / inp.dureeMob : 0;
+    const jbPlafond = inp.regime === 'jeanbrun'
+      ? (inp.etat === 'neuf' ? ({ interm:8000, social:10000, tsocial:12000 }[inp.jbNiveau] || 10000) : 10700) : 0;
+
+    const S = { reportFoncier:0, amortStock:0, amortCumulDeduit:0, jbStock: 0.80 * inp.prix };
+    const rows = [];
+    let cumCf = 0;
+    for (let y=1; y<=inp.horizon; y++){
+      const g = Math.pow(1 + inp.revaloLoy/100, y-1);
+      const loyerEncaisse = inp.loyerMensuel*12 * (1 - inp.vacance/100) * g;
+      const gestionM = loyerEncaisse * inp.gestion/100;
+      const chargesCash = inp.tf + inp.copro + inp.pno + inp.entretien + gestionM + (inp.regime === 'lmnp_reel' ? inp.compta : 0);
+      const chargesDeductibles = chargesCash + assurAnnuelle;
+      const yl = loan.year(y);
+      const amortAnnuel = amortBatiAnnuel + (y <= inp.dureeMob ? amortMobAnnuel : 0);
+      const jbAmort = inp.regime === 'jeanbrun' ? Math.min(jbPlafond, S.jbStock) : 0;
+      S.jbStock = Math.max(0, S.jbStock - jbAmort);
+      const tax = smTaxYear(inp, S, y, { loyerEncaisse, chargesDeductibles, interets: yl.int, amortAnnuel, jbAmort });
+      const creditAnnuel = (y*12 <= loan.n ? loan.mensualite*12 : loan.mensualite * Math.max(0, loan.n-(y-1)*12))
+        + (y*12 <= loan.n ? assurAnnuelle : assurAnnuelle * Math.max(0, loan.n-(y-1)*12)/12);
+      const cf = loyerEncaisse - chargesCash - creditAnnuel - tax.impot + tax.reduction;
+      cumCf += cf;
+      const valeurBien = inp.prix * Math.pow(1 + inp.revalo/100, y);
+      rows.push({ y, loyerEncaisse, chargesCash, interets:yl.int, capital:yl.cap, crd:yl.crd,
+        impot:tax.impot, reduction:tax.reduction, cf, cumCf, valeurBien, patrimoineNet: valeurBien - yl.crd,
+        amortAnnuel: inp.regime === 'jeanbrun' ? jbAmort : amortAnnuel });
+    }
+
+    const H = inp.horizon, last = rows[H-1];
+    const valeurRevente = inp.prix * Math.pow(1 + inp.revalo/100, H);
+    const fraisV = Math.max(0, valeurRevente * inp.fraisVente/100);
+    let impotPV = 0, pvBrute = 0;
+    if (inp.projet === 'invest'){
+      let prixAcqMajore = inp.prix + inp.notaire + inp.travaux;
+      if (inp.regime === 'lmnp_reel' || inp.regime === 'jeanbrun') prixAcqMajore -= S.amortCumulDeduit;
+      pvBrute = (valeurRevente - fraisV) - prixAcqMajore;
+      if (pvBrute > 0){
+        const abIR = H<=5 ? 0 : (H<=21 ? (H-5)*0.06 : 1);
+        let abPS = 0;
+        if (H>5) abPS += Math.min(16, H-5)*0.0165;
+        if (H>=22) abPS += 0.0160;
+        if (H>22) abPS += Math.min(8, H-22)*0.09;
+        abPS = Math.min(1, abPS);
+        impotPV = pvBrute*(1-Math.min(1,abIR))*0.19 + pvBrute*(1-abPS)*0.172;
+      }
+    }
+    const netRevente = valeurRevente - fraisV - last.crd - impotPV;
+
+    const flows = [-inp.apport];
+    for (let y=1;y<=H;y++) flows.push(rows[y-1].cf);
+    flows[H] += netRevente;
+    const tri = smIrr(flows);
+
+    const r0 = rows[0] || {};
+    const loyerAn1Brut = inp.loyerMensuel*12;
+    const loyerAn1Net = r0.loyerEncaisse - r0.chargesCash;
+    const rdtBrut = inp.coutTotal>0 ? loyerAn1Brut/inp.coutTotal*100 : null;
+    const rdtNet = inp.coutTotal>0 ? loyerAn1Net/inp.coutTotal*100 : null;
+    const rdtNetNet = inp.coutTotal>0 ? (r0.loyerEncaisse - r0.chargesCash - r0.impot + r0.reduction)/inp.coutTotal*100 : null;
+    const cfMois1 = r0.cf/12;
+    const endettement = inp.revenus>0 ? (mensualiteTot - (inp.projet==='invest' ? 0.7*inp.loyerMensuel : 0)) / inp.revenus * 100 : null;
+
+    return { emprunt, loan, mensualiteTot, rows, cumCf, netRevente, valeurRevente, fraisVente:fraisV, impotPV, pvBrute,
+      tri, rdtBrut, rdtNet, rdtNetNet, cfMois1, endettement,
+      coutCredit: loan.mensualite*loan.n - emprunt + inp.assur/100*emprunt*inp.duree };
+  }
+
+  function smIrr(flows){
+    const npv = (r) => flows.reduce((s,f,i) => s + f/Math.pow(1+r,i), 0);
+    let lo = -0.95, hi = 1.0, flo = npv(lo);
+    if (flo*npv(hi) > 0) return null;
+    for (let k=0;k<160;k++){ const mid = (lo+hi)/2, fm = npv(mid);
+      if (Math.abs(fm) < 1e-4) return mid*100;
+      if (flo*fm < 0) hi = mid; else { lo = mid; flo = fm; } }
+    return (lo+hi)/2*100;
+  }
+
+  function smReadInputs(){
+    const projet = smState.projet;
+    const prix = smNum('sm-prix'), notaire = smNum('sm-notaire'), travaux = smNum('sm-travaux');
+    return {
+      projet, regime: projet==='invest' ? $('sm-regime').value : 'rp',
+      etat: $('sm-etat').value,
+      surface: smNum('sm-surface',1) || 1,
+      prix, notaire, travaux, coutTotal: prix + notaire + travaux,
+      apport: smNum('sm-apport'),
+      taux: smNum('sm-taux'), duree: Math.max(1, smNum('sm-duree',20)), assur: smNum('sm-assur'),
+      revenus: smNum('sm-revenus'),
+      loyerMensuel: smNum('sm-loyer'), vacance: smNum('sm-vacance'),
+      tf: smNum('sm-tf'), copro: smNum('sm-copro'), pno: smNum('sm-pno'),
+      gestion: smNum('sm-gestion'), entretien: smNum('sm-entretien'), compta: smNum('sm-compta',400),
+      tmi: smNum('sm-tmi',30), horizon: smNum('sm-horizon',10),
+      revalo: smNum('sm-revalo'), revaloLoy: smNum('sm-revaloloy'), fraisVente: smNum('sm-fraisvente',5),
+      engagement: smNum('sm-engagement',9),
+      terrainPct: smNum('sm-terrain',15), dureeBien: smNum('sm-dureebien',30),
+      mobilier: smNum('sm-mobilier',0), dureeMob: 7,
+      locNiveau: $('sm-locniveau').value, iml: $('sm-iml').checked,
+      jbNiveau: $('sm-jbniveau').value, jbReno: $('sm-jbreno').checked,
+    };
+  }
+
+  function smWarn(inp){
+    const w = [], loyAn = inp.loyerMensuel*12;
+    if (inp.regime === 'micro_foncier' && loyAn > 15000) w.push('Micro-foncier plafonné à 15 000 € de loyers/an — passez au réel.');
+    if (inp.regime === 'lmnp_micro' && loyAn > 77700) w.push('Micro-BIC plafonné à 77 700 € de recettes/an.');
+    if (inp.regime === 'locavantages' && inp.locNiveau === 'loc3' && !inp.iml) w.push('Loc3 exige l’intermédiation locative — réduction ramenée à 0 sans IML.');
+    if (inp.regime === 'pinel') w.push('Le Pinel n’accepte plus de nouveaux investissements depuis le 31/12/2024 (conservé pour un engagement pris).');
+    if (inp.regime === 'lmnp_reel') w.push('Depuis 2025, les amortissements déduits sont réintégrés au calcul de la plus-value (pris en compte ici).');
+    if (inp.regime === 'jeanbrun'){
+      const plaf = inp.etat === 'neuf' ? ({interm:8000,social:10000,tsocial:12000}[inp.jbNiveau] || 10000) : 10700;
+      w.push('Dispositif « Jeanbrun » (statut du bailleur privé, LF 2026) : acquisitions à partir du 21/02/2026, immeuble collectif, location nue en résidence principale, engagement 9 ans, plafonds de loyer/ressources non vérifiés ici.');
+      w.push('Amortissement déductible du revenu foncier plafonné à ' + smEur(plaf) + '/an (base 80 % du prix)' + (inp.jbReno ? ', déficit imputable ≤ 21 400 €/an' : ', déficit imputable ≤ 10 700 €/an') + '. Amortissements réintégrés à la plus-value.');
+    }
+    return w.length ? '<div class="sm-warn">⚠ ' + w.join('<br>⚠ ') + '</div>' : '';
+  }
+
+  function smHyp(){
+    return '<details class="sm-hyp"><summary>Hypothèses &amp; limites</summary><ul>'
+      + '<li>Prêt à taux fixe, assurance sur capital initial. Frais de notaire par défaut 7,5 % (ancien) / 2,5 % (neuf).</li>'
+      + '<li>Prélèvements sociaux 17,2 % ajoutés à la TMI sur les revenus fonciers / BIC.</li>'
+      + '<li>Déficit foncier imputable sur le revenu global ≤ 10 700 €/an (report simplifié du reste).</li>'
+      + '<li>LMNP réel : amortissement linéaire bâti (hors terrain) + mobilier sur 7 ans, sans créer de déficit.</li>'
+      + '<li>Pinel 9/12/14 % (6/9/12 ans) · Denormandie 12/18/21 % · assiette ≤ 300 000 € et 5 500 €/m². Loc’Avantages : 15–65 % des loyers.</li>'
+      + '<li>Jeanbrun (LF 2026) : amortissement plafonné à 8 000 / 10 000 / 12 000 € (neuf) ou 10 700 € (ancien), base 80 % du prix ; réintégré à la plus-value (hypothèse).</li>'
+      + '<li>Plus-value : prix de vente diminué des frais de vente ; abattements durée de détention (IR à 22 ans, PS à 30 ans).</li>'
+      + '<li>Charges et taxe foncière constantes ; loyers et valeur du bien revalorisés au taux saisi.</li>'
+      + '<li><b>Estimation pédagogique</b> — ne remplace pas une étude notariale / comptable / patrimoniale.</li>'
+      + '</ul></details>';
+  }
+
+  function smRenderInvest(inp, res){
+    const r0 = res.rows[0] || {}, H = inp.horizon;
+    return '<div class="sm-hero ' + (res.cfMois1>=0?'pos':'neg') + '">'
+      + '<div class="k">Cash-flow mensuel (année 1, après impôt)</div>'
+      + '<div class="v">' + (res.cfMois1>=0?'+':'') + smEur(res.cfMois1) + ' <small>/ mois</small></div></div>'
+      + '<div class="sm-kpis">'
+      + '<div class="sm-kpi"><div class="k">Rendement brut</div><div class="v">' + smPc(res.rdtBrut) + '</div></div>'
+      + '<div class="sm-kpi"><div class="k">Rdt net de charges</div><div class="v">' + smPc(res.rdtNet) + '</div></div>'
+      + '<div class="sm-kpi"><div class="k">Rdt net-net (fiscal)</div><div class="v ' + smCls(res.rdtNetNet) + '">' + smPc(res.rdtNetNet) + '</div></div>'
+      + '<div class="sm-kpi"><div class="k">TRI sur ' + H + ' ans</div><div class="v ' + smCls(res.tri) + '">' + (res.tri==null?'—':smPc(res.tri)) + '</div></div>'
+      + '<div class="sm-kpi"><div class="k">Effort d’épargne / mois</div><div class="v ' + (res.cfMois1<0?'neg':'') + '">' + (res.cfMois1<0?smEur(-res.cfMois1):'0 €') + '</div></div>'
+      + '<div class="sm-kpi"><div class="k">Taux d’endettement</div><div class="v ' + (res.endettement>35?'neg':'') + '">' + (res.endettement==null?'—':smPc(res.endettement)) + '</div></div>'
+      + '</div>' + smWarn(inp)
+      + '<div class="sm-card"><h3>Opération &amp; financement</h3><dl class="sm-lines">'
+      + '<dt>Coût total (prix + notaire + travaux)</dt><dd>' + smEur(inp.coutTotal) + '</dd>'
+      + '<dt>Apport</dt><dd>' + smEur(inp.apport) + '</dd>'
+      + '<dt>Montant emprunté</dt><dd>' + smEur(res.emprunt) + '</dd>'
+      + '<dt>Mensualité (assurance incluse)</dt><dd>' + smEur(res.mensualiteTot) + '</dd>'
+      + '<dt>Coût total du crédit</dt><dd>' + smEur(res.coutCredit) + '</dd>'
+      + '<div class="sep"></div>'
+      + '<dt>Loyers encaissés an 1</dt><dd>' + smEur(r0.loyerEncaisse) + '</dd>'
+      + '<dt>Charges an 1</dt><dd>−' + smEur(r0.chargesCash) + '</dd>'
+      + '<dt>Impôt / éco. an 1 (IR+PS)</dt><dd class="' + smCostCls(r0.impot) + '">' + smCostTxt(r0.impot) + '</dd>'
+      + (r0.reduction ? '<dt>Réduction d’impôt an 1</dt><dd class="pos">+' + smEur(r0.reduction) + '</dd>' : '')
+      + '</dl></div>'
+      + '<div class="sm-card"><h3>Revente après ' + H + ' ans</h3><dl class="sm-lines">'
+      + '<dt>Valeur du bien (' + smPc(inp.revalo) + '/an)</dt><dd>' + smEur(res.valeurRevente) + '</dd>'
+      + '<dt>Frais de vente (' + smPc(inp.fraisVente) + ')</dt><dd>−' + smEur(res.fraisVente) + '</dd>'
+      + '<dt>Capital restant dû</dt><dd>−' + smEur(res.rows[H-1].crd) + '</dd>'
+      + '<dt>Plus-value brute</dt><dd>' + smEur(res.pvBrute) + '</dd>'
+      + '<dt>Impôt plus-value (19 % + 17,2 %)</dt><dd>−' + smEur(res.impotPV) + '</dd>'
+      + '<div class="sep"></div>'
+      + '<dt>Produit net de revente</dt><dd>' + smEur(res.netRevente) + '</dd>'
+      + '<dt>Cash-flow cumulé sur ' + H + ' ans</dt><dd class="' + smCls(res.cumCf) + '">' + (res.cumCf>=0?'+':'') + smEur(res.cumCf) + '</dd>'
+      + '<dt>Gain net total (vs apport ' + smEur(inp.apport) + ')</dt><dd class="' + smCls(res.netRevente + res.cumCf - inp.apport) + '">' + smEur(res.netRevente + res.cumCf - inp.apport) + '</dd>'
+      + '</dl></div>'
+      + '<div class="sm-card"><h3>Projection annuelle</h3>'
+      + '<svg class="sm-chart" id="sm-chart" viewBox="0 0 320 140" preserveAspectRatio="none" aria-hidden="true"></svg>'
+      + '<div class="sm-chart-leg"><span><i style="background:#1a7f37"></i>cash-flow &gt; 0</span><span><i style="background:#b3261e"></i>cash-flow &lt; 0</span><span><i style="background:var(--accent)"></i>patrimoine net</span></div>'
+      + '<div class="sm-tblwrap"><table class="sm-tbl"><thead><tr><th>An</th><th>Loyers</th><th>Charges</th><th>Intérêts</th><th>Capital</th><th>CRD</th><th>Impôt</th><th>Réduc.</th><th>Cash-flow</th><th>CF cumulé</th><th>Patrim. net</th></tr></thead><tbody>'
+      + res.rows.map(x => '<tr><td>' + x.y + '</td><td>' + smEur(x.loyerEncaisse) + '</td><td>' + smEur(x.chargesCash) + '</td><td>' + smEur(x.interets) + '</td><td>' + smEur(x.capital) + '</td><td>' + smEur(x.crd) + '</td>'
+        + '<td class="' + smCostCls(x.impot) + '">' + smCostTxt(x.impot) + '</td>'
+        + '<td class="' + (x.reduction?'pos':'') + '">' + (x.reduction?'+'+smEur(x.reduction):'—') + '</td>'
+        + '<td class="' + smCls(x.cf) + '">' + (x.cf>=0?'+':'') + smEur(x.cf) + '</td>'
+        + '<td class="' + smCls(x.cumCf) + '">' + (x.cumCf>=0?'+':'') + smEur(x.cumCf) + '</td>'
+        + '<td>' + smEur(x.patrimoineNet) + '</td></tr>').join('')
+      + '</tbody></table></div></div>' + smHyp();
+  }
+
+  function smRenderRP(inp, res){
+    const H = inp.horizon, last = res.rows[H-1];
+    const interetsPayes = res.rows.reduce((s,x)=>s+x.interets,0);
+    const capitalRembourse = res.rows.reduce((s,x)=>s+x.capital,0);
+    const enrichissement = last.patrimoineNet - inp.apport - interetsPayes;
+    return '<div class="sm-hero"><div class="k">Mensualité (assurance incluse)</div><div class="v">' + smEur(res.mensualiteTot) + ' <small>/ mois</small></div></div>'
+      + '<div class="sm-kpis">'
+      + '<div class="sm-kpi"><div class="k">Montant emprunté</div><div class="v">' + smEur(res.emprunt) + '</div></div>'
+      + '<div class="sm-kpi"><div class="k">Coût total du crédit</div><div class="v">' + smEur(res.coutCredit) + '</div></div>'
+      + '<div class="sm-kpi"><div class="k">Taux d’endettement</div><div class="v ' + (res.endettement>35?'neg':'') + '">' + (res.endettement==null?'—':smPc(res.endettement)) + '</div></div>'
+      + '<div class="sm-kpi"><div class="k">Apport / coût total</div><div class="v">' + smPc(inp.coutTotal>0?inp.apport/inp.coutTotal*100:0,0) + '</div></div>'
+      + '</div>'
+      + (res.endettement>35 ? '<div class="sm-warn">⚠ Taux d’endettement au-dessus de 35 % — au-delà du seuil HCSF usuel.</div>' : '')
+      + '<div class="sm-card"><h3>Opération</h3><dl class="sm-lines">'
+      + '<dt>Prix d’achat</dt><dd>' + smEur(inp.prix) + '</dd>'
+      + '<dt>Frais de notaire</dt><dd>' + smEur(inp.notaire) + '</dd>'
+      + '<dt>Travaux</dt><dd>' + smEur(inp.travaux) + '</dd>'
+      + '<div class="sep"></div>'
+      + '<dt>Coût total</dt><dd>' + smEur(inp.coutTotal) + '</dd>'
+      + '<dt>Apport</dt><dd>−' + smEur(inp.apport) + '</dd>'
+      + '<dt>Emprunt</dt><dd>' + smEur(res.emprunt) + '</dd>'
+      + '</dl></div>'
+      + '<div class="sm-card"><h3>Revente / patrimoine après ' + H + ' ans</h3><dl class="sm-lines">'
+      + '<dt>Valeur du bien (' + smPc(inp.revalo) + '/an)</dt><dd>' + smEur(res.valeurRevente) + '</dd>'
+      + '<dt>Capital restant dû</dt><dd>−' + smEur(last.crd) + '</dd>'
+      + '<dt>Capital net (valeur − dette)</dt><dd>' + smEur(last.patrimoineNet) + '</dd>'
+      + '<div class="sep"></div>'
+      + '<dt>Frais de vente (' + smPc(inp.fraisVente) + ')</dt><dd>−' + smEur(res.fraisVente) + '</dd>'
+      + '<dt>Produit net si revente</dt><dd>' + smEur(res.netRevente) + '</dd>'
+      + '<div class="sep"></div>'
+      + '<dt>Dont capital remboursé</dt><dd>' + smEur(capitalRembourse) + '</dd>'
+      + '<dt>Intérêts payés sur la période</dt><dd>' + smEur(interetsPayes) + '</dd>'
+      + '<dt>Enrichissement net (hors mensualités)</dt><dd class="' + smCls(enrichissement) + '">' + smEur(enrichissement) + '</dd>'
+      + '</dl><p class="sm-note">La plus-value sur la résidence principale est exonérée d’impôt. Comparez la mensualité à un loyer équivalent pour arbitrer achat / location.</p></div>'
+      + '<div class="sm-card"><h3>Amortissement du prêt</h3><div class="sm-tblwrap"><table class="sm-tbl">'
+      + '<thead><tr><th>An</th><th>Intérêts</th><th>Capital remb.</th><th>CRD fin</th><th>Valeur bien</th><th>Capital net</th></tr></thead><tbody>'
+      + res.rows.map(x => '<tr><td>' + x.y + '</td><td>' + smEur(x.interets) + '</td><td>' + smEur(x.capital) + '</td><td>' + smEur(x.crd) + '</td><td>' + smEur(x.valeurBien) + '</td><td>' + smEur(x.patrimoineNet) + '</td></tr>').join('')
+      + '</tbody></table></div></div>' + smHyp();
+  }
+
+  function smDrawChart(rows){
+    const svg = $('sm-chart'); if (!svg || !rows.length) return;
+    const W=320, H=140, padB=14, padT=8, areaH = H-padB-padT;
+    const cfs = rows.map(r=>r.cf), pats = rows.map(r=>r.patrimoineNet);
+    const maxCf = Math.max(1, ...cfs.map(Math.abs)), maxPat = Math.max(1, ...pats);
+    const n = rows.length, bw = W/n;
+    const hasPos = cfs.some(v=>v>0), hasNeg = cfs.some(v=>v<0);
+    const zeroY = padT + ((hasPos && hasNeg) ? areaH/2 : hasNeg ? areaH*0.16 : areaH*0.84);
+    const barMax = (hasPos && hasNeg) ? areaH/2 : areaH*0.82;
+    let g = '';
+    rows.forEach((r,i)=>{
+      const h = barMax * (Math.abs(r.cf)/maxCf), x = i*bw + bw*0.18, w = bw*0.64;
+      g += '<rect x="' + x.toFixed(1) + '" y="' + (r.cf>=0 ? (zeroY-h) : zeroY).toFixed(1) + '" width="' + w.toFixed(1) + '" height="' + Math.max(0.5,h).toFixed(1) + '" fill="' + (r.cf>=0?'#1a7f37':'#b3261e') + '" opacity="0.85"/>';
+    });
+    g += '<line x1="0" y1="' + zeroY.toFixed(1) + '" x2="' + W + '" y2="' + zeroY.toFixed(1) + '" stroke="#c9ced4" stroke-width="1"/>';
+    const px = (i)=> i*bw + bw/2, py = (v)=> padT + areaH * (1 - v/maxPat);
+    g += '<polyline points="' + rows.map((r,i)=> px(i).toFixed(1)+','+py(r.patrimoineNet).toFixed(1)).join(' ') + '" fill="none" stroke="var(--accent)" stroke-width="2"/>';
+    rows.forEach((r,i)=>{ g += '<circle cx="' + px(i).toFixed(1) + '" cy="' + py(r.patrimoineNet).toFixed(1) + '" r="2" fill="var(--accent)"/>'; });
+    svg.innerHTML = g;
+  }
+
+  let smTimer = null;
+  function smCompute(now){
+    clearTimeout(smTimer);
+    const go = () => {
+      if (activeTab !== 'simu') return;
+      const inp = smReadInputs();
+      const res = smSimulate(inp);
+      $('simu-out').innerHTML = inp.projet === 'rp' ? smRenderRP(inp, res) : smRenderInvest(inp, res);
+      smDrawChart(res.rows);
+    };
+    if (now) go(); else smTimer = setTimeout(go, 90);
+  }
+
+  function smReset(){
+    smState.notaireTouched = false;
+    Object.entries(SM_DEF).forEach(([id, v]) => { const el = $(id); if (el) el.value = v; });
+    $('sm-meuble').checked = false; $('sm-iml').checked = false; $('sm-jbreno').checked = false;
+    $('sm-notaire-h').textContent = 'auto 7,5 %';
+    smProjet('rp'); smSyncSubs(); smCompute(true);
+  }
+
+  async function smEstimer(){
+    if (!selected){ setStatus('Choisissez d’abord une commune.', 'error'); return; }
+    const btn = $('sm-estimer'); btn.disabled = true;
+    try{
+      setStatus('Prix médian (DVF) & loyer de marché (carte des loyers)…', 'loading');
+      const [dvf, loy] = await Promise.all([
+        fetch('/api/dvf?insee=' + encodeURIComponent(selected.code) + '&months=60').then(r => r.ok ? r.json() : null).catch(()=>null),
+        fetch('/api/loyers?communes=' + encodeURIComponent(selected.code)).then(r => r.ok ? r.json() : null).catch(()=>null),
+      ]);
+      const surf = smNum('sm-surface', 45);
+      const prixM2 = dvf && dvf.stats && dvf.stats.prix_m2_median;
+      const co = loy && loy.communes && loy.communes[0];
+      const meuble = $('sm-meuble').checked;
+      const loyM2 = co ? ((meuble ? (co.loy_app||0) * 1.12 : (co.loy_app||0))) : null;
+      const msg = [];
+      if (prixM2){ $('sm-prix').value = Math.round(prixM2 * surf); smAutoNotaire(); msg.push(prixM2.toLocaleString('fr-FR') + ' €/m² × ' + surf + ' m²'); }
+      if (loyM2){ $('sm-loyer').value = Math.round(loyM2 * surf); msg.push('loyer ≈ ' + loyM2.toLocaleString('fr-FR',{maximumFractionDigits:1}) + ' €/m²/mois' + (meuble?' (meublé estimé)':'')); }
+      smCompute(true);
+      setStatus(msg.length ? ('Pré-rempli — ' + msg.join(' · ') + ' (' + (selected.nom || '') + '). Ajustez librement.') : 'Aucune donnée exploitable pour cette commune.');
+    }catch(e){ setStatus('Estimation indisponible.', 'error'); }
+    finally{ btn.disabled = false; }
+  }
+
+  function smWire(){
+    $('sm-projet').addEventListener('click', (e) => {
+      const b = e.target.closest('button'); if (!b) return;
+      smProjet(b.dataset.v); smCompute();
+    });
+    $('sm-regime').addEventListener('change', () => { smSyncSubs(); smCompute(); });
+    $('sm-meuble').addEventListener('change', () => {
+      const r = $('sm-regime').value;
+      if ($('sm-meuble').checked && r.indexOf('lmnp') !== 0) $('sm-regime').value = 'lmnp_micro';
+      if (!$('sm-meuble').checked && r.indexOf('lmnp') === 0) $('sm-regime').value = 'micro_foncier';
+      smSyncSubs(); smCompute();
+    });
+    $('sm-estimer').addEventListener('click', smEstimer);
+    grpSimu.addEventListener('input', (e) => {
+      const id = e.target && e.target.id;
+      if (id === 'sm-notaire') { smState.notaireTouched = true; $('sm-notaire-h').textContent = 'saisi'; }
+      if (id === 'sm-prix') smAutoNotaire();
+      smCompute();
+    });
+    grpSimu.addEventListener('change', (e) => {
+      if (e.target && e.target.id === 'sm-etat') smAutoNotaire();
+      smCompute();
+    });
+  }
+
+  function smEnter(){
+    if (!st.simu.ready){ smWire(); st.simu.ready = true; }
+    smProjet(smState.projet); smSyncSubs(); smAutoNotaire(); smCompute(true);
   }
 
   setStatus('Prêt. Choisissez une commune et lancez la recherche.');
