@@ -256,6 +256,40 @@
       </div>
     </div>
 
+    <div class="card" id="sec-revente">
+      <h2>Revente</h2>
+      <div class="grid">
+        <div class="f">
+          <label for="horizon">Revente après</label>
+          <select id="horizon">
+            <option value="5">5 ans</option>
+            <option value="9">9 ans</option>
+            <option value="10" selected>10 ans</option>
+            <option value="12">12 ans</option>
+            <option value="15">15 ans</option>
+            <option value="20">20 ans</option>
+            <option value="25">25 ans</option>
+            <option value="30">30 ans</option>
+          </select>
+        </div>
+        <div class="f has-suffix">
+          <label for="fraisVente">Frais de vente <span class="hint">(agence, diagnostics)</span></label>
+          <input id="fraisVente" type="text" inputmode="decimal" value="5" />
+          <span class="suffix">%</span>
+        </div>
+        <div class="f has-suffix">
+          <label for="revalo">Revalorisation du bien</label>
+          <input id="revalo" type="text" inputmode="decimal" value="1" />
+          <span class="suffix">%/an</span>
+        </div>
+        <div class="f has-suffix" id="f-revaloLoy" hidden>
+          <label for="revaloLoy">Revalorisation des loyers</label>
+          <input id="revaloLoy" type="text" inputmode="decimal" value="1" />
+          <span class="suffix">%/an</span>
+        </div>
+      </div>
+    </div>
+
     <div class="card" id="sec-fisc" hidden>
       <h2>Fiscalité</h2>
       <div class="grid">
@@ -274,6 +308,7 @@
               <option value="pinel">Pinel (neuf, engagement)</option>
               <option value="denormandie">Denormandie (ancien + travaux ≥ 25 %)</option>
               <option value="locavantages">Loc'Avantages (conventionné Anah)</option>
+              <option value="jeanbrun">Jeanbrun — bailleur privé (nu, amortissement, 2026)</option>
             </optgroup>
           </select>
         </div>
@@ -286,28 +321,6 @@
             <option value="41">41 %</option>
             <option value="45">45 %</option>
           </select>
-        </div>
-        <div class="f">
-          <label for="horizon">Horizon de simulation</label>
-          <select id="horizon">
-            <option value="5">5 ans</option>
-            <option value="9">9 ans</option>
-            <option value="10" selected>10 ans</option>
-            <option value="15">15 ans</option>
-            <option value="20">20 ans</option>
-            <option value="25">25 ans</option>
-            <option value="30">30 ans</option>
-          </select>
-        </div>
-        <div class="f has-suffix">
-          <label for="revalo">Revalorisation du bien</label>
-          <input id="revalo" type="text" inputmode="decimal" value="1" />
-          <span class="suffix">%/an</span>
-        </div>
-        <div class="f has-suffix">
-          <label for="revaloLoy">Revalorisation des loyers</label>
-          <input id="revaloLoy" type="text" inputmode="decimal" value="1" />
-          <span class="suffix">%/an</span>
         </div>
 
         <!-- sous-blocs conditionnels -->
@@ -357,6 +370,19 @@
           <input type="checkbox" id="iml" />
           <label for="iml">Intermédiation locative (agence/asso)</label>
         </div>
+
+        <div class="f sub-jb" data-sub="jeanbrun" hidden>
+          <label for="jbNiveau">Niveau de loyer</label>
+          <select id="jbNiveau">
+            <option value="interm">Intermédiaire</option>
+            <option value="social" selected>Social</option>
+            <option value="tsocial">Très social</option>
+          </select>
+        </div>
+        <div class="f sub-jb chkline" data-sub="jeanbrun" hidden>
+          <input type="checkbox" id="jbReno" />
+          <label for="jbReno">Déficit issu de travaux de rénovation énergétique (plafond 21 400 € jusqu'à fin 2027)</label>
+        </div>
       </div>
     </div>
 
@@ -395,6 +421,7 @@
     $('sec-loc').hidden = projet !== 'invest';
     $('sec-fisc').hidden = projet !== 'invest';
     $('meuble-line').hidden = projet !== 'invest';
+    $('f-revaloLoy').hidden = projet !== 'invest';
     compute();
   });
 
@@ -534,17 +561,21 @@
       impot = base * psTmi/100;
       detail = 'résultat BIC après amortissement (' + eur(ctx.amortAnnuel) + '/an)';
     }
-    else { // nu_reel, pinel, denormandie, locavantages → régime réel foncier
-      let net = loyBrut - chargesDed - interets;
+    else { // nu_reel, pinel, denormandie, locavantages, jeanbrun → régime réel foncier
+      const isJb = inp.regime === 'jeanbrun';
+      const amort = isJb ? (ctx.jbAmort || 0) : 0;       // amortissement Jeanbrun (location nue)
+      const capGlobal = isJb && inp.jbReno ? 21400 : 10700;
+      if (isJb) S.amortCumulDeduit += amort;             // réintégré à la plus-value (hypothèse)
+      let net = loyBrut - chargesDed - interets - amort;
       if (net > 0 && S.reportFoncier > 0){ const u = Math.min(net, S.reportFoncier); net -= u; S.reportFoncier -= u; }
       if (net >= 0){
         base = net; impot = net * psTmi/100;
-        detail = 'revenu foncier net imposable';
+        detail = isJb ? 'revenu foncier net après amortissement Jeanbrun' : 'revenu foncier net imposable';
       } else {
         const deficit = -net;
         const partInt = Math.min(interets, deficit);
         const partAutre = deficit - partInt;
-        const imputGlobal = Math.min(partAutre, 10700);
+        const imputGlobal = Math.min(partAutre, capGlobal);
         impot = -(imputGlobal * inp.tmi/100);       // économie d'impôt (imputation sur le revenu global)
         S.reportFoncier += (deficit - imputGlobal);  // le reste s'impute sur les revenus fonciers futurs
         base = net;
@@ -576,7 +607,12 @@
     const amortBatiAnnuel = inp.dureeBien > 0 ? baseBati / inp.dureeBien : 0;
     const amortMobAnnuel = inp.dureeMob > 0 ? inp.mobilier / inp.dureeMob : 0;
 
-    const S = { reportFoncier:0, amortStock:0, amortCumulDeduit:0 };
+    // amortissement « Jeanbrun » (location nue) : base = 80 % du prix, plafond annuel selon le niveau de loyer
+    const jbPlafond = inp.regime === 'jeanbrun'
+      ? (inp.etat === 'neuf' ? ({ interm:8000, social:10000, tsocial:12000 }[inp.jbNiveau] || 10000) : 10700)
+      : 0;
+
+    const S = { reportFoncier:0, amortStock:0, amortCumulDeduit:0, jbStock: 0.80 * inp.prix };
     const rows = [];
     let cumCf = 0;
 
@@ -589,9 +625,11 @@
       const chargesDeductibles = chargesCash + assurAnnuelle;
       const yl = loan.year(y);
       const amortAnnuel = amortBatiAnnuel + (y <= inp.dureeMob ? amortMobAnnuel : 0);
+      const jbAmort = inp.regime === 'jeanbrun' ? Math.min(jbPlafond, S.jbStock) : 0;
+      S.jbStock = Math.max(0, S.jbStock - jbAmort);
 
       const tax = taxYear(inp, S, y, {
-        loyerEncaisse, chargesDeductibles, interets: yl.int, amortAnnuel,
+        loyerEncaisse, chargesDeductibles, interets: yl.int, amortAnnuel, jbAmort,
       });
 
       const creditAnnuel = (y*12 <= loan.n ? loan.mensualite*12 : loan.mensualite * Math.max(0, loan.n-(y-1)*12))
@@ -605,7 +643,8 @@
       rows.push({
         y, loyerEncaisse, chargesCash, interets:yl.int, capital:yl.cap, crd:yl.crd,
         resultatFiscal: tax.base, impot:tax.impot, reduction:tax.reduction,
-        cf, cumCf, valeurBien, patrimoineNet, amortAnnuel,
+        cf, cumCf, valeurBien, patrimoineNet,
+        amortAnnuel: inp.regime === 'jeanbrun' ? jbAmort : amortAnnuel,
       });
     }
 
@@ -613,11 +652,12 @@
     const H = inp.horizon;
     const last = rows[H-1];
     const valeurRevente = inp.prix * Math.pow(1 + inp.revalo/100, H);
+    const fraisV = Math.max(0, valeurRevente * inp.fraisVente/100);
     let impotPV = 0, pvBrute = 0;
     if (inp.projet === 'invest'){
       let prixAcqMajore = inp.prix + inp.notaire + inp.travaux;
-      if (inp.regime === 'lmnp_reel') prixAcqMajore -= S.amortCumulDeduit;   // loi Le Meur 2025
-      pvBrute = valeurRevente - prixAcqMajore;
+      if (inp.regime === 'lmnp_reel' || inp.regime === 'jeanbrun') prixAcqMajore -= S.amortCumulDeduit;  // amortissements réintégrés
+      pvBrute = (valeurRevente - fraisV) - prixAcqMajore;
       if (pvBrute > 0){
         const abIR = H<=5 ? 0 : (H<=21 ? (H-5)*0.06 : 1);
         let abPS = 0;
@@ -628,7 +668,7 @@
         impotPV = pvBrute*(1-Math.min(1,abIR))*0.19 + pvBrute*(1-abPS)*0.172;
       }
     }
-    const netRevente = valeurRevente - last.crd - impotPV;
+    const netRevente = valeurRevente - fraisV - last.crd - impotPV;
 
     // TRI (flux annuels + revente à l'année H)
     const flows = [-inp.apport];
@@ -652,7 +692,7 @@
 
     return {
       emprunt, loan, assurAnnuelle, mensualiteTot,
-      rows, cumCf, netRevente, valeurRevente, impotPV, pvBrute,
+      rows, cumCf, netRevente, valeurRevente, fraisVente: fraisV, impotPV, pvBrute,
       tri, rdtBrut, rdtNet, rdtNetNet, cfMois1, endettement,
       amortCumulDeduit: S.amortCumulDeduit,
       coutCredit: loan.mensualite*loan.n - emprunt + inp.assur/100*emprunt*inp.duree,
@@ -676,6 +716,7 @@
     const prix = num('prix'), notaire = num('notaire'), travaux = num('travaux');
     return {
       projet, regime: projet==='invest' ? $('regime').value : 'rp',
+      etat: $('etat').value,
       surface: num('surface',1) || 1,
       prix, notaire, travaux,
       coutTotal: prix + notaire + travaux,
@@ -688,11 +729,13 @@
       tmi: num('tmi',30),
       horizon: num('horizon',10),
       revalo: num('revalo'), revaloLoy: num('revaloLoy'),
+      fraisVente: num('fraisVente',5),
       engagement: num('engagement',9),
       terrainPct: num('terrainPct',15), dureeBien: num('dureeBien',30),
       mobilier: num('mobilier',0), dureeMob: 7,
       meubleTourisme: false,
       locNiveau: $('locNiveau').value, iml: $('iml').checked,
+      jbNiveau: $('jbNiveau').value, jbReno: $('jbReno').checked,
     };
   }
 
@@ -722,6 +765,11 @@
       w.push('Le Pinel n\'accepte plus de nouveaux investissements depuis le 31/12/2024 — conservé pour un engagement déjà pris.');
     if (inp.regime === 'lmnp_reel')
       w.push('Depuis 2025, les amortissements déduits sont réintégrés au calcul de la plus-value à la revente (pris en compte ici).');
+    if (inp.regime === 'jeanbrun'){
+      const plaf = inp.etat === 'neuf' ? ({interm:8000,social:10000,tsocial:12000}[inp.jbNiveau] || 10000) : 10700;
+      w.push('Dispositif « Jeanbrun » (statut du bailleur privé, LF 2026) : acquisitions à partir du 21/02/2026, logement en immeuble collectif, location nue en résidence principale du locataire, engagement 9 ans, plafonds de loyer et de ressources (non vérifiés ici).');
+      w.push('Amortissement déductible du revenu foncier plafonné à ' + eur(plaf) + '/an (base 80 % du prix)' + (inp.jbReno ? ', déficit imputable jusqu\'à 21 400 €/an (travaux réno.)' : ', déficit imputable jusqu\'à 10 700 €/an') + '. Régime réel obligatoire. Amortissements supposés réintégrés à la plus-value.');
+    }
     return w.length ? '<div class="warnbox">⚠ ' + w.join('<br>⚠ ') + '</div>' : '';
   }
 
@@ -762,9 +810,10 @@
       </div>
 
       <div class="card">
-        <h2>À la revente (année ${inp.horizon})</h2>
+        <h2>Revente après ${inp.horizon} ans</h2>
         <dl class="lines">
           <dt>Valeur du bien (${pc(inp.revalo)}/an)</dt><dd>${eur(res.valeurRevente)}</dd>
+          <dt>Frais de vente (${pc(inp.fraisVente)})</dt><dd>−${eur(res.fraisVente)}</dd>
           <dt>Capital restant dû</dt><dd>−${eur(res.rows[inp.horizon-1].crd)}</dd>
           <dt>Plus-value brute</dt><dd>${eur(res.pvBrute)}</dd>
           <dt>Impôt plus-value (19 % + 17,2 %)</dt><dd>−${eur(res.impotPV)}</dd>
@@ -846,11 +895,14 @@
       </div>
 
       <div class="card">
-        <h2>Patrimoine à ${H} ans</h2>
+        <h2>Revente / patrimoine après ${H} ans</h2>
         <dl class="lines">
           <dt>Valeur du bien (${pc(inp.revalo)}/an)</dt><dd>${eur(res.valeurRevente)}</dd>
           <dt>Capital restant dû</dt><dd>−${eur(last.crd)}</dd>
           <dt>Capital net (valeur − dette)</dt><dd>${eur(last.patrimoineNet)}</dd>
+          <div class="sep"></div>
+          <dt>Frais de vente (${pc(inp.fraisVente)})</dt><dd>−${eur(res.fraisVente)}</dd>
+          <dt>Produit net si revente</dt><dd>${eur(res.netRevente)}</dd>
           <div class="sep"></div>
           <dt>Dont capital remboursé</dt><dd>${eur(capitalRembourse)}</dd>
           <dt>Intérêts payés sur la période</dt><dd>${eur(interetsPayes)}</dd>
@@ -887,7 +939,8 @@
         <li>LMNP réel : amortissement linéaire du bâti (hors quote-part terrain) + mobilier sur 7 ans ; l'amortissement ne crée pas de déficit, l'excédent est reporté.</li>
         <li>Pinel 2024 : 9 / 12 / 14 % sur 6 / 9 / 12 ans. Denormandie : 12 / 18 / 21 %. Assiette plafonnée à 300 000 € et 5 500 €/m².</li>
         <li>Loc'Avantages : réduction = 15/35 % (ou 20/40/65 % avec intermédiation) des loyers perçus.</li>
-        <li>Plus-value à la revente : abattements pour durée de détention (IR exonéré à 22 ans, PS à 30 ans). LMNP réel : amortissements réintégrés (loi de 2025).</li>
+        <li>Jeanbrun (LF 2026) : location nue au réel, amortissement plafonné à 8 000 / 10 000 / 12 000 € selon le niveau de loyer dans le neuf (10 700 € dans l'ancien), base 80 % du prix ; le déficit qui en résulte s'impute sur le revenu global jusqu'à 10 700 €/an (21 400 € avec travaux de rénovation énergétique). Amortissements réintégrés à la plus-value (hypothèse). Plafonds de loyer / ressources non vérifiés.</li>
+        <li>Plus-value à la revente : prix de vente diminué des frais de vente saisis ; abattements pour durée de détention (IR exonéré à 22 ans, PS à 30 ans). LMNP réel / Jeanbrun : amortissements réintégrés.</li>
         <li>Charges et taxe foncière supposées constantes ; loyers et valeur du bien revalorisés au taux saisi.</li>
         <li><b>Estimation pédagogique</b> — ne remplace pas une étude notariale / expert-comptable / conseiller en gestion de patrimoine.</li>
       </ul>
