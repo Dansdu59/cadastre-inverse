@@ -1,0 +1,371 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>Proto — Permis de construire</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css" />
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<style>
+  :root{ --accent:#c1440e; --ink:#1f2328; --muted:#54606b; --border:#d7dbe0; --bg:#f4f5f7; --card:#fff;
+    --pc:#c1440e; --dp:#2563eb; --autre:#7c3aed; --ok:#1a7f37; --warn:#b26a00; }
+  *{ box-sizing:border-box; }
+  [hidden]{ display:none !important; }
+  html,body{ height:100%; }
+  body{ margin:0; font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    font-size:15px; line-height:1.5; color:var(--ink); background:var(--bg); display:flex; flex-direction:column; }
+  header{ background:var(--card); border-bottom:1px solid var(--border); padding:12px 16px; display:flex; flex-wrap:wrap; align-items:baseline; gap:10px; }
+  header h1{ margin:0; font-size:16px; } header .sub{ font-size:13px; color:var(--muted); }
+  header .badge{ font-size:11px; font-weight:700; color:#fff; background:var(--muted); border-radius:4px; padding:2px 6px; text-transform:uppercase; }
+
+  .controls{ background:var(--card); border-bottom:1px solid var(--border); padding:10px 16px; display:flex; flex-wrap:wrap; gap:14px; align-items:flex-end; }
+  .field{ display:flex; flex-direction:column; gap:4px; position:relative; }
+  .field label{ font-size:11px; font-weight:700; color:var(--muted); text-transform:uppercase; letter-spacing:.03em; }
+  .field input[type=search], .field select{ min-height:38px; font-size:14px; padding:8px 10px; border:1px solid var(--border); border-radius:8px; background:#fff; }
+  #commune-field{ width:220px; } #commune-field input{ width:100%; }
+  .suggestions{ position:absolute; top:calc(100% + 4px); left:0; right:0; z-index:1200; background:#fff; border:1px solid var(--border);
+    border-radius:8px; box-shadow:0 10px 24px rgba(0,0,0,.14); max-height:260px; overflow-y:auto; }
+  .suggestions button{ display:flex; flex-direction:column; gap:1px; width:100%; text-align:left; padding:8px 10px; border:0;
+    border-bottom:1px solid var(--border); background:#fff; font-size:14px; cursor:pointer; }
+  .suggestions button:hover{ background:#fdf1ea; } .suggestions .s{ font-size:12px; color:var(--muted); }
+
+  #status{ padding:8px 16px; font-size:13px; color:var(--muted); background:var(--card); border-bottom:1px solid var(--border); min-height:16px; }
+  #status.error{ color:#b3261e; }
+  #status .sp{ display:inline-block; width:12px; height:12px; border:2px solid rgba(0,0,0,.15); border-top-color:var(--accent); border-radius:50%; animation:spin .8s linear infinite; vertical-align:-2px; margin-right:6px; }
+  @keyframes spin{ to{ transform:rotate(360deg); } }
+
+  main{ flex:1 1 auto; position:relative; min-height:380px; display:flex; flex-direction:column; }
+  #map{ position:absolute; inset:0; }
+  .legend, .panel{ position:absolute; z-index:1000; background:rgba(255,255,255,.97); border:1px solid var(--border);
+    border-radius:10px; box-shadow:0 6px 20px rgba(0,0,0,.12); font-size:12px; }
+  .legend{ left:12px; bottom:20px; padding:9px 12px; }
+  .legend .hd{ font-weight:700; margin-bottom:5px; }
+  .legend .row{ display:flex; align-items:center; gap:7px; margin:3px 0; }
+  .legend .dot{ width:12px; height:12px; border-radius:50%; flex:none; border:1px solid rgba(0,0,0,.15); }
+  .panel{ right:12px; top:12px; width:370px; max-height:calc(100% - 24px); display:flex; flex-direction:column; }
+  .panel .bd{ overflow-y:auto; padding:12px 14px; flex:1 1 auto; min-height:0; -webkit-overflow-scrolling:touch; }
+  .hero{ background:var(--accent); color:#fff; border-radius:10px; padding:10px 12px; margin-bottom:10px; }
+  .hero .big{ font-size:24px; font-weight:800; line-height:1.1; }
+  .hero .lbl{ font-size:12px; opacity:.95; margin-top:2px; }
+  .kpis{ display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-bottom:6px; }
+  .kpi{ background:var(--bg); border:1px solid var(--border); border-radius:9px; padding:7px 9px; }
+  .kpi .k{ font-size:10.5px; text-transform:uppercase; letter-spacing:.02em; color:var(--muted); font-weight:700; }
+  .kpi .v{ font-size:16px; font-weight:800; margin-top:1px; }
+  .sec{ font-weight:700; font-size:12px; text-transform:uppercase; letter-spacing:.03em; color:var(--muted); margin:12px 0 5px; }
+  .bar{ display:flex; align-items:center; gap:8px; margin:4px 0; font-size:12.5px; }
+  .bar .track{ flex:1; height:8px; background:var(--bg); border-radius:5px; overflow:hidden; }
+  .bar .fill{ height:100%; background:var(--accent); }
+  .bar .n{ width:34px; text-align:right; font-weight:700; font-variant-numeric:tabular-nums; }
+  table.t{ width:100%; border-collapse:collapse; font-size:12px; }
+  table.t th, table.t td{ padding:5px 6px; text-align:left; border-bottom:1px solid var(--border); vertical-align:top; }
+  table.t th{ color:var(--muted); font-weight:600; }
+  table.t tbody tr{ cursor:pointer; } table.t tbody tr:hover{ background:#fbf4f0; }
+  .chip{ display:inline-block; font-size:10px; font-weight:800; border-radius:4px; padding:1px 5px; color:#fff; }
+  .chip.PC{ background:var(--pc); } .chip.DP{ background:var(--dp); } .chip.autre{ background:var(--autre); }
+  .etat{ font-size:11px; color:var(--muted); }
+  .note{ font-size:11px; color:var(--muted); margin-top:8px; line-height:1.45; }
+  .panel .ft{ padding:8px 12px; border-top:1px solid var(--border); }
+  .panel .ft button{ width:100%; min-height:34px; font-size:13px; font-weight:700; border:1px solid var(--border); background:#fff; border-radius:8px; cursor:pointer; }
+  @media (max-width:860px){
+    main{ min-height:0; }
+    #map{ position:relative; inset:auto; height:46vh; flex:0 0 auto; }
+    .panel{ position:relative; inset:auto; width:auto; margin:0; max-height:none; flex:1 1 auto; min-height:0;
+      border:0; border-top:1px solid var(--border); box-shadow:none; border-radius:0; }
+    .legend{ left:10px; bottom:auto; top:10px; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <span class="badge">Proto</span>
+  <h1>Permis de construire</h1>
+  <span class="sub">Sitadel — permis & déclarations de logements (depuis 2013) · géocodés BAN via Koumoul / data-fair · hors app</span>
+</header>
+
+<div class="controls">
+  <div class="field" id="commune-field">
+    <label for="commune">Aller à une commune</label>
+    <input id="commune" type="search" autocomplete="off" placeholder="Ex : Laval" value="Laval" />
+    <div class="suggestions" id="suggestions" hidden></div>
+  </div>
+  <div class="field">
+    <label for="radius">Rayon</label>
+    <select id="radius">
+      <option value="250">250 m</option>
+      <option value="500">500 m</option>
+      <option value="1000" selected>1 km</option>
+      <option value="2000">2 km</option>
+      <option value="3000">3 km</option>
+      <option value="5000">5 km</option>
+    </select>
+  </div>
+  <div class="field">
+    <label for="type">Type</label>
+    <select id="type">
+      <option value="tous" selected>Tous</option>
+      <option value="PC">Permis de construire</option>
+      <option value="DP">Déclaration préalable</option>
+    </select>
+  </div>
+  <div class="field">
+    <label for="depuis">Déposés depuis</label>
+    <select id="depuis">
+      <option value="2">2 ans</option>
+      <option value="5" selected>5 ans</option>
+      <option value="10">10 ans</option>
+      <option value="0">2013</option>
+    </select>
+  </div>
+</div>
+
+<div id="status">Clic sur la carte pour choisir le point de référence.</div>
+
+<main>
+  <div id="map"></div>
+  <div class="legend" id="legend" hidden>
+    <div class="hd">Type d'autorisation</div>
+    <div class="row"><span class="dot" style="background:var(--pc)"></span> Permis de construire</div>
+    <div class="row"><span class="dot" style="background:var(--dp)"></span> Déclaration préalable</div>
+    <div class="row" style="margin-top:5px;color:var(--muted)">Taille ∝ logements créés · opacité ∝ avancement</div>
+  </div>
+  <div class="panel" id="panel" hidden>
+    <div class="bd" id="panel-bd"></div>
+    <div class="ft"><button id="csv" type="button">Export CSV</button></div>
+  </div>
+</main>
+
+<script>
+(function(){
+  const $ = (id) => document.getElementById(id);
+  const DS = 'https://opendata.koumoul.com/data-fair/api/v1/datasets/sitadel-logements/lines';
+  const communeInput = $('commune'), suggestions = $('suggestions'), statusEl = $('status');
+  const legend = $('legend'), panel = $('panel');
+
+  let debounce = null, point = null, ref = null, circle = null, layer = null, rows = [], reqId = 0;
+
+  const map = L.map('map').setView([48.0578, -0.7692], 13);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom:19, attribution:'&copy; OpenStreetMap' }).addTo(map);
+  map.attributionControl.setPosition('bottomright');
+
+  const setStatus = (m, k) => { statusEl.className = k || ''; statusEl.innerHTML = (k === 'loading' ? '<span class="sp"></span>' : '') + (m || ''); };
+  const num = (n) => (n == null || !Number.isFinite(+n)) ? 0 : +n;
+  const fmt = (n) => num(n).toLocaleString('fr-FR');
+  const fmtDate = (iso) => { if (!iso) return '—'; const d = new Date(iso); return isNaN(d) ? String(iso).slice(0,10) : d.toLocaleDateString('fr-FR'); };
+
+  const TYPE_LBL = { PC:'Permis de construire', PCI:'PC modificatif', DP:'Déclaration préalable', PA:'Permis d’aménager', PD:'Permis de démolir' };
+  const ETAT_LBL = { '1':'Déposé', '2':'Autorisé', '3':'En cours', '4':'Annulé / abandonné', '5':'Chantier ouvert', '6':'Travaux achevés', '7':'Annulé' };
+  const NATURE_LBL = { '1':'Construction neuve', '2':'Travaux sur existant' };
+  const ETAT_OP = { '6':0.92, '5':0.62, '2':0.4, '4':0.25 };
+
+  // -------- autocomplétion commune (recentre la carte) --------
+  communeInput.addEventListener('input', () => {
+    const q = communeInput.value.trim();
+    clearTimeout(debounce);
+    if (q.length < 2){ suggestions.hidden = true; return; }
+    debounce = setTimeout(async () => {
+      try{
+        const r = await fetch('https://geo.api.gouv.fr/communes?nom=' + encodeURIComponent(q) + '&fields=nom,code,codesPostaux,departement,centre&boost=population&limit=10');
+        if (r.ok) renderSug(await r.json());
+      }catch(e){}
+    }, 260);
+  });
+  document.addEventListener('click', (e) => { if (!suggestions.contains(e.target) && e.target !== communeInput) suggestions.hidden = true; });
+  function renderSug(list){
+    suggestions.innerHTML = '';
+    if (!list || !list.length){ suggestions.hidden = true; return; }
+    list.forEach(c => {
+      const cp = (c.codesPostaux && c.codesPostaux[0]) || '', dep = c.departement ? c.departement.nom : '';
+      const b = document.createElement('button'); b.type = 'button';
+      b.innerHTML = '<span>' + c.nom + '</span><span class="s">' + [cp, dep].filter(Boolean).join(' · ') + '</span>';
+      b.onclick = () => {
+        communeInput.value = c.nom + (cp ? ' (' + cp + ')' : '');
+        suggestions.hidden = true;
+        if (c.centre && c.centre.coordinates) map.setView([c.centre.coordinates[1], c.centre.coordinates[0]], 14);
+        setStatus('Clic sur la carte à ' + c.nom + ' pour choisir le point de référence.');
+      };
+      suggestions.appendChild(b);
+    });
+    suggestions.hidden = false;
+  }
+
+  // -------- point de référence --------
+  map.on('click', (e) => setPoint(e.latlng.lat, e.latlng.lng));
+  function setPoint(lat, lon){
+    point = { lat, lon };
+    if (ref) map.removeLayer(ref);
+    ref = L.marker([lat, lon]).addTo(map);
+    run();
+  }
+  ['radius','type','depuis'].forEach(id => $(id).addEventListener('change', () => { if (point) run(); }));
+
+  // -------- requête Sitadel --------
+  const SELECT = ['TYPE_DAU','ETAT_DAU','NATURE_PROJET_DECLAREE','DATE_REELLE_AUTORISATION','DATE_REELLE_DOC','DATE_REELLE_DAACT',
+    'DR_DEPOT','AN_DEPOT','NB_LGT_TOT_CREES','NB_LGT_IND_CREES','NB_LGT_COL_CREES','NB_LGT_DEMOLIS','SURF_HAB_CREEE','SURF_HAB_DEMOLIE',
+    'SUPERFICIE_TERRAIN','ADR_NUM_TER','ADR_LIBVOIE_TER','ADR_LOCALITE_TER','ADR_CODPOST_TER','parcelle','DENOM_DEM','REC_ARCHI','NUM_DAU',
+    'latitude','longitude'].join(',');
+
+  async function run(){
+    if (!point) return;
+    const my = ++reqId;
+    const radius = +$('radius').value, type = $('type').value, depuis = +$('depuis').value;
+    if (circle) map.removeLayer(circle);
+    circle = L.circle([point.lat, point.lon], { radius, color:'#c1440e', weight:1, fillColor:'#c1440e', fillOpacity:.05 }).addTo(map);
+
+    setStatus('Interrogation de Sitadel (permis de construire)…', 'loading');
+    try{
+      const qsParts = [];
+      if (depuis) qsParts.push('AN_DEPOT:>=' + (new Date().getFullYear() - depuis));
+      if (type !== 'tous') qsParts.push('TYPE_DAU:' + type);
+      const u = new URL(DS);
+      u.searchParams.set('geo_distance', point.lon + ',' + point.lat + ',' + radius);
+      u.searchParams.set('size', '2000');
+      u.searchParams.set('select', SELECT);
+      u.searchParams.set('sort', '-DATE_REELLE_AUTORISATION');
+      if (qsParts.length) u.searchParams.set('qs', qsParts.map(p => '(' + p + ')').join(' AND '));
+      const d = await fetch(u.toString(), { headers:{ accept:'application/json' } }).then(r => r.json());
+      if (my !== reqId) return;   // une requête plus récente a été lancée
+      if (d.error) throw new Error(d.error);
+      rows = (d.results || []).map(norm).filter(r => r.lat != null);
+      render(d.total || rows.length, radius, depuis);
+    }catch(err){ if (my === reqId) setStatus('Erreur : ' + (err.message || err), 'error'); }
+  }
+
+  function norm(r){
+    const surfCreee = num(r.SURF_HAB_CREEE);
+    return {
+      type: r.TYPE_DAU || '?', etat: String(r.ETAT_DAU || ''), nature: String(r.NATURE_PROJET_DECLAREE || ''),
+      date: r.DATE_REELLE_AUTORISATION || r.DR_DEPOT || (r.AN_DEPOT ? r.AN_DEPOT + '-01-01' : null),
+      doc: r.DATE_REELLE_DOC || null, daact: r.DATE_REELLE_DAACT || null, an: r.AN_DEPOT || null,
+      lgt: num(r.NB_LGT_TOT_CREES), lgtInd: num(r.NB_LGT_IND_CREES), lgtCol: num(r.NB_LGT_COL_CREES), lgtDem: num(r.NB_LGT_DEMOLIS),
+      surf: surfCreee, surfDem: num(r.SURF_HAB_DEMOLIE), terrain: num(r.SUPERFICIE_TERRAIN),
+      adr: [r.ADR_NUM_TER, r.ADR_LIBVOIE_TER].filter(Boolean).join(' ').trim() || r.ADR_LIEUDIT_TER || '',
+      ville: r.ADR_LOCALITE_TER || '', cp: r.ADR_CODPOST_TER || '', parcelle: r.parcelle || '',
+      demandeur: r.DENOM_DEM || '', archi: r.REC_ARCHI === true, num: r.NUM_DAU || '',
+      lat: r.latitude != null ? +r.latitude : null, lon: r.longitude != null ? +r.longitude : null,
+      dist: distM(point.lat, point.lon, r.latitude, r.longitude),
+    };
+  }
+  function distM(la1, lo1, la2, lo2){
+    if (la2 == null) return null;
+    const R = 6371000, t = Math.PI/180;
+    const dLa = (la2-la1)*t, dLo = (lo2-lo1)*t;
+    const a = Math.sin(dLa/2)**2 + Math.cos(la1*t)*Math.cos(la2*t)*Math.sin(dLo/2)**2;
+    return Math.round(2*R*Math.asin(Math.sqrt(a)));
+  }
+  const kind = (t) => t === 'PC' || t === 'PCI' ? 'PC' : t === 'DP' ? 'DP' : 'autre';
+
+  // -------- rendu --------
+  function render(total, radius, depuis){
+    if (layer) map.removeLayer(layer);
+    const markers = rows.map(p => {
+      const k = kind(p.type);
+      const rad = 4 + Math.min(11, Math.sqrt(Math.max(1, p.lgt)) * 1.7);
+      const mk = L.circleMarker([p.lat, p.lon], {
+        radius: rad, weight:1, color:'#fff',
+        fillColor: k === 'PC' ? '#c1440e' : k === 'DP' ? '#2563eb' : '#7c3aed',
+        fillOpacity: ETAT_OP[p.etat] != null ? ETAT_OP[p.etat] : 0.3,
+      });
+      mk.bindPopup(popup(p)); mk._p = p;
+      return mk;
+    });
+    layer = L.layerGroup(markers).addTo(map);
+    try{ map.fitBounds(circle.getBounds(), { padding:[24,24] }); }catch(e){}
+
+    legend.hidden = false; panel.hidden = false;
+    const nPC = rows.filter(p => kind(p.type) === 'PC').length;
+    const nDP = rows.filter(p => kind(p.type) === 'DP').length;
+    const sumLgt = rows.reduce((s,p) => s + p.lgt, 0);
+    const sumSurf = rows.reduce((s,p) => s + p.surf, 0);
+    const sumDem = rows.reduce((s,p) => s + p.lgtDem, 0);
+    const terr = rows.map(p => p.terrain).filter(Boolean).sort((a,b) => a-b);
+    const terrMed = terr.length ? terr[terr.length >> 1] : null;
+    const since = depuis ? 'déposés depuis ' + (new Date().getFullYear() - depuis) : 'depuis 2013';
+    const trunc = total > rows.length;
+
+    const byEtat = {}, byNat = {};
+    rows.forEach(p => { byEtat[p.etat] = (byEtat[p.etat]||0) + 1; byNat[p.nature] = (byNat[p.nature]||0) + 1; });
+    const maxE = Math.max(1, ...Object.values(byEtat)), maxN = Math.max(1, ...Object.values(byNat));
+
+    let h = '<div class="hero"><div class="big">' + fmt(rows.length) + ' autorisation' + (rows.length > 1 ? 's' : '') + '</div>'
+      + '<div class="lbl">' + nPC + ' permis de construire · ' + nDP + ' déclaration' + (nDP > 1 ? 's' : '') + ' préalable' + (nDP > 1 ? 's' : '')
+      + ' — dans ' + (radius >= 1000 ? (radius/1000) + ' km' : radius + ' m') + ', ' + since + '</div></div>';
+
+    h += '<div class="kpis">'
+      + kpi('Logements créés', fmt(sumLgt))
+      + kpi('Surface habitable créée', sumSurf ? fmt(Math.round(sumSurf)) + ' m²' : '—')
+      + kpi('Logements démolis', sumDem ? fmt(sumDem) : '0')
+      + kpi('Terrain médian', terrMed ? fmt(terrMed) + ' m²' : '—')
+      + '</div>';
+
+    h += '<div class="sec">Avancement</div>';
+    ['2','5','6','4'].forEach(e => { if (byEtat[e]) h += barRow(ETAT_LBL[e] || ('État ' + e), byEtat[e], maxE); });
+
+    h += '<div class="sec">Nature du projet</div>';
+    ['1','2'].forEach(n => { if (byNat[n]) h += barRow(NATURE_LBL[n], byNat[n], maxN); });
+
+    h += '<div class="sec">Derniers permis</div>';
+    h += '<table class="t"><thead><tr><th>Date</th><th>Adresse</th><th>Lgts</th></tr></thead><tbody>';
+    rows.slice(0, 40).forEach((p, i) => {
+      h += '<tr data-i="' + i + '"><td>' + fmtDate(p.date) + '<br/><span class="chip ' + kind(p.type) + '">' + (kind(p.type) === 'autre' ? p.type : kind(p.type)) + '</span></td>'
+        + '<td>' + (p.adr || '<i>adresse n.c.</i>') + (p.ville ? '<br/><span class="etat">' + p.ville + '</span>' : '')
+        + '<br/><span class="etat">' + (ETAT_LBL[p.etat] || '—') + (p.dist != null ? ' · ' + p.dist + ' m' : '') + '</span></td>'
+        + '<td style="text-align:right;font-weight:700">' + (p.lgt || (p.lgtDem ? '−' + p.lgtDem : '—')) + '</td></tr>';
+    });
+    h += '</tbody></table>';
+    if (trunc) h += '<div class="note">Liste plafonnée à ' + fmt(rows.length) + ' sur ' + fmt(total) + ' — resserrez le rayon ou la période.</div>';
+    h += '<div class="note">Source : base <b>Sitadel</b> (permis de construire, d’aménager, de démolir et déclarations préalables), volet <b>logements</b>. '
+      + 'Position géocodée à l’adresse (Base Adresse Nationale) — précision variable, certains permis manquent de coordonnées. Les permis non résidentiels (bureaux, commerces, industrie) sont dans un jeu de données distinct.</div>';
+    $('panel-bd').innerHTML = h;
+
+    $('panel-bd').querySelectorAll('tbody tr').forEach(tr => tr.addEventListener('click', () => {
+      const p = rows[+tr.dataset.i];
+      const mk = layer.getLayers().find(x => x._p === p);
+      if (mk){ map.setView(mk.getLatLng(), 18); mk.openPopup(); }
+    }));
+
+    setStatus(fmt(rows.length) + ' autorisation(s) dans ' + (radius >= 1000 ? (radius/1000) + ' km' : radius + ' m')
+      + ' · ' + fmt(sumLgt) + ' logement(s) créé(s) · ' + since + '.' + (trunc ? ' (liste tronquée)' : ''));
+  }
+  function kpi(k, v){ return '<div class="kpi"><div class="k">' + k + '</div><div class="v">' + v + '</div></div>'; }
+  function barRow(lbl, n, max){
+    return '<div class="bar"><span style="flex:0 0 40%">' + lbl + '</span><span class="track"><span class="fill" style="width:' + (100*n/max) + '%"></span></span><span class="n">' + n + '</span></div>';
+  }
+  function popup(p){
+    const l = [];
+    l.push('<b>' + (TYPE_LBL[p.type] || p.type) + '</b>' + (p.num ? ' <span class="etat">' + p.num + '</span>' : ''));
+    l.push(fmtDate(p.date) + ' — ' + (ETAT_LBL[p.etat] || 'état n.c.') + (p.nature ? ' · ' + (NATURE_LBL[p.nature] || '') : ''));
+    if (p.adr || p.ville) l.push([p.adr, p.cp, p.ville].filter(Boolean).join(' '));
+    const b = [];
+    if (p.lgt) b.push(p.lgt + ' logement' + (p.lgt > 1 ? 's' : '') + ' créé' + (p.lgt > 1 ? 's' : '') + (p.lgtCol ? ' (' + p.lgtCol + ' collectif' + (p.lgtCol > 1 ? 's' : '') + ')' : ''));
+    if (p.surf) b.push(Math.round(p.surf) + ' m² habitables');
+    if (p.lgtDem) b.push(p.lgtDem + ' démoli' + (p.lgtDem > 1 ? 's' : ''));
+    if (p.terrain) b.push('terrain ' + fmt(p.terrain) + ' m²');
+    if (b.length) l.push(b.join(' · '));
+    if (p.doc) l.push('<span class="etat">Chantier ouvert le ' + fmtDate(p.doc) + (p.daact ? ' · achevé le ' + fmtDate(p.daact) : '') + '</span>');
+    if (p.demandeur) l.push('<span class="etat">Demandeur : ' + p.demandeur + (p.archi ? ' · architecte' : '') + '</span>');
+    if (p.parcelle) l.push('<span class="etat">Parcelle ' + p.parcelle + '</span>');
+    if (p.dist != null) l.push('<span class="etat">à ' + p.dist + ' m du point</span>');
+    return l.join('<br/>');
+  }
+
+  $('csv').addEventListener('click', () => {
+    if (!rows.length) return;
+    const head = ['type','etat','nature','date_autorisation','date_chantier','date_achevement','logements_crees','logements_collectifs','logements_demolis','surface_hab_creee_m2','terrain_m2','adresse','cp','ville','parcelle','demandeur','distance_m','lat','lon'];
+    const esc = (v) => '"' + String(v == null ? '' : v).replace(/"/g, '""') + '"';
+    const lines = [head.join(';')];
+    rows.forEach(p => lines.push([
+      TYPE_LBL[p.type] || p.type, ETAT_LBL[p.etat] || p.etat, NATURE_LBL[p.nature] || p.nature,
+      p.date || '', p.doc || '', p.daact || '', p.lgt, p.lgtCol, p.lgtDem, Math.round(p.surf) || '', p.terrain || '',
+      p.adr, p.cp, p.ville, p.parcelle, p.demandeur, p.dist ?? '', p.lat, p.lon,
+    ].map(esc).join(';')));
+    const blob = new Blob(["﻿" + lines.join('\n')], { type:'text/csv;charset=utf-8' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'permis-construire-' + point.lat.toFixed(4) + '_' + point.lon.toFixed(4) + '.csv';
+    a.click(); URL.revokeObjectURL(a.href);
+  });
+})();
+</script>
+</body>
+</html>
