@@ -3,17 +3,20 @@
 // Source : ADEME — « DPE Logements existants (depuis juillet 2021) », API data-fair
 //   https://data.ademe.fr/data-fair/api/v1/datasets/dpe03existant
 //
-// GET /api/dpe?insee=53130&months=36&type=tous&limit=1500
+// GET /api/dpe?insee=53130&months=36&type=tous
 //   - months : fenêtre glissante ; 0 ou absent => tout depuis le 01/07/2021.
 //   - type   : tous | maison | appartement | immeuble
-//   - limit  : nb de DPE géolocalisés renvoyés (récents d'abord), max 3000.
-//   -> { insee, nom, from, type, count_total, count_returned,
+//   Renvoie TOUS les DPE de la période (pagination de l'API ADEME), plafonné à
+//   MAX_POINTS points géolocalisés pour tenir sous la limite de réponse serverless.
+//   -> { insee, nom, from, type, count_total, count_returned, truncated,
 //        distribution_dpe:{A..G}, distribution_ges:{A..G}, dpe:[...] }
 
 import { PLM, isInsee } from '../lib/dvf-core.js';
 
 const BASE = 'https://data.ademe.fr/data-fair/api/v1/datasets/dpe03existant';
 const METHOD_START = '2021-07-01';
+const PAGE = 10000;          // taille max d'une page /lines de l'API data-fair
+const MAX_POINTS = 15000;    // plafond de points géolocalisés renvoyés (~3 Mo, sous la limite serverless)
 const FIELDS = [
   'numero_dpe', 'etiquette_dpe', 'etiquette_ges', 'date_etablissement_dpe',
   'type_batiment', 'surface_habitable_logement', 'annee_construction', 'adresse_ban',
@@ -46,6 +49,31 @@ async function ademe(path, params) {
   if (!r.ok) throw new Error(`ADEME a répondu ${r.status}`);
   return r.json();
 }
+
+// Récupère toutes les lignes de la période, en suivant la pagination `next` de data-fair,
+// jusqu'à `cap`. Renvoie { rows, truncated } (truncated = il restait des lignes au plafond).
+async function ademeAllLines(qs, cap) {
+  const rows = [];
+  const first = new URL(BASE + '/lines');
+  first.searchParams.set('qs', qs);
+  first.searchParams.set('size', String(Math.min(PAGE, cap)));
+  first.searchParams.set('select', FIELDS);
+  first.searchParams.set('sort', '-date_etablissement_dpe');
+  let next = first.toString();
+  let more = false;
+  for (let guard = 0; next && guard < 8; guard++) {
+    const r = await fetch(next, { headers: { accept: 'application/json' } });
+    if (!r.ok) throw new Error(`ADEME a répondu ${r.status}`);
+    const j = await r.json();
+    for (const row of j.results || []) rows.push(row);
+    if (rows.length >= cap) { more = !!j.next; break; }
+    if (!j.next) { next = null; break; }
+    const nu = new URL(j.next);
+    nu.searchParams.set('size', String(Math.min(PAGE, cap - rows.length)));
+    next = nu.toString();
+  }
+  return { rows: rows.slice(0, cap), truncated: more };
+}
 function distFromAgg(aggs) {
   const out = { A: 0, B: 0, C: 0, D: 0, E: 0, F: 0, G: 0 };
   for (const a of aggs || []) if (a && a.value && out[a.value] != null) out[a.value] = a.total;
@@ -71,10 +99,7 @@ export default async function handler(req, res) {
     return;
   }
 
-  let limit = parseInt(req.query.limit, 10);
-  limit = Number.isFinite(limit) ? Math.max(1, Math.min(3000, limit)) : 1500;
-
-  const key = `${insee}|${months}|${typeKey}|${limit}`;
+  const key = `${insee}|${months}|${typeKey}`;
   const hit = cache.get(key);
   if (hit && Date.now() - hit.ts <= MEM_TTL_MS) {
     res.setHeader('Cache-Control', 'public, s-maxage=86400, stale-while-revalidate=604800');
@@ -91,13 +116,13 @@ export default async function handler(req, res) {
 
   try {
     const [lines, aggDpe, aggGes] = await Promise.all([
-      ademe('/lines', { qs, size: String(limit), select: FIELDS, sort: '-date_etablissement_dpe' }),
+      ademeAllLines(qs, MAX_POINTS),
       ademe('/values_agg', { field: 'etiquette_dpe', qs, agg_size: '10', size: '0' }),
       ademe('/values_agg', { field: 'etiquette_ges', qs, agg_size: '10', size: '0' }),
     ]);
 
     const dpe = [];
-    for (const r of lines.results || []) {
+    for (const r of lines.rows || []) {
       let lat = null, lon = null;
       if (r._geopoint && typeof r._geopoint === 'string') {
         const [a, b] = r._geopoint.split(',');
@@ -119,15 +144,17 @@ export default async function handler(req, res) {
       });
     }
 
+    const totalDpe = (aggDpe && aggDpe.total) || 0;
     const body = {
       insee,
-      nom: (lines.results && lines.results[0] && lines.results[0].nom_commune_ban) || null,
+      nom: (lines.rows && lines.rows[0] && lines.rows[0].nom_commune_ban) || null,
       from,
       months,
       type: typeKey,
       source: 'ADEME — DPE logements existants (depuis 07/2021)',
-      count_total: (aggDpe && aggDpe.total) || 0,
+      count_total: totalDpe,
       count_returned: dpe.length,
+      truncated: lines.truncated || (lines.rows.length >= MAX_POINTS && totalDpe > lines.rows.length),
       distribution_dpe: distFromAgg(aggDpe && aggDpe.aggs),
       distribution_ges: distFromAgg(aggGes && aggGes.aggs),
       dpe,

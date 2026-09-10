@@ -755,15 +755,9 @@
           <select id="dpe-type"><option value="tous" selected>Tous</option><option value="maison">Maison</option><option value="appartement">Appartement</option><option value="immeuble">Immeuble</option></select>
         </div>
       </div>
-      <div class="row">
-        <div class="field">
-          <label for="dpe-cap">Points carte</label>
-          <select id="dpe-cap"><option value="800">800</option><option value="1500" selected>1 500</option><option value="3000">3 000</option></select>
-        </div>
-        <div class="field">
-          <label for="dpe-ind">Étiquette</label>
-          <select id="dpe-ind"><option value="dpe" selected>Énergie (DPE)</option><option value="ges">Climat (GES)</option></select>
-        </div>
+      <div class="field">
+        <label for="dpe-ind">Étiquette</label>
+        <select id="dpe-ind"><option value="dpe" selected>Énergie (DPE)</option><option value="ges">Climat (GES)</option></select>
       </div>
     </div>
 
@@ -1039,7 +1033,8 @@
   const hMonths = $('h-months'), hType = $('h-type'), hLayer = $('h-layer'), hRadius = $('h-radius'), hRadiusHint = $('h-radius-hint');
   const pluMin = $('plu-min'), pluU = $('plu-u'), pluAu = $('plu-au'), pluA = $('plu-a'), pluN = $('plu-n'), pluLibresBtn = $('plu-libres');
   const grpEstim = $('grp-estim'), esAddr = $('es-addr'), esSug = $('es-suggestions'), esSurf = $('es-surf'), esType = $('es-type'), esRadius = $('es-radius'), esYears = $('es-years');
-  const grpDpe = $('grp-dpe'), dpeMonths = $('dpe-months'), dpeType = $('dpe-type'), dpeCap = $('dpe-cap'), dpeInd = $('dpe-ind');
+  const grpDpe = $('grp-dpe'), dpeMonths = $('dpe-months'), dpeType = $('dpe-type'), dpeInd = $('dpe-ind');
+  const dpeCanvas = L.canvas({ padding: 0.5 });   // rendu canvas : gère des milliers de points
   const grpEau = $('grp-eau'), grpSimu = $('grp-simu'), grpPermis = $('grp-permis');
   const pmRadius = $('pm-radius'), pmType = $('pm-type'), pmDepuis = $('pm-depuis');
   const grpLoc = $('grp-loc'), locMode = $('loc-mode'), locRayon = $('loc-rayon'), locMaille = $('loc-maille'),
@@ -1116,7 +1111,7 @@
       '<h4>Principe</h4><p>Les diagnostics de performance énergétique (DPE) de la commune, un point par logement, coloré de <b>A</b> (vert) à <b>G</b> (rouge).</p>' +
       '<h4>Source</h4><p><b>Observatoire ADEME</b> — jeu de données « DPE logements existants (depuis juillet 2021) ». Géolocalisation à l’adresse (BAN). Les DPE antérieurs à juillet 2021 (ancienne méthode, non comparable) ne sont pas inclus.</p>' +
       '<h4>Indicateurs</h4><p>Bascule <b>Énergie (DPE)</b> = consommation en énergie primaire (kWh/m²/an) ou <b>Climat (GES)</b> = émissions de CO₂ (kgCO₂/m²/an). La légende A–G montre les effectifs et sert de filtre. « Passoires » = F + G ; part calculée sur <b>tous</b> les DPE de la commune. La médiane de consommation porte sur l’échantillon affiché (les plus récents).</p>' +
-      '<h4>Représentativité</h4><p>Un DPE ne concerne que les logements ayant fait l’objet d’un diagnostic (vente, location, rénovation…) : la répartition n’est pas exactement celle du parc. La carte affiche au maximum 800 à 3 000 points (les plus récents) ; les effectifs de la légende, eux, portent sur l’ensemble.</p>',
+      '<h4>Représentativité</h4><p>Un DPE ne concerne que les logements ayant fait l’objet d’un diagnostic (vente, location, rénovation…) : la répartition n’est pas exactement celle du parc. La carte affiche <b>tous</b> les DPE géolocalisés de la période (plafond 15 000 — au-delà, resserrez la fenêtre) ; les effectifs de la légende portent sur l’ensemble, y compris les DPE sans coordonnées.</p>',
     eau:
       '<h4>Principe</h4><p>Synthèse du <b>contrôle sanitaire réglementaire</b> de l’eau du robinet pour la commune, sur les <b>2 dernières années</b>.</p>' +
       '<h4>Source</h4><p><b>Hub’Eau</b> — API « qualité de l’eau potable » (données SISE-Eaux du ministère de la Santé / ARS). Réseaux desservant la commune + résultats des prélèvements.</p>' +
@@ -3301,8 +3296,8 @@
     goBtn.disabled = true;
     setStatus('Interrogation de l’observatoire ADEME…', 'loading');
     try{
-      const months = parseInt(dpeMonths.value, 10) || 0, type = dpeType.value, cap = parseInt(dpeCap.value, 10) || 1500;
-      const r = await withTimeout('/api/dpe?insee=' + encodeURIComponent(selected.code) + '&months=' + months + '&type=' + type + '&limit=' + cap, 45000);
+      const months = parseInt(dpeMonths.value, 10) || 0, type = dpeType.value;
+      const r = await withTimeout('/api/dpe?insee=' + encodeURIComponent(selected.code) + '&months=' + months + '&type=' + type, 60000);
       let d = null; try{ d = await r.json(); }catch(e){}
       if (!r.ok) throw new Error((d && d.error) || ('Erreur serveur (' + r.status + ').'));
       st.dpe.data = d;
@@ -3311,8 +3306,10 @@
       renderDpe();
       collapseControls();
       updateMapLegend();
-      setStatus(fmtNum(d.count_total || 0) + ' DPE ' + (d.type !== 'tous' ? '(' + d.type + ') ' : '') + 'à ' + (d.nom || selected.nom)
-        + ' depuis ' + fmtDpeDate(d.from) + ' · ' + fmtNum((d.dpe || []).length) + ' affichés. Source : ADEME.');
+      const shown = (d.dpe || []).length, tot = d.count_total || 0;
+      setStatus(fmtNum(tot) + ' DPE ' + (d.type !== 'tous' ? '(' + d.type + ') ' : '') + 'à ' + (d.nom || selected.nom)
+        + ' depuis ' + fmtDpeDate(d.from) + ' · ' + fmtNum(shown) + ' points sur la carte'
+        + (d.truncated ? ' (plafond atteint — resserrez la période pour tout voir)' : '') + '. Source : ADEME.');
     }catch(err){ setStatus(err.message || 'Erreur DPE.', 'error'); }
     finally{ goBtn.disabled = false; }
   }
@@ -3321,9 +3318,9 @@
     if (st.dpe.layer){ map.removeLayer(st.dpe.layer); }
     const pts = ((st.dpe.data && st.dpe.data.dpe) || []).filter(r => dpeClsOf(r) && !st.dpe.hidden.has(dpeClsOf(r)));
     st.dpe.layer = L.layerGroup(pts.map(r => {
-      const mk = L.circleMarker([r.lat, r.lon], { radius:4.5, weight:1, color:'#00000055', fillColor:DPE_COL[dpeClsOf(r)] || '#999', fillOpacity:0.9 });
+      const mk = L.circleMarker([r.lat, r.lon], { renderer:dpeCanvas, radius:4.5, weight:1, color:'#00000055', fillColor:DPE_COL[dpeClsOf(r)] || '#999', fillOpacity:0.9 });
       mk._dpe = r;
-      mk.bindPopup(dpePopup(r));
+      mk.bindPopup(() => dpePopup(r));   // contenu différé : évite 15 000 concaténations au rendu
       return mk;
     }));
     if (activeTab === 'dpe') st.dpe.layer.addTo(map);
@@ -3426,7 +3423,7 @@
     syncDpeSeg(); repaintDpe(); renderDpe();
     if (st.dpe.collapsed) summaryText.textContent = summaryFor();
   });
-  [dpeMonths, dpeType, dpeCap].forEach(el => el.addEventListener('change', () => { if (activeTab === 'dpe' && st.dpe.data) runDpe(); }));
+  [dpeMonths, dpeType].forEach(el => el.addEventListener('change', () => { if (activeTab === 'dpe' && st.dpe.data) runDpe(); }));
 
   // ================= Onglet « EAU » (qualité de l'eau potable) =================
   // Source : Hub'Eau (contrôle sanitaire ARS / SISE-Eaux), fenêtre fixe de 2 ans.
