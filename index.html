@@ -258,6 +258,9 @@
   .pm-leg{ display:flex; flex-wrap:wrap; gap:5px 14px; font-size:12.5px; color:var(--muted); margin-top:6px; }
   .pm-leg i{ width:11px; height:11px; border-radius:50%; display:inline-block; vertical-align:-1px; margin-right:5px; border:1px solid rgba(0,0,0,.15); }
   .pm-leg i.pc{ background:#c1440e; } .pm-leg i.dp{ background:#2563eb; }
+  .pm-links{ margin-top:8px; display:flex; gap:8px; flex-wrap:wrap; }
+  .pm-links a{ font-size:13px; font-weight:700; color:var(--accent-dark); text-decoration:none; padding:7px 11px; border-radius:8px; background:#f4ede9; }
+  .pm-links a:active{ background:#e9ddd6; }
 
   .fab-list{
     position:fixed; right:12px; z-index:1150; bottom:calc(var(--nav-h) + var(--safe-bottom) + 12px);
@@ -1127,7 +1130,7 @@
     permis:
       '<h4>Principe</h4><p>Clic sur la carte + rayon → les <b>autorisations d’urbanisme</b> (permis de construire et déclarations préalables) dans le cercle, avec une synthèse et la liste détaillée. Sont couverts les projets de <b>logements</b> et de <b>locaux non résidentiels</b> (commerce, bureaux, industrie, entrepôt, agricole, équipement public…).</p>' +
       '<h4>Source</h4><p><b>Base Sitadel</b> (permis de construire, d’aménager, de démolir et déclarations préalables), volets « logements » et « locaux », géocodés à l’adresse par la <b>Base Adresse Nationale</b> — servis via l’API ouverte de Koumoul (data-fair). Filtre par distance, par type et par date d’autorisation.</p>' +
-      '<h4>Indicateurs</h4><p><b>PC</b> = permis de construire, <b>DP</b> = déclaration préalable. Avancement : <b>autorisé</b>, <b>chantier ouvert</b> (ouverture de chantier déclarée), <b>travaux achevés</b> (achèvement déclaré). Pour les logements : nombre de <b>logements créés</b> ; pour les locaux : <b>surface de plancher créée</b> et destination principale. Marqueurs colorés par type, taille selon l’ampleur du projet, opacité selon l’avancement.</p>' +
+      '<h4>Indicateurs</h4><p><b>PC</b> = permis de construire, <b>DP</b> = déclaration préalable. Avancement : <b>autorisé</b>, <b>chantier ouvert</b> (ouverture de chantier déclarée), <b>travaux achevés</b> (achèvement déclaré). Pour les logements : nombre de <b>logements créés</b> ; pour les locaux : <b>surface de plancher créée</b> et destination principale. Marqueurs colorés par type, taille selon l’ampleur du projet, opacité selon l’avancement ; les <b>parcelles concernées</b> sont détourées (contour cadastral IGN, jusqu’à 50), et chaque fiche donne un lien <b>Google Maps</b> et <b>Street View</b>.</p>' +
       '<h4>Représentativité</h4><p>Position à l’adresse déclarée : précision variable, quelques permis sans coordonnées n’apparaissent pas. Une carrière ou un site industriel apparaît via ses permis de <b>locaux</b> (destination « industrie » ou « entrepôt »). Données rafraîchies mensuellement, avec un décalage de publication.</p>',
     credit:
       '<img class="help-logo" src="logo-arpent.png" alt="Arpent" />' +
@@ -1170,7 +1173,7 @@
     dpe:{ layer:null, data:null, indicator:'dpe', hidden:new Set(), sortKey:'date', sortDir:-1, collapsed:false },
     eau:{ contour:null, data:null, collapsed:false },
     simu:{ collapsed:false, ready:false },
-    permis:{ ref:null, layer:null, circle:null, refMarker:null, data:null, collapsed:false },
+    permis:{ ref:null, layer:null, parcels:null, circle:null, refMarker:null, data:null, collapsed:false },
     loc:{ mode:'commune', layer:null, communeRows:[], gridSales:[], gridCells:[], gridMeta:{},
           loyByCommune:null, data:false, indicator:'rdt', bien:'app', surf:45, months:60,
           sortKey:'rdt', sortDir:-1, dataThrough:null, collapsed:false }
@@ -1793,6 +1796,7 @@
     const radius = +pmRadius.value, type = pmType.value, months = +pmDepuis.value;
     const { lat, lon } = st.permis.ref;
     if (st.permis.circle) map.removeLayer(st.permis.circle);
+    if (st.permis.parcels){ map.removeLayer(st.permis.parcels); st.permis.parcels = null; }
     st.permis.circle = L.circle([lat, lon], { radius, color:'#c1440e', weight:1, fillColor:'#c1440e', fillOpacity:.05 }).addTo(map);
     setStatus('Interrogation de Sitadel (permis de construire)…', 'loading');
     try{
@@ -1861,6 +1865,7 @@
     if (b.length) l.push(b.join(' · '));
     if (p.demandeur) l.push('<span style="color:var(--muted)">Demandeur : ' + p.demandeur + (p.archi ? ' · architecte' : '') + '</span>');
     if (p.dist != null) l.push('<span style="color:var(--muted)">à ' + fmtDist(p.dist) + ' du point</span>');
+    if (p.lat != null) l.push(mapsLinks(p.lat, p.lon));
     return l.join('<br/>');
   }
   function pmCardEl(p){
@@ -1896,6 +1901,7 @@
       + '</div>'
       + '<div class="pm-more">'
       +   d.map(x => '<div class="r"><span>' + x[0] + '</span><span>' + x[1] + '</span></div>').join('')
+      +   (p.lat != null ? '<div class="pm-links">' + mapsLinks(p.lat, p.lon) + '</div>' : '')
       +   '<button type="button" class="btn-map">Voir sur la carte</button>'
       + '</div>';
     el.querySelector('.pm-hd').addEventListener('click', () => el.classList.toggle('open'));
@@ -1906,11 +1912,75 @@
     });
     return el;
   }
+  // --- Contours des parcelles concernées par un permis (apicarto IGN, appel navigateur direct) ---
+  const pmParcelCache = new Map();          // idu -> geometry | false
+  function pmParcelId(code){
+    const c = String(code || '').trim().toUpperCase();
+    if (!/^\d{5}[0-9A-Z]{3}[0-9A-Z]{2}\d{4}$/.test(c)) return null;
+    return { idu:c, insee:c.slice(0, 5), section:c.slice(8, 10), numero:c.slice(10, 14) };
+  }
+  async function pmFetchParcel(idu, pid){
+    if (pmParcelCache.has(idu)) return pmParcelCache.get(idu);
+    try{
+      const u = 'https://apicarto.ign.fr/api/cadastre/parcelle?code_insee=' + pid.insee + '&section=' + pid.section + '&numero=' + pid.numero;
+      const r = await withTimeout(u, 12000);
+      const j = r.ok ? await r.json() : null;
+      const g = j && j.features && j.features[0] && j.features[0].geometry;
+      pmParcelCache.set(idu, g || false);
+      return g || false;
+    }catch(e){ pmParcelCache.set(idu, false); return false; }
+  }
+  async function pmMapLimit(items, n, fn){
+    let i = 0;
+    await Promise.all(Array.from({ length: Math.min(n, items.length) }, async () => {
+      while (i < items.length){ const k = i++; await fn(items[k], k); }
+    }));
+  }
+  async function pmDrawParcels(rows, my){
+    const byIdu = new Map();
+    rows.forEach(p => {
+      const pid = pmParcelId(p.parcelle);
+      if (!pid) return;
+      if (!byIdu.has(pid.idu)) byIdu.set(pid.idu, { pid, permits: [] });
+      byIdu.get(pid.idu).permits.push(p);
+    });
+    // priorité aux parcelles avec un PC, puis les plus proches ; plafond 50
+    const list = [...byIdu.values()].sort((a, b) => {
+      const pa = a.permits.some(x => pmKind(x.type) === 'PC') ? 0 : 1;
+      const pb = b.permits.some(x => pmKind(x.type) === 'PC') ? 0 : 1;
+      if (pa !== pb) return pa - pb;
+      return (a.permits[0].dist || 0) - (b.permits[0].dist || 0);
+    }).slice(0, 50);
+    if (!list.length) return;
+    const layer = L.layerGroup();
+    st.permis.parcels = layer;
+    if (activeTab === 'permis') layer.addTo(map);
+    await pmMapLimit(list, 6, async (entry) => {
+      const g = await pmFetchParcel(entry.pid.idu, entry.pid);
+      if (my !== pmReqId || activeTab !== 'permis' || st.permis.parcels !== layer || !g) return;
+      const hasPC = entry.permits.some(x => pmKind(x.type) === 'PC');
+      const col = hasPC ? '#c1440e' : '#2563eb';
+      const ref = entry.permits.find(x => x.lat != null) || {};
+      const poly = L.geoJSON({ type:'Feature', geometry:g }, { style:{ color:col, weight:2, fillColor:col, fillOpacity:0.14 } });
+      poly.bindPopup(pmParcelPopup(entry.permits, entry.pid.idu, ref));
+      layer.addLayer(poly);
+    });
+  }
+  function pmParcelPopup(permits, idu, ref){
+    const head = '<b>Parcelle ' + idu + '</b> · ' + permits.length + ' autorisation' + (permits.length > 1 ? 's' : '');
+    const list = permits.slice(0, 6).map(p =>
+      (PM_TYPE[p.type] || p.type) + ' — ' + fmtDate(p.date) + ' (' + (PM_ETAT[p.etat] || 'n.c.') + ')'
+      + (p.lgt ? ' · ' + p.lgt + ' lgts' : p.surf ? ' · ' + Math.round(p.surf) + ' m²' : '')).join('<br/>');
+    return head + '<br/>' + list + (ref.lat != null ? '<br/>' + mapsLinks(ref.lat, ref.lon) : '');
+  }
+
   function renderPermis(){
     const { rows, total, radius, sinceLabel } = st.permis.data;
     if (st.permis.layer) map.removeLayer(st.permis.layer);
     st.permis.layer = L.layerGroup(rows.map(pmMarker));
     if (activeTab === 'permis') st.permis.layer.addTo(map);
+    if (st.permis.parcels){ map.removeLayer(st.permis.parcels); st.permis.parcels = null; }
+    pmDrawParcels(rows, pmReqId);
     if (st.permis.circle){ try{ map.fitBounds(st.permis.circle.getBounds(), { padding:[24, 24] }); }catch(e){} }
 
     const nPC = rows.filter(p => pmKind(p.type) === 'PC').length;
@@ -1968,7 +2038,7 @@
     if (tab === 'dpe') return [st.dpe.layer];
     if (tab === 'eau') return [st.eau.contour];
     if (tab === 'simu') return [];
-    if (tab === 'permis') return [st.permis.layer, st.permis.circle, st.permis.refMarker];
+    if (tab === 'permis') return [st.permis.layer, st.permis.parcels, st.permis.circle, st.permis.refMarker];
     return [st.autour.parcLayer, st.autour.circle, st.autour.ventes, st.autour.refMarker];
   }
   function syncLayers(){
@@ -2147,7 +2217,7 @@
                months:+locMonths.value, sortKey:locInd.value, sortDir:locInd.value === 'prix' ? 1 : -1, dataThrough:null, collapsed:false };
     st.dpe = { layer:null, data:null, indicator:dpeInd.value, hidden:new Set(), sortKey:'date', sortDir:-1, collapsed:false };
     st.eau = { contour:null, data:null, collapsed:false };
-    st.permis = { ref:null, layer:null, circle:null, refMarker:null, data:null, collapsed:false };
+    st.permis = { ref:null, layer:null, parcels:null, circle:null, refMarker:null, data:null, collapsed:false };
     if (activeTab === 'simu') smReset();
     if (activeTab === 'plu'){ goBtn.textContent = 'Afficher le zonage PLU'; syncPluControls(); }
     if (activeTab === 'loc'){ $('loc-mini').hidden = true; }
