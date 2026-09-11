@@ -308,8 +308,8 @@
     white-space:nowrap; padding:0 4px; scroll-snap-align:center;
   }
   .tabbar button .ic{ font-size:19px; line-height:1; }
-  .tabbar button .ic-hm, .tabbar button .ic-loupe, .tabbar button .ic-calc, .tabbar button .ic-key, .tabbar button .ic-tgt, .tabbar button .ic-info, .tabbar button .ic-therm, .tabbar button .ic-drop, .tabbar button .ic-bank, .tabbar button .ic-crane, .tabbar button .ic-warn{ display:inline-flex; }
-  .tabbar button .ic-hm svg, .tabbar button .ic-loupe svg, .tabbar button .ic-calc svg, .tabbar button .ic-key svg, .tabbar button .ic-tgt svg, .tabbar button .ic-info svg, .tabbar button .ic-therm svg, .tabbar button .ic-drop svg, .tabbar button .ic-bank svg, .tabbar button .ic-crane svg, .tabbar button .ic-warn svg{ display:block; width:19px; height:19px; }
+  .tabbar button .ic-hm, .tabbar button .ic-loupe, .tabbar button .ic-calc, .tabbar button .ic-key, .tabbar button .ic-tgt, .tabbar button .ic-info, .tabbar button .ic-therm, .tabbar button .ic-drop, .tabbar button .ic-bank, .tabbar button .ic-crane, .tabbar button .ic-warn, .tabbar button .ic-person{ display:inline-flex; }
+  .tabbar button .ic-hm svg, .tabbar button .ic-loupe svg, .tabbar button .ic-calc svg, .tabbar button .ic-key svg, .tabbar button .ic-tgt svg, .tabbar button .ic-info svg, .tabbar button .ic-therm svg, .tabbar button .ic-drop svg, .tabbar button .ic-bank svg, .tabbar button .ic-crane svg, .tabbar button .ic-warn svg, .tabbar button .ic-person svg{ display:block; width:19px; height:19px; }
   .hm-legend .bar{ height:12px; border-radius:3px; margin:5px 0; }
   .hm-legend .lbls{ display:flex; justify-content:space-between; color:var(--muted); font-size:12px; }
   .plu-checks{ display:flex; gap:16px; align-items:center; flex-wrap:wrap; min-height:44px; }
@@ -405,6 +405,25 @@
   .eau-tbl th{ color:var(--muted); font-weight:600; }
   .eau-chip{ display:inline-block; font-size:11px; font-weight:700; border-radius:4px; padding:1px 6px; }
   .eau-chip.ok{ background:#e4f2e6; color:#1a7f37; } .eau-chip.bad{ background:#fde8e8; color:#b3261e; } .eau-chip.info{ background:#eef0f2; color:var(--muted); }
+
+  /* ---- Onglet STATS (usage de l'application) ---- */
+  body.tab-stats #map{ display:none; }
+  body.tab-stats form.controls{ flex:1 1 auto; min-height:0; overflow-y:auto; -webkit-overflow-scrolling:touch; overscroll-behavior:contain; }
+  .stat-cards{ display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:10px; }
+  .stat-card{ background:var(--card); border:1px solid var(--border); border-radius:12px; padding:14px; }
+  .stat-card.full{ grid-column:1 / -1; }
+  .stat-card .k{ font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.03em; color:var(--muted); }
+  .stat-card .v{ font-size:30px; font-weight:800; line-height:1.15; margin-top:5px; color:var(--accent-dark); }
+  .stat-card .v small{ font-size:14px; font-weight:700; color:var(--muted); margin-left:2px; }
+  .stat-card .hint{ font-size:12px; color:var(--muted); margin-top:5px; }
+  .stat-bar-row{ margin:9px 0; }
+  .stat-bar-row .lbl{ display:flex; justify-content:space-between; font-size:13px; margin-bottom:3px; }
+  .stat-bar-row .lbl b{ font-weight:700; }
+  .stat-bar-row .lbl span{ color:var(--muted); }
+  .stat-bar-track{ height:9px; border-radius:5px; background:#eef0f2; overflow:hidden; }
+  .stat-bar-fill{ height:100%; background:var(--accent); border-radius:5px; transition:width .4s ease; }
+  .stat-note{ font-size:11.5px; color:var(--muted); margin-top:12px; line-height:1.45; background:#fdf1ea; border:1px solid #f1d9c9; border-radius:10px; padding:9px 11px; }
+  .stat-note b{ color:var(--accent-dark); }
 
   /* ---- Onglet SIMU (simulation d'achat) ---- */
   body.tab-simu #map{ display:none; }
@@ -964,6 +983,28 @@
       </div>
     </div>
 
+    <!-- STATS (usage de l'application) -->
+    <div class="grp" id="grp-stats" hidden>
+      <p class="tip">Statistiques d'usage de l'application : visiteurs, durée moyenne de visite, onglets les plus utilisés. Actualisation automatique.</p>
+      <div class="stat-cards">
+        <div class="stat-card">
+          <div class="k">Visiteurs</div>
+          <div class="v" id="stat-visits">—</div>
+          <div class="hint">compteur total</div>
+        </div>
+        <div class="stat-card">
+          <div class="k">Durée moyenne</div>
+          <div class="v" id="stat-avg">—</div>
+          <div class="hint" id="stat-sessions">—</div>
+        </div>
+        <div class="stat-card full">
+          <div class="k">Onglets les plus utilisés</div>
+          <div id="stat-bars"></div>
+        </div>
+      </div>
+      <div class="stat-note" id="stat-note" hidden></div>
+    </div>
+
     <button class="btn btn-primary" id="go" type="submit">Rechercher</button>
     <button class="btn btn-ghost" id="reset" type="button">Réinitialiser</button>
   </form>
@@ -1048,6 +1089,7 @@
   <button type="button" data-tab="simu"><span class="ic ic-bank" aria-hidden="true"><svg width="22" height="22" viewBox="0 0 22 22" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M2.5 8 11 3l8.5 5"/><line x1="3.6" y1="8.4" x2="18.4" y2="8.4"/><line x1="5.2" y1="9.2" x2="5.2" y2="15.6"/><line x1="9" y1="9.2" x2="9" y2="15.6"/><line x1="13" y1="9.2" x2="13" y2="15.6"/><line x1="16.8" y1="9.2" x2="16.8" y2="15.6"/><line x1="3.4" y1="16.4" x2="18.6" y2="16.4"/><line x1="2.5" y1="18.8" x2="19.5" y2="18.8"/></svg></span>Simu</button>
   <button type="button" data-tab="permis"><span class="ic ic-crane" aria-hidden="true"><svg width="22" height="22" viewBox="0 0 22 22" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><line x1="3.5" y1="20" x2="9.5" y2="20"/><line x1="6.5" y1="20" x2="6.5" y2="6"/><path d="M6.5 6 4.2 3.2h4.6z" fill="currentColor" stroke="none"/><line x1="2.5" y1="6" x2="19" y2="6"/><line x1="2.5" y1="6" x2="6.5" y2="3.8"/><line x1="6.5" y1="3.8" x2="19" y2="6"/><line x1="15.5" y1="6" x2="15.5" y2="10"/><path d="M14.3 10h2.4l-1.2 2z" fill="currentColor" stroke="none"/></svg></span>Permis</button>
   <button type="button" data-tab="risques"><span class="ic ic-warn" aria-hidden="true"><svg width="22" height="22" viewBox="0 0 22 22" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M11 2.6 20.3 18.6a1 1 0 0 1-.87 1.5H2.57a1 1 0 0 1-.87-1.5L11 2.6Z"/><line x1="11" y1="8.3" x2="11" y2="12.8"/><circle cx="11" cy="15.8" r="1" fill="currentColor" stroke="none"/></svg></span>Risques</button>
+  <button type="button" data-tab="stats"><span class="ic ic-person" aria-hidden="true"><svg width="22" height="22" viewBox="0 0 22 22" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="7" r="3.6"/><path d="M4 19c0-4.2 3.13-7 7-7s7 2.8 7 7"/></svg></span>Stats</button>
   <button type="button" id="credit-btn"><span class="ic ic-info" aria-hidden="true"><svg width="22" height="22" viewBox="0 0 22 22" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><circle cx="11" cy="11" r="8.4"/><line x1="11" y1="10" x2="11" y2="15.4"/><circle cx="11" cy="6.9" r="1" fill="currentColor" stroke="none"/></svg></span>Crédit</button>
 </nav>
 </div>
@@ -1066,6 +1108,8 @@
   const grpEau = $('grp-eau'), grpSimu = $('grp-simu'), grpPermis = $('grp-permis'), grpRisques = $('grp-risques');
   const pmRadius = $('pm-radius'), pmType = $('pm-type'), pmDepuis = $('pm-depuis');
   const rqRadius = $('rq-radius');
+  const grpStats = $('grp-stats');
+  const statVisits = $('stat-visits'), statAvg = $('stat-avg'), statSessions = $('stat-sessions'), statBars = $('stat-bars'), statNote = $('stat-note');
   const grpLoc = $('grp-loc'), locMode = $('loc-mode'), locRayon = $('loc-rayon'), locMaille = $('loc-maille'),
         locBien = $('loc-bien'), locSurf = $('loc-surf'), locMonths = $('loc-months'), locInd = $('loc-ind');
   const goBtn = $('go'), resetBtn = $('reset');
@@ -1085,8 +1129,8 @@
     volume: ['#eff3ff','#c6dbef','#9ecae1','#6baed6','#3182bd','#08519c'],
     evo:    ['#2166ac','#67a9cf','#d1e5f0','#fddbc7','#ef8a62','#b2182b']
   };
-  const TITLES = { parcelles:'Parcelles cadastrales', dvf:'Transactions immobilières', autour:'Autour d’une parcelle', heatmap:'Prix & dynamique par zone', plu:'Zonage PLU & foncier', estim:'Estimation à l’adresse', loc:'Loyers & rendement locatif', dpe:'DPE — performance énergétique', eau:'Qualité de l’eau potable', simu:'Simulation d’achat', permis:'Permis de construire', risques:'Risques autour d’un point' };
-  const SHEET_TITLES = { parcelles:'Parcelles', dvf:'Transactions (DVF)', autour:'Ventes autour du point', heatmap:'Synthèse de la commune', plu:'PLU & foncier', estim:'Estimation', loc:'Loyers & rendement', dpe:'DPE de la commune', eau:'Qualité de l’eau', simu:'Simulation d’achat', permis:'Autorisations d’urbanisme', risques:'Risques' };
+  const TITLES = { parcelles:'Parcelles cadastrales', dvf:'Transactions immobilières', autour:'Autour d’une parcelle', heatmap:'Prix & dynamique par zone', plu:'Zonage PLU & foncier', estim:'Estimation à l’adresse', loc:'Loyers & rendement locatif', dpe:'DPE — performance énergétique', eau:'Qualité de l’eau potable', simu:'Simulation d’achat', permis:'Permis de construire', risques:'Risques autour d’un point', stats:'Statistiques d’usage' };
+  const SHEET_TITLES = { parcelles:'Parcelles', dvf:'Transactions (DVF)', autour:'Ventes autour du point', heatmap:'Synthèse de la commune', plu:'PLU & foncier', estim:'Estimation', loc:'Loyers & rendement', dpe:'DPE de la commune', eau:'Qualité de l’eau', simu:'Simulation d’achat', permis:'Autorisations d’urbanisme', risques:'Risques', stats:'Statistiques' };
   const DPE_COL = { A:'#00a06e', B:'#5bb349', C:'#c3d545', D:'#ffe200', E:'#f7a600', F:'#ec6f2a', G:'#d3121a' };
   const DPE_LETTERS = ['A','B','C','D','E','F','G'];
   const LOC_RAMPS = {
@@ -1161,10 +1205,15 @@
       '<h4>Source</h4><p><b>Géorisques</b> (BRGM / ministère de la Transition écologique), API ouverte : GASPAR (arrêtés « catastrophe naturelle »), zonage sismique réglementaire, cartographie du potentiel radon (IRSN), aléa retrait-gonflement des argiles (BRGM), base des installations classées (ICPE), inventaire des cavités souterraines, inventaire des sites et sols pollués (BASIAS, secteurs d’information sur les sols).</p>' +
       '<h4>Indicateurs</h4><p><b>Argiles</b>, <b>sismicité</b> et <b>radon</b> = niveau d’aléa de la commune (les argiles, au point cliqué), du plus faible (vert) au plus fort (rouge) — ce n’est <b>pas</b> une prédiction de sinistre, seulement une carte réglementaire. <b>Catastrophes naturelles</b> = arrêtés publiés au Journal officiel depuis 1982, regroupés par famille (inondation, sécheresse, mouvement de terrain…). Dans le rayon choisi : <b>installations classées</b> (ICPE, avec repère <b>Seveso</b> le cas échéant), <b>cavités souterraines</b> répertoriées, <b>sites et sols pollués classés</b> (secteurs d’information sur les sols, contrainte de construction). L’inventaire historique des activités polluantes (BASIAS) est compté à part, sans détail — souvent très nombreux et incluant des sites sans pollution avérée.</p>' +
       '<h4>Représentativité</h4><p>Données déclaratives et cartographiques : précision et fraîcheur variables selon les couches. Une commune peut être exposée à un risque sans arrêté récent (délai de reconnaissance) ; l’absence de résultat dans le rayon ne garantit pas l’absence de risque. Pour le détail réglementaire (PPR, DDRM…), consulter le <a href="https://www.georisques.gouv.fr/" target="_blank" rel="noopener">portail Géorisques</a>.</p>',
+    stats:
+      '<h4>Principe</h4><p>Statistiques d’usage de l’application elle-même : nombre de visiteurs, durée moyenne d’une visite et onglets les plus consultés. S’actualise automatiquement.</p>' +
+      '<h4>Source</h4><p>Mesure interne : à chaque visite, l’app envoie discrètement un petit signal (nombre de visites, durée, onglets cliqués) à son propre serveur, qui les additionne.</p>' +
+      '<h4>Indicateurs</h4><p><b>Visiteurs</b> = nombre de chargements de l’app. <b>Durée moyenne</b> = temps passé avant de quitter ou de mettre l’onglet en arrière-plan, moyenné sur les visites mesurées. <b>Onglets les plus utilisés</b> = nombre de fois où chaque onglet a été ouvert, toutes visites confondues.</p>' +
+      '<h4>Représentativité</h4><p>Compteur <b>en mémoire</b>, pas de base de données : les chiffres peuvent repartir à zéro après une mise à jour de l’app, ou se répartir entre plusieurs instances du serveur si le trafic est important — à prendre comme un ordre de grandeur, pas une mesure d’audience exacte.</p>',
     credit:
       '<img class="help-logo" src="logo-arpent.png" alt="Arpent" />' +
       '<h4>Développement</h4><p>Application conçue et développée par <b>William Limousin</b>.</p>' +
-      '<h4>Ce que fait l’application</h4><p>Douze outils autour d’une commune, d’une adresse ou d’un point de la carte : <b>Parcelles</b> cadastrales, <b>Ventes</b> (DVF), ventes <b>Autour</b> d’un point, carte de <b>Chaleur</b> des prix, zonage <b>PLU</b> et foncier constructible, <b>Estimation</b> à l’adresse, <b>Loyers</b> &amp; rendement locatif, <b>DPE</b> (performance énergétique), <b>Qualité de l’eau</b> potable, <b>Simulation d’achat</b> (résidence principale ou investissement locatif), <b>Permis</b> de construire &amp; déclarations préalables et <b>Risques</b> (naturels, technologiques, pollution des sols). Chaque onglet a sa fiche « ? ».</p>' +
+      '<h4>Ce que fait l’application</h4><p>Treize outils autour d’une commune, d’une adresse ou d’un point de la carte : <b>Parcelles</b> cadastrales, <b>Ventes</b> (DVF), ventes <b>Autour</b> d’un point, carte de <b>Chaleur</b> des prix, zonage <b>PLU</b> et foncier constructible, <b>Estimation</b> à l’adresse, <b>Loyers</b> &amp; rendement locatif, <b>DPE</b> (performance énergétique), <b>Qualité de l’eau</b> potable, <b>Simulation d’achat</b> (résidence principale ou investissement locatif), <b>Permis</b> de construire &amp; déclarations préalables, <b>Risques</b> (naturels, technologiques, pollution des sols) et <b>Stats</b> (usage de l’application). Chaque onglet a sa fiche « ? ».</p>' +
       '<h4>Données</h4><p>Sources publiques : cadastre &amp; DVF (DGFiP / Etalab), Base Adresse Nationale, API Découpage administratif (geo.api.gouv.fr), Géoportail de l’Urbanisme (IGN), Carte des loyers (DHUP / ministère du Logement), Observatoire DPE de l’ADEME, Hub’Eau — contrôle sanitaire de l’eau potable (SISE-Eaux, ARS / ministère de la Santé), base Sitadel des autorisations d’urbanisme (via Koumoul), Géorisques (BRGM / ministère de la Transition écologique) — risques naturels, technologiques et sites pollués, fonds de carte OpenStreetMap et IGN Géoportail.</p>' +
       '<h4>Avertissement</h4><p>Les données proviennent de services tiers et peuvent comporter des <b>erreurs</b>, des retards de publication ou des lacunes. Les <b>requêtes vers ces services peuvent échouer</b> temporairement (indisponibilité, limitation de débit, quota) : dans ce cas, réessayez plus tard.</p>' +
       '<p>La <b>simulation d’achat</b> et ses régimes fiscaux (LMNP, Pinel, Denormandie, Loc’Avantages, Jeanbrun, déficit foncier…) reposent sur des hypothèses <b>simplifiées</b> et un barème susceptible d’évoluer : ce sont des estimations <b>pédagogiques</b>, pas un conseil fiscal.</p>' +
@@ -1204,6 +1253,7 @@
     simu:{ collapsed:false, ready:false },
     permis:{ ref:null, layer:null, parcels:null, circle:null, refMarker:null, data:null, collapsed:false },
     risques:{ ref:null, layer:null, circle:null, refMarker:null, data:null, collapsed:false },
+    stats:{ data:null, collapsed:false },
     loc:{ mode:'commune', layer:null, communeRows:[], gridSales:[], gridCells:[], gridMeta:{},
           loyByCommune:null, data:false, indicator:'rdt', bien:'app', surf:45, months:60,
           sortKey:'rdt', sortDir:-1, dataThrough:null, collapsed:false }
@@ -1384,6 +1434,7 @@
       const ref = st.risques.ref ? 'point choisi' : 'clic sur la carte';
       return ref + '  ·  ' + selText(rqRadius);
     }
+    if (activeTab === 'stats'){ return 'Statistiques d’usage'; }
     return (selected ? selected.nom : '—') + '  ·  ' + pMin.value + '–' + pMax.value + ' m²';
   }
   function applyControlsVisibility(){
@@ -1402,10 +1453,13 @@
     grpSimu.hidden = activeTab !== 'simu';
     grpPermis.hidden = activeTab !== 'permis';
     grpRisques.hidden = activeTab !== 'risques';
+    grpStats.hidden = activeTab !== 'stats';
     document.body.classList.toggle('tab-simu', activeTab === 'simu');
-    goBtn.hidden = activeTab === 'simu' || activeTab === 'permis' || activeTab === 'risques';   // simu = live ; permis/risques = clic carte
-    // Estimation : la commune découle de l'adresse saisie, pas de champ Commune.
-    $('commune-field').hidden = activeTab === 'estim';
+    document.body.classList.toggle('tab-stats', activeTab === 'stats');
+    goBtn.hidden = activeTab === 'simu' || activeTab === 'permis' || activeTab === 'risques' || activeTab === 'stats';   // simu/stats = pas de recherche ; permis/risques = clic carte
+    resetBtn.textContent = activeTab === 'stats' ? 'Actualiser' : 'Réinitialiser';
+    // Estimation : la commune découle de l'adresse saisie ; Stats : pas de commune du tout.
+    $('commune-field').hidden = activeTab === 'estim' || activeTab === 'stats';
     $('plu-mini').hidden = !(activeTab === 'plu' && collapsed);
     $('hm-mini').hidden = !(activeTab === 'heatmap' && collapsed);
     $('loc-mini').hidden = !(activeTab === 'loc' && collapsed && st.loc.data);
@@ -1431,6 +1485,7 @@
     if (activeTab === 'permis'){ has = !!st.permis.data; label = '≡ Permis'; }
     if (activeTab === 'risques'){ has = !!st.risques.data; label = '≡ Risques'; }
     if (activeTab === 'simu'){ has = false; }
+    if (activeTab === 'stats'){ has = false; }
     fabList.hidden = !(has && !sheet.classList.contains('open'));
     fabList.textContent = label;
   }
@@ -2308,6 +2363,62 @@
     updateFab();
   }
 
+  // ================= Onglet « Stats » (usage de l'application) =================
+  // Lit /api/stats (compteur en mémoire côté serveur, voir api/stats.js et le mouchard
+  // usageTracking en fin de script). Pas de recherche : la synthèse est globale et
+  // s'actualise automatiquement pendant que l'onglet est ouvert.
+  const TAB_LABELS = {
+    parcelles:'Parcelles', dvf:'Ventes (DVF)', autour:'Autour d’un point', heatmap:'Chaleur',
+    plu:'PLU', estim:'Estimation', loc:'LOC (loyers)', dpe:'DPE', eau:'Eau',
+    simu:'Simu', permis:'Permis', risques:'Risques', stats:'Stats',
+  };
+  function stFmtDuration(ms){
+    if (!ms) return '—';
+    const s = Math.round(ms / 1000);
+    const m = Math.floor(s / 60), r = s % 60;
+    return m > 0 ? m + '<small>min</small> ' + r + '<small>s</small>' : r + '<small>s</small>';
+  }
+  function stFmtDate(iso){
+    try{ return new Date(iso).toLocaleString('fr-FR', { dateStyle:'medium', timeStyle:'short' }); }catch(e){ return iso; }
+  }
+  function renderStats(d){
+    statVisits.textContent = (d.totalVisits || 0).toLocaleString('fr-FR');
+    statAvg.innerHTML = stFmtDuration(d.avgDurationMs);
+    statSessions.textContent = (d.sessionsCounted || 0).toLocaleString('fr-FR') + ' session(s) mesurée(s)';
+
+    const tabs = (d.topTabs || []).slice(0, 12);
+    const max = tabs.length ? tabs[0].count : 0;
+    statBars.innerHTML = '';
+    if (!tabs.length){
+      statBars.innerHTML = '<div class="empty">Pas encore de données — les onglets consultés apparaîtront ici.</div>';
+    } else {
+      tabs.forEach(t => {
+        const pct = max ? Math.max(4, Math.round(t.count / max * 100)) : 0;
+        const row = document.createElement('div');
+        row.className = 'stat-bar-row';
+        row.innerHTML =
+          '<div class="lbl"><b>' + (TAB_LABELS[t.tab] || t.tab) + '</b><span>' + fmtNum(t.count) + '</span></div>'
+          + '<div class="stat-bar-track"><div class="stat-bar-fill" style="width:' + pct + '%"></div></div>';
+        statBars.appendChild(row);
+      });
+    }
+    statNote.hidden = false;
+    statNote.innerHTML = '<b>Compteur approximatif</b> — ' + (d.note || '') + ' Suivi depuis le ' + stFmtDate(d.since) + '.';
+  }
+  async function stLoad(){
+    setStatus('Chargement des statistiques…', 'loading');
+    try{
+      const r = await withTimeout('/api/stats', 15000);
+      const d = await r.json();
+      if (!r.ok) throw new Error((d && d.error) || ('Erreur serveur (' + r.status + ').'));
+      st.stats.data = d;
+      renderStats(d);
+      setStatus('Statistiques mises à jour à ' + new Date().toLocaleTimeString('fr-FR') + '.');
+    }catch(err){ setStatus(err.message || 'Erreur statistiques.', 'error'); }
+  }
+  function stEnter(){ stLoad(); }
+  setInterval(() => { if (activeTab === 'stats') stLoad(); }, 20000);   // actualisation auto pendant que l'onglet est ouvert
+
   // ---------- gestion des couches par onglet ----------
   function clearLayer(which){
     if (which === 'parcelles' && st.parcelles.layer){ map.removeLayer(st.parcelles.layer); st.parcelles.layer = null; }
@@ -2326,6 +2437,7 @@
     if (tab === 'simu') return [];
     if (tab === 'permis') return [st.permis.layer, st.permis.parcels, st.permis.circle, st.permis.refMarker];
     if (tab === 'risques') return [st.risques.layer, st.risques.circle, st.risques.refMarker];
+    if (tab === 'stats') return [];
     return [st.autour.parcLayer, st.autour.circle, st.autour.ventes, st.autour.refMarker];
   }
   function syncLayers(){
@@ -2353,6 +2465,7 @@
     else if (activeTab === 'risques' && st.risques.data) renderRisques();
     else if (activeTab === 'risques'){ closeSheet(); updateFab(); if (!st.risques.ref) collapseControls(); }
     else if (activeTab === 'simu'){ closeSheet(); updateFab(); smEnter(); }
+    else if (activeTab === 'stats'){ closeSheet(); updateFab(); stEnter(); }
     else { closeSheet(); updateFab(); }
   }
 
@@ -2438,6 +2551,8 @@
       setStatus('Risques autour du point — détail via « Risques ».');
     else if (activeTab === 'risques')
       setStatus('Clic sur la carte pour choisir le point de référence.');
+    else if (activeTab === 'stats')
+      setStatus('Chargement des statistiques…', 'loading');
     else
       setStatus('Prêt. Choisissez une commune et lancez la recherche.');
     setTimeout(() => map.invalidateSize(), 120);
@@ -2448,7 +2563,7 @@
     e.preventDefault();
     document.activeElement && document.activeElement.blur();
     suggestions.hidden = true;
-    if (activeTab === 'simu' || activeTab === 'permis' || activeTab === 'risques') return;   // simu = live ; permis/risques = clic carte
+    if (activeTab === 'simu' || activeTab === 'permis' || activeTab === 'risques' || activeTab === 'stats') return;   // simu/stats = pas de bouton « Rechercher » ; permis/risques = clic carte
     if (!selected){ setStatus('Choisissez une commune dans la liste.', 'error'); return; }
 
     if (activeTab === 'parcelles'){
@@ -2521,6 +2636,7 @@
     closeSheet();
     applyControlsVisibility();
     if (activeTab === 'autour' || activeTab === 'permis' || activeTab === 'risques'){ collapseControls(); setStatus('Clic sur la carte pour choisir le point de référence.'); }
+    else if (activeTab === 'stats') stLoad();   // le bouton devient « Actualiser » sur cet onglet
     else setStatus('Réinitialisé. Lancez une recherche.');
   });
 
