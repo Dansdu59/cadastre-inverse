@@ -4324,6 +4324,30 @@
   if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => { navigator.serviceWorker.register('/sw.js').catch(() => {}); });
   }
+
+  // ---------- statistiques d'usage (proto « Stats ») ----------
+  // Compteur de visites + durée + onglets consultés, envoyés en best-effort à /api/stats
+  // (stockage en mémoire côté serveur, voir api/stats.js). N'affecte jamais l'usage de l'app :
+  // toute erreur réseau est silencieusement ignorée.
+  (function usageTracking(){
+    const tabHits = { parcelles: 1 };   // onglet actif par défaut dès le chargement
+    const t0 = Date.now();
+    let sent = false;
+    function post(payload){
+      try{ navigator.sendBeacon('/api/stats', new Blob([JSON.stringify(payload)], { type:'application/json' })); }catch(e){}
+    }
+    post({ type:'view' });
+    tabbar.addEventListener('click', (e) => {
+      const b = e.target.closest('button[data-tab]');
+      if (b) tabHits[b.dataset.tab] = (tabHits[b.dataset.tab] || 0) + 1;
+    });
+    function flush(){
+      if (sent) return; sent = true;
+      post({ type:'end', durationMs: Date.now() - t0, tabHits });
+    }
+    document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') flush(); });
+    window.addEventListener('pagehide', flush);
+  })();
 })();
 </script>
 </body>

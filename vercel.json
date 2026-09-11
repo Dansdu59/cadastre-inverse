@@ -32,6 +32,10 @@
     "api/eau.js": {
       "maxDuration": 30,
       "memory": 1024
+    },
+    "api/stats.js": {
+      "maxDuration": 10,
+      "memory": 256
     }
   },
   "headers": [
