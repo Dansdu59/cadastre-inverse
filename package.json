@@ -8,6 +8,9 @@
     "dev": "vercel dev",
     "deploy": "vercel --prod"
   },
+  "dependencies": {
+    "firebase-admin": "14.4.0"
+  },
   "engines": {
     "node": ">=18"
   }

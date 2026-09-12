@@ -38,8 +38,8 @@
       "memory": 256
     },
     "api/annonces.js": {
-      "maxDuration": 10,
-      "memory": 256
+      "maxDuration": 20,
+      "memory": 512
     }
   },
   "headers": [
