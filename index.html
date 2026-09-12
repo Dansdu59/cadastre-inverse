@@ -326,16 +326,17 @@
   }
   .fab-list:active{ transform:scale(.96); }
 
-  /* Mode admin de l'onglet Annonces : petit bouton discret, coin opposé au FAB liste. */
+  /* Mode admin de l'onglet Annonces : petit bouton discret, en bas à droite, empilé
+     au-dessus du FAB « ≡ Liste » (même coin, pas de recouvrement quand les deux sont visibles). */
   .an-admin-fab{
-    position:fixed; left:max(12px, env(safe-area-inset-left)); z-index:1150; bottom:calc(var(--nav-h) + var(--safe-bottom) + 12px);
+    position:fixed; right:12px; z-index:1150; bottom:calc(var(--nav-h) + var(--safe-bottom) + 12px + 44px + 10px);
     width:44px; height:44px; padding:0; border-radius:50%; border:1px solid var(--border); background:rgba(255,255,255,.92);
     color:var(--muted); font-size:19px; display:flex; align-items:center; justify-content:center;
     box-shadow:0 4px 14px rgba(0,0,0,.18); cursor:pointer; opacity:.65; transition:opacity .15s;
   }
   .an-admin-fab:active{ opacity:1; }
   .an-admin-fab.on{ opacity:1; background:var(--ink); border-color:var(--ink); color:#fff; }
-  @media (min-width:640px){ .an-admin-fab{ left:max(12px, calc(50% - 280px + 12px)); } }
+  @media (min-width:640px){ .an-admin-fab{ right:max(12px, calc(50% - 280px + 12px)); } }
 
   .tabbar-wrap{
     position:fixed; left:0; right:0; bottom:0; z-index:1300;
