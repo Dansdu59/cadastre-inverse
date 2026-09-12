@@ -2845,6 +2845,7 @@
       st.annonces.loaded = true;
       anRenderMarkers();
       if (st.annonces.panelMode === 'annonces') renderAnnoncesSheet(); else anRenderLeaderboard();
+      if (activeTab === 'annonces' && st.annonces.collapsed) summaryText.textContent = summaryFor();
       setStatus(st.annonces.listings.length
         ? fmtNum(st.annonces.listings.length) + ' annonce(s) — détail via « Annonces ». Clic sur la carte pour en ajouter une.'
         : 'Aucune annonce pour l’instant. Clic sur la carte pour en ajouter une.');
