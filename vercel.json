@@ -36,6 +36,10 @@
     "api/stats.js": {
       "maxDuration": 10,
       "memory": 256
+    },
+    "api/annonces.js": {
+      "maxDuration": 10,
+      "memory": 256
     }
   },
   "headers": [

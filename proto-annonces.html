@@ -1,0 +1,468 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>Proto — Annonces partagées</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css" />
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<style>
+  :root{ --accent:#c1440e; --accent-dark:#8f3208; --ink:#1f2328; --muted:#54606b; --border:#d7dbe0; --bg:#f4f5f7; --card:#fff;
+    --ok:#1a7f37; --bad:#b3261e; --off:#8b93a0; --info:#2563eb; }
+  *{ box-sizing:border-box; }
+  [hidden]{ display:none !important; }
+  html,body{ height:100%; }
+  body{ margin:0; font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    font-size:15px; line-height:1.5; color:var(--ink); background:var(--bg); display:flex; flex-direction:column; }
+
+  header{ background:var(--card); border-bottom:1px solid var(--border); padding:12px 16px; padding-top:calc(12px + env(safe-area-inset-top));
+    display:flex; flex-wrap:wrap; align-items:baseline; gap:10px; }
+  header h1{ margin:0; font-size:16px; } header .sub{ font-size:13px; color:var(--muted); }
+  header .badge{ font-size:11px; font-weight:700; color:#fff; background:var(--muted); border-radius:4px; padding:2px 6px; text-transform:uppercase; }
+
+  .controls{ background:var(--card); border-bottom:1px solid var(--border); padding:10px 16px; display:flex; flex-wrap:wrap; gap:12px; align-items:flex-end; }
+  .field{ display:flex; flex-direction:column; gap:4px; position:relative; }
+  .field label{ font-size:11px; font-weight:700; color:var(--muted); text-transform:uppercase; letter-spacing:.03em; }
+  .field input[type=search], .field input[type=url], .field select, .field textarea{
+    font-size:16px; padding:8px 10px; border:1px solid var(--border); border-radius:8px; background:#fff; min-height:44px; font-family:inherit; }
+  .field textarea{ min-height:0; resize:vertical; }
+  #commune-field{ width:220px; } #commune-field input{ width:100%; }
+  .btn{ min-height:44px; padding:10px 16px; font-size:15px; font-weight:700; border-radius:9px; border:1px solid transparent; cursor:pointer; }
+  .btn-p{ background:var(--accent); color:#fff; } .btn-p:disabled{ background:#caa79a; cursor:default; }
+  .btn-g{ background:#fff; color:var(--ink); border-color:var(--border); }
+  .btn-danger{ background:#fde8e8; color:var(--bad); border-color:#f3c9c9; }
+  .btn.on{ background:var(--ink); color:#fff; }
+  .suggestions{ position:absolute; top:calc(100% + 4px); left:0; right:0; z-index:1200; background:#fff; border:1px solid var(--border);
+    border-radius:8px; box-shadow:0 10px 24px rgba(0,0,0,.14); max-height:260px; overflow-y:auto; }
+  .suggestions button{ display:flex; flex-direction:column; gap:1px; width:100%; text-align:left; padding:9px 10px; border:0;
+    border-bottom:1px solid var(--border); background:#fff; font-size:14px; cursor:pointer; min-height:44px; }
+  .suggestions button:hover{ background:#fdf1ea; } .suggestions .s{ font-size:12px; color:var(--muted); }
+
+  #status{ padding:8px 16px; font-size:13px; color:var(--muted); background:var(--card); border-bottom:1px solid var(--border); min-height:16px; }
+  #status.error{ color:var(--bad); } #status.ok{ color:var(--ok); }
+  #status .sp{ display:inline-block; width:12px; height:12px; border:2px solid rgba(0,0,0,.15); border-top-color:var(--accent); border-radius:50%; animation:spin .8s linear infinite; vertical-align:-2px; margin-right:6px; }
+  @keyframes spin{ to{ transform:rotate(360deg); } }
+
+  main{ flex:1 1 auto; position:relative; min-height:380px; display:flex; }
+  #map{ position:absolute; inset:0; cursor:crosshair; }
+  .legend{ position:absolute; z-index:1000; left:12px; bottom:20px; background:rgba(255,255,255,.97); border:1px solid var(--border);
+    border-radius:10px; box-shadow:0 6px 20px rgba(0,0,0,.12); font-size:12px; width:190px; padding:10px 12px; }
+  .legend .hd{ font-weight:700; margin-bottom:6px; }
+  .legend .row{ display:flex; align-items:center; gap:7px; margin:4px 0; }
+  .legend .dot{ width:14px; height:14px; border-radius:50%; flex:none; border:2px solid #fff; box-shadow:0 0 0 1px rgba(0,0,0,.15); }
+
+  .panel{ position:absolute; z-index:1000; right:12px; top:12px; width:340px; max-height:calc(100% - 24px);
+    background:rgba(255,255,255,.98); border:1px solid var(--border); border-radius:12px; box-shadow:0 6px 20px rgba(0,0,0,.12);
+    display:flex; flex-direction:column; }
+  .panel .hd{ padding:10px 14px; border-bottom:1px solid var(--border); font-weight:700; display:flex; justify-content:space-between; align-items:center; }
+  .panel .hd .count{ font-weight:400; color:var(--muted); font-size:13px; }
+  .panel .bd{ overflow-y:auto; padding:8px 10px; }
+  .panel .ft{ padding:8px 10px; border-top:1px solid var(--border); }
+  .panel .ft .btn{ width:100%; }
+
+  .an-card{ border:1px solid var(--border); border-radius:10px; padding:10px 12px; margin-bottom:8px; background:#fff; }
+  .an-hd{ display:flex; align-items:center; gap:7px; flex-wrap:wrap; }
+  .an-chip{ font-size:10.5px; font-weight:800; color:#fff; border-radius:5px; padding:2px 7px; }
+  .an-chip.vente{ background:var(--accent); } .an-chip.location{ background:var(--info); }
+  .an-chip.agence{ background:#eef0f2; color:var(--ink); } .an-chip.perso{ background:#eef0f2; color:var(--ink); }
+  .an-chip.verified{ background:var(--ok); }
+  .an-chip.off{ background:#eef0f2; color:var(--muted); }
+  .an-addr{ font-weight:700; font-size:13.5px; margin-top:5px; }
+  .an-date{ font-size:11.5px; color:var(--muted); margin-top:2px; }
+  .an-note{ font-size:13px; margin-top:5px; white-space:pre-wrap; }
+  .an-link{ font-size:13px; margin-top:5px; }
+  .an-link a{ color:var(--accent-dark); font-weight:700; }
+  .an-votes{ display:flex; gap:6px; margin-top:8px; }
+  .an-votes button{ flex:1; min-height:40px; font-size:12.5px; font-weight:700; border-radius:8px; border:1px solid var(--border); background:#fff; cursor:pointer; }
+  .an-votes button.ok{ color:var(--ok); } .an-votes button.bad{ color:var(--bad); }
+  .an-votes button:disabled{ opacity:.5; cursor:default; }
+  .an-votes button:not(:disabled):active{ background:#f4f5f7; }
+  .an-actions{ display:flex; gap:6px; margin-top:6px; }
+  .an-actions button{ flex:1; min-height:36px; font-size:12px; font-weight:700; border-radius:8px; border:1px solid #f3c9c9; background:#fde8e8; color:var(--bad); cursor:pointer; }
+  .an-fly{ background:none; border:0; color:var(--accent-dark); font-weight:700; font-size:12px; cursor:pointer; padding:0; }
+  .empty{ padding:20px 10px; text-align:center; color:var(--muted); font-size:13.5px; }
+
+  .an-icon{ background:transparent; border:0; }
+  .an-dot{ width:28px; height:28px; border-radius:50%; display:flex; align-items:center; justify-content:center;
+    color:#fff; font-weight:800; font-size:12px; border:2px solid #fff; box-shadow:0 2px 6px rgba(0,0,0,.35); position:relative; }
+  .an-badge{ position:absolute; top:-6px; right:-6px; width:16px; height:16px; border-radius:50%; background:var(--ok);
+    color:#fff; font-size:10px; line-height:14px; text-align:center; border:2px solid #fff; }
+
+  .an-pop{ font-size:13px; min-width:200px; }
+  .an-pop-hd{ font-size:13.5px; } .an-pop .an-verified{ color:var(--ok); font-weight:700; }
+  .an-pop-addr{ font-weight:700; margin-top:3px; } .an-pop-date{ color:var(--muted); font-size:11.5px; margin-top:4px; }
+  .an-pop-note{ margin-top:5px; white-space:pre-wrap; }
+  .an-pop-votes{ display:flex; gap:6px; margin-top:8px; }
+  .an-pop-votes button{ flex:1; min-height:38px; font-size:11.5px; font-weight:700; border-radius:7px; border:1px solid var(--border); background:#fff; cursor:pointer; }
+  .an-pop-votes button.ok{ color:var(--ok); } .an-pop-votes button.bad{ color:var(--bad); }
+  .an-pop-votes button:disabled{ opacity:.5; cursor:default; }
+  .an-del{ margin-top:6px; width:100%; min-height:34px; font-size:11.5px; font-weight:700; border-radius:7px; border:1px solid #f3c9c9; background:#fde8e8; color:var(--bad); cursor:pointer; }
+
+  .modal-bg{ position:fixed; inset:0; z-index:2000; background:rgba(20,22,26,.45); display:flex; align-items:flex-end; justify-content:center; }
+  .modal-card{ width:100%; max-width:480px; background:#fff; border-radius:16px 16px 0 0; padding:18px 18px calc(18px + env(safe-area-inset-bottom));
+    max-height:88vh; overflow-y:auto; }
+  @media (min-width:600px){ .modal-bg{ align-items:center; } .modal-card{ border-radius:16px; max-height:80vh; } }
+  .modal-card h3{ margin:0 0 12px; font-size:17px; }
+  .modal-card .field{ margin-bottom:12px; width:100%; }
+  .seg{ display:flex; gap:6px; background:var(--bg); border:1px solid var(--border); border-radius:10px; padding:4px; }
+  .seg button{ flex:1; min-height:42px; border:0; border-radius:8px; background:transparent; font:inherit; font-weight:700; color:var(--muted); cursor:pointer; }
+  .seg button[aria-pressed="true"]{ background:var(--accent); color:#fff; }
+  .modal-hint{ font-size:12.5px; color:var(--muted); margin:4px 0 12px; }
+  .modal-actions{ display:flex; gap:10px; margin-top:6px; }
+  .modal-actions .btn{ flex:1; }
+
+  @media (max-width:820px){
+    main{ flex-direction:column; }
+    #map{ position:relative; height:52vh; }
+    .panel{ position:relative; inset:auto; width:auto; margin:10px; max-height:none; flex:1 1 auto; }
+    .legend{ left:10px; bottom:10px; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <span class="badge">Proto</span>
+  <h1>Annonces partagées</h1>
+  <span class="sub">Signalez un bien à vendre ou à louer · hors app officielle</span>
+</header>
+
+<div class="controls">
+  <div class="field" id="commune-field">
+    <label for="commune">Commune (pour centrer la carte)</label>
+    <input id="commune" type="search" autocomplete="off" placeholder="Ex : Laval" />
+    <div class="suggestions" id="suggestions" hidden></div>
+  </div>
+  <div class="field">
+    <label for="filter-type">Filtrer</label>
+    <select id="filter-type">
+      <option value="tous" selected>Tous</option>
+      <option value="vente">Vente</option>
+      <option value="location">Location</option>
+    </select>
+  </div>
+  <button class="btn btn-g" id="admin-toggle" type="button">Mode admin</button>
+</div>
+
+<div id="status">Clic sur la carte pour signaler un bien à vendre ou à louer.</div>
+
+<main>
+  <div id="map"></div>
+
+  <div class="legend">
+    <div class="hd">Légende</div>
+    <div class="row"><span class="dot" style="background:var(--ok)"></span> Actif (&lt; 2 mois)</div>
+    <div class="row"><span class="dot" style="background:var(--off)"></span> Ancien (&gt; 2 mois)</div>
+    <div class="row"><span class="dot" style="background:var(--ok);display:flex;align-items:center;justify-content:center;font-size:9px;color:#fff;">✓</span> Vérifié (5 « OK »)</div>
+    <div class="row"><span style="width:14px;text-align:center;font-weight:800;color:var(--accent)">V</span> Vente &nbsp; <span style="width:14px;text-align:center;font-weight:800;color:var(--info)">L</span> Location</div>
+  </div>
+
+  <div class="panel">
+    <div class="hd"><span>Annonces</span><span class="count" id="panel-count">—</span></div>
+    <div class="bd" id="panel-bd"><div class="empty">Chargement…</div></div>
+    <div class="ft"><button class="btn btn-g" id="refresh" type="button">Actualiser</button></div>
+  </div>
+</main>
+
+<div class="modal-bg" id="modal" hidden>
+  <div class="modal-card">
+    <h3>Nouvelle annonce</h3>
+    <div class="field">
+      <label>Type de bien</label>
+      <div class="seg" id="new-type">
+        <button type="button" data-v="vente" aria-pressed="true">Vente</button>
+        <button type="button" data-v="location" aria-pressed="false">Location</button>
+      </div>
+    </div>
+    <div class="field">
+      <label>Source de l'information</label>
+      <div class="seg" id="new-source">
+        <button type="button" data-v="agence" aria-pressed="true">Agence</button>
+        <button type="button" data-v="perso" aria-pressed="false">Info personnelle</button>
+      </div>
+    </div>
+    <div class="field" id="f-url">
+      <label for="new-url">Lien de l'annonce</label>
+      <input id="new-url" type="url" placeholder="https://..." />
+    </div>
+    <div class="field" id="f-note" hidden>
+      <label for="new-note">Note (optionnel)</label>
+      <textarea id="new-note" rows="3" maxlength="300" placeholder="Ex : panneau « à vendre » vu devant l'immeuble"></textarea>
+    </div>
+    <div class="modal-hint" id="new-addr">Point sélectionné : —</div>
+    <div class="modal-actions">
+      <button type="button" class="btn btn-g" id="new-cancel">Annuler</button>
+      <button type="button" class="btn btn-p" id="new-submit">Publier</button>
+    </div>
+  </div>
+</div>
+
+<script>
+(function(){
+  const $ = (id) => document.getElementById(id);
+  const API = /^(localhost|127\.0\.0\.1)$/.test(location.hostname) ? '' : 'https://cadastre-inverse.vercel.app';
+  const TWO_MONTHS_MS = 60 * 24 * 3600 * 1000;
+
+  const communeInput = $('commune'), suggestions = $('suggestions'), statusEl = $('status');
+  const filterType = $('filter-type'), adminBtn = $('admin-toggle');
+  const panelBd = $('panel-bd'), panelCount = $('panel-count'), refreshBtn = $('refresh');
+  const modal = $('modal'), newAddr = $('new-addr'), newUrl = $('new-url'), newNote = $('new-note');
+  const fUrl = $('f-url'), fNote = $('f-note');
+
+  let listings = [];
+  let markers = new Map();     // id -> L.marker
+  let adminKey = '';
+  let newType = 'vente', newSource = 'agence';
+  let pendingLatLng = null, pendingLabel = null;
+  const votedIds = new Set(JSON.parse(localStorage.getItem('an_voted') || '[]'));
+  function saveVoted(){ try{ localStorage.setItem('an_voted', JSON.stringify([...votedIds])); }catch(e){} }
+
+  function setStatus(msg, kind){
+    statusEl.className = kind || '';
+    statusEl.innerHTML = (kind === 'loading' ? '<span class="sp"></span>' : '') + (msg || '');
+  }
+  function esc(s){
+    return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c]));
+  }
+  function fmtDate(iso){
+    const d = new Date(iso);
+    return isNaN(d) ? '—' : d.toLocaleDateString('fr-FR', { day:'2-digit', month:'2-digit', year:'numeric' });
+  }
+  function isActive(l){ return (Date.now() - new Date(l.createdAt).getTime()) < TWO_MONTHS_MS; }
+
+  // ---- carte ----
+  const map = L.map('map').setView([46.6, 2.4], 6);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom:19, attribution:'&copy; OpenStreetMap' }).addTo(map);
+  map.attributionControl.setPosition('bottomright');
+  map.on('click', (e) => openModal(e.latlng));
+
+  // ---- autocomplétion commune (pour centrer la carte uniquement) ----
+  let debounce = null;
+  communeInput.addEventListener('input', () => {
+    const q = communeInput.value.trim();
+    clearTimeout(debounce);
+    if (q.length < 2){ suggestions.hidden = true; return; }
+    debounce = setTimeout(async () => {
+      try{
+        const r = await fetch('https://geo.api.gouv.fr/communes?nom=' + encodeURIComponent(q) + '&fields=nom,code,codesPostaux,departement,centre&boost=population&limit=10');
+        if (r.ok) renderSug(await r.json());
+      }catch(e){}
+    }, 260);
+  });
+  document.addEventListener('click', (e) => { if (!suggestions.contains(e.target) && e.target !== communeInput) suggestions.hidden = true; });
+  function renderSug(list){
+    suggestions.innerHTML = '';
+    if (!list || !list.length){ suggestions.hidden = true; return; }
+    list.forEach(c => {
+      const cp = (c.codesPostaux && c.codesPostaux[0]) || '', dep = c.departement ? c.departement.nom : '';
+      const b = document.createElement('button'); b.type = 'button';
+      b.innerHTML = '<span>' + esc(c.nom) + '</span><span class="s">' + esc([cp, dep].filter(Boolean).join(' · ')) + '</span>';
+      b.onclick = () => {
+        communeInput.value = c.nom + (cp ? ' (' + cp + ')' : '');
+        suggestions.hidden = true;
+        if (c.centre && c.centre.coordinates) map.setView([c.centre.coordinates[1], c.centre.coordinates[0]], 13);
+      };
+      suggestions.appendChild(b);
+    });
+    suggestions.hidden = false;
+  }
+
+  // ---- segmented controls du formulaire ----
+  $('new-type').addEventListener('click', (e) => {
+    const b = e.target.closest('button[data-v]'); if (!b) return;
+    newType = b.dataset.v;
+    [...$('new-type').children].forEach(x => x.setAttribute('aria-pressed', x === b ? 'true' : 'false'));
+  });
+  $('new-source').addEventListener('click', (e) => {
+    const b = e.target.closest('button[data-v]'); if (!b) return;
+    newSource = b.dataset.v;
+    [...$('new-source').children].forEach(x => x.setAttribute('aria-pressed', x === b ? 'true' : 'false'));
+    fUrl.hidden = newSource !== 'agence';
+    fNote.hidden = newSource !== 'perso';
+  });
+
+  // ---- nouvelle annonce ----
+  async function openModal(latlng){
+    pendingLatLng = latlng; pendingLabel = null;
+    newUrl.value = ''; newNote.value = '';
+    newType = 'vente'; newSource = 'agence';
+    [...$('new-type').children].forEach((x, i) => x.setAttribute('aria-pressed', i === 0 ? 'true' : 'false'));
+    [...$('new-source').children].forEach((x, i) => x.setAttribute('aria-pressed', i === 0 ? 'true' : 'false'));
+    fUrl.hidden = false; fNote.hidden = true;
+    newAddr.textContent = 'Point sélectionné : ' + latlng.lat.toFixed(5) + ', ' + latlng.lng.toFixed(5) + ' — recherche de l’adresse…';
+    modal.hidden = false;
+    try{
+      const r = await fetch('https://api-adresse.data.gouv.fr/reverse/?lon=' + latlng.lng + '&lat=' + latlng.lat + '&limit=1');
+      const d = await r.json();
+      const f = d.features && d.features[0];
+      pendingLabel = f ? f.properties.label : null;
+      newAddr.textContent = 'Point sélectionné : ' + (pendingLabel || (latlng.lat.toFixed(5) + ', ' + latlng.lng.toFixed(5)));
+    }catch(e){ /* garde le fallback lat/lon */ }
+  }
+  function closeModal(){ modal.hidden = true; pendingLatLng = null; }
+  $('new-cancel').addEventListener('click', closeModal);
+  $('modal').addEventListener('click', (e) => { if (e.target === modal) closeModal(); });
+
+  $('new-submit').addEventListener('click', async () => {
+    if (!pendingLatLng) return;
+    const body = { action:'create', lat:pendingLatLng.lat, lon:pendingLatLng.lng, type:newType, source:newSource, label:pendingLabel };
+    if (newSource === 'agence') {
+      const url = newUrl.value.trim();
+      if (!/^https?:\/\//i.test(url)) { alert('Merci de renseigner un lien d’annonce valide (commençant par http:// ou https://).'); return; }
+      body.url = url;
+    } else {
+      body.note = newNote.value.trim();
+    }
+    const btn = $('new-submit'); btn.disabled = true;
+    try{
+      const r = await fetch(API + '/api/annonces', { method:'POST', headers:{ 'Content-Type':'application/json' }, body:JSON.stringify(body) });
+      const d = await r.json();
+      if (!r.ok) throw new Error(d.error || 'Erreur serveur.');
+      closeModal();
+      setStatus('Annonce publiée. Merci pour votre contribution !', 'ok');
+      await loadListings();
+    }catch(err){ alert(err.message || 'Erreur.'); }
+    finally{ btn.disabled = false; }
+  });
+
+  // ---- vote / suppression ----
+  async function vote(id, v){
+    if (votedIds.has(id)) return;
+    votedIds.add(id); saveVoted();
+    try{
+      const r = await fetch(API + '/api/annonces', { method:'POST', headers:{ 'Content-Type':'application/json' }, body:JSON.stringify({ action:'vote', id, vote:v }) });
+      const d = await r.json();
+      if (!r.ok) throw new Error(d.error || 'Erreur.');
+      setStatus(d.removed ? 'Annonce retirée (trop de signalements « mauvaise info »).' : 'Vote enregistré, merci !', 'ok');
+      await loadListings();
+    }catch(err){ setStatus(err.message || 'Erreur.', 'error'); }
+  }
+  async function adminDelete(id){
+    if (!confirm('Supprimer définitivement cette annonce ?')) return;
+    try{
+      const r = await fetch(API + '/api/annonces', { method:'POST', headers:{ 'Content-Type':'application/json' }, body:JSON.stringify({ action:'delete', id, adminKey }) });
+      const d = await r.json();
+      if (!r.ok) throw new Error(d.error || 'Erreur.');
+      setStatus('Annonce supprimée.', 'ok');
+      await loadListings();
+    }catch(err){ setStatus(err.message || 'Erreur.', 'error'); }
+  }
+
+  adminBtn.addEventListener('click', () => {
+    if (adminKey){ adminKey = ''; adminBtn.classList.remove('on'); adminBtn.textContent = 'Mode admin'; renderPanel(); renderMarkers(); return; }
+    const pw = prompt('Mot de passe admin :');
+    if (pw){ adminKey = pw; adminBtn.classList.add('on'); adminBtn.textContent = 'Admin actif'; renderPanel(); renderMarkers(); }
+  });
+  filterType.addEventListener('change', () => { renderPanel(); renderMarkers(); });
+  refreshBtn.addEventListener('click', loadListings);
+
+  // ---- rendu ----
+  function filtered(){
+    return listings.filter(l => filterType.value === 'tous' || l.type === filterType.value);
+  }
+  function markerIcon(l){
+    const color = isActive(l) ? '#1a7f37' : '#8b93a0';
+    const letter = l.type === 'location' ? 'L' : 'V';
+    const badge = l.verified ? '<span class="an-badge">✓</span>' : '';
+    return L.divIcon({
+      className:'an-icon',
+      html:'<div class="an-dot" style="background:' + color + '">' + letter + badge + '</div>',
+      iconSize:[28,28], iconAnchor:[14,14], popupAnchor:[0,-14],
+    });
+  }
+  function popupHtml(l){
+    const typeLbl = l.type === 'location' ? 'Location' : 'Vente';
+    const srcLbl = l.source === 'agence' ? 'Agence' : 'Info personnelle';
+    const already = votedIds.has(l.id);
+    return '<div class="an-pop">'
+      + '<div class="an-pop-hd"><b>' + typeLbl + '</b> · ' + srcLbl + (l.verified ? ' · <span class="an-verified">✓ Vérifié</span>' : '') + (!isActive(l) ? ' · <span style="color:var(--muted)">ancienne</span>' : '') + '</div>'
+      + (l.label ? '<div class="an-pop-addr">' + esc(l.label) + '</div>' : '')
+      + (l.url ? '<div><a href="' + esc(l.url) + '" target="_blank" rel="noopener">Voir l’annonce ↗</a></div>' : '')
+      + (l.note ? '<div class="an-pop-note">' + esc(l.note) + '</div>' : '')
+      + '<div class="an-pop-date">Enregistrée le ' + fmtDate(l.createdAt) + '</div>'
+      + '<div class="an-pop-votes">'
+      +   '<button type="button" class="ok" data-id="' + l.id + '" data-v="ok"' + (already ? ' disabled' : '') + '>👍 Info correcte (' + l.ok + ')</button>'
+      +   '<button type="button" class="bad" data-id="' + l.id + '" data-v="bad"' + (already ? ' disabled' : '') + '>👎 Mauvaise info (' + l.bad + ')</button>'
+      + '</div>'
+      + (adminKey ? '<button type="button" class="an-del" data-id="' + l.id + '">🗑 Supprimer (admin)</button>' : '')
+      + '</div>';
+  }
+  function renderMarkers(){
+    markers.forEach(m => map.removeLayer(m));
+    markers.clear();
+    filtered().forEach(l => {
+      const m = L.marker([l.lat, l.lon], { icon: markerIcon(l) });
+      m.bindPopup(() => popupHtml(l));
+      m.on('popupopen', (e) => {
+        const el = e.popup.getElement();
+        el.querySelectorAll('.an-pop-votes button').forEach(b => b.addEventListener('click', () => vote(b.dataset.id, b.dataset.v)));
+        const del = el.querySelector('.an-del');
+        if (del) del.addEventListener('click', () => adminDelete(del.dataset.id));
+      });
+      m.addTo(map);
+      markers.set(l.id, m);
+    });
+  }
+  function cardHtml(l){
+    const already = votedIds.has(l.id);
+    const active = isActive(l);
+    return '<div class="an-card" data-id="' + l.id + '">'
+      + '<div class="an-hd">'
+      +   '<span class="an-chip ' + l.type + '">' + (l.type === 'location' ? 'Location' : 'Vente') + '</span>'
+      +   '<span class="an-chip ' + l.source + '">' + (l.source === 'agence' ? 'Agence' : 'Info perso') + '</span>'
+      +   (l.verified ? '<span class="an-chip verified">✓ Vérifié</span>' : '')
+      +   (!active ? '<span class="an-chip off">Ancienne</span>' : '')
+      + '</div>'
+      + (l.label ? '<div class="an-addr">' + esc(l.label) + '</div>' : '')
+      + '<div class="an-date">Enregistrée le ' + fmtDate(l.createdAt) + '</div>'
+      + (l.url ? '<div class="an-link"><a href="' + esc(l.url) + '" target="_blank" rel="noopener">Voir l’annonce ↗</a></div>' : '')
+      + (l.note ? '<div class="an-note">' + esc(l.note) + '</div>' : '')
+      + '<div class="an-votes">'
+      +   '<button type="button" class="ok" data-v="ok"' + (already ? ' disabled' : '') + '>👍 OK (' + l.ok + ')</button>'
+      +   '<button type="button" class="bad" data-v="bad"' + (already ? ' disabled' : '') + '>👎 Faux (' + l.bad + ')</button>'
+      + '</div>'
+      + '<div style="margin-top:6px"><button type="button" class="an-fly">Centrer sur la carte</button></div>'
+      + (adminKey ? '<div class="an-actions"><button type="button" class="an-admin-del">🗑 Supprimer (admin)</button></div>' : '')
+      + '</div>';
+  }
+  function renderPanel(){
+    const rows = filtered();
+    panelCount.textContent = rows.length + ' annonce(s)';
+    panelBd.innerHTML = '';
+    if (!rows.length){ panelBd.innerHTML = '<div class="empty">Aucune annonce pour l’instant — cliquez sur la carte pour en ajouter une.</div>'; return; }
+    rows.forEach(l => {
+      const el = document.createElement('div');
+      el.innerHTML = cardHtml(l);
+      const card = el.firstElementChild;
+      card.querySelectorAll('.an-votes button').forEach(b => b.addEventListener('click', () => vote(l.id, b.dataset.v)));
+      card.querySelector('.an-fly').addEventListener('click', () => {
+        map.setView([l.lat, l.lon], 16);
+        const m = markers.get(l.id);
+        if (m) m.openPopup();
+      });
+      const del = card.querySelector('.an-admin-del');
+      if (del) del.addEventListener('click', () => adminDelete(l.id));
+      panelBd.appendChild(card);
+    });
+  }
+
+  async function loadListings(){
+    setStatus('Chargement des annonces…', 'loading');
+    try{
+      const r = await fetch(API + '/api/annonces', { cache:'no-store' });
+      const d = await r.json();
+      if (!r.ok) throw new Error(d.error || 'Erreur serveur.');
+      listings = d.listings || [];
+      renderMarkers();
+      renderPanel();
+      setStatus(listings.length ? fmtNum(listings.length) + ' annonce(s) au total. Clic sur la carte pour en ajouter une.' : 'Aucune annonce pour l’instant. Clic sur la carte pour en ajouter une.');
+    }catch(err){ setStatus(err.message || 'Erreur de chargement.', 'error'); }
+  }
+  function fmtNum(n){ return Number(n).toLocaleString('fr-FR'); }
+
+  loadListings();
+  setInterval(loadListings, 30000);   // actualisation auto pour voir les annonces des autres visiteurs
+})();
+</script>
+</body>
+</html>
