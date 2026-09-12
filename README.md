@@ -1,4 +1,4 @@
-# Cadastre Inversé — recherche de parcelles cadastrales
+# ARPENT — recherche de parcelles cadastrales
 
 Application web : à partir d'une **commune française** et d'une **fourchette de surface**,
 localise sur une carte interactive toutes les parcelles cadastrales correspondantes.

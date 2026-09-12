@@ -1,7 +1,7 @@
 {
-  "name": "Recherche de parcelles cadastrales",
-  "short_name": "Parcelles",
-  "description": "Localiser les parcelles cadastrales d'une commune française par fourchette de surface.",
+  "name": "ARPENT",
+  "short_name": "ARPENT",
+  "description": "Cadastre, transactions, simulations et plus — treize outils autour d'une commune, d'une adresse ou d'un point de la carte.",
   "lang": "fr",
   "start_url": "/",
   "scope": "/",
