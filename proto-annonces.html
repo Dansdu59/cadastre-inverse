@@ -19,6 +19,9 @@
     display:flex; flex-wrap:wrap; align-items:baseline; gap:10px; }
   header h1{ margin:0; font-size:16px; } header .sub{ font-size:13px; color:var(--muted); }
   header .badge{ font-size:11px; font-weight:700; color:#fff; background:var(--muted); border-radius:4px; padding:2px 6px; text-transform:uppercase; }
+  .pseudo-pill{ margin-left:auto; font-size:12.5px; font-weight:700; color:var(--ink); background:#eef0f2; border:1px solid var(--border);
+    border-radius:20px; padding:6px 12px; cursor:pointer; min-height:32px; white-space:nowrap; }
+  .pseudo-pill:active{ background:#e4e7ea; }
 
   .controls{ background:var(--card); border-bottom:1px solid var(--border); padding:10px 16px; display:flex; flex-wrap:wrap; gap:12px; align-items:flex-end; }
   .field{ display:flex; flex-direction:column; gap:4px; position:relative; }
@@ -60,11 +63,24 @@
   .panel{ position:absolute; z-index:1000; right:12px; top:12px; width:340px; max-height:calc(100% - 24px);
     background:rgba(255,255,255,.98); border:1px solid var(--border); border-radius:12px; box-shadow:0 6px 20px rgba(0,0,0,.12);
     display:flex; flex-direction:column; }
-  .panel .hd{ padding:10px 14px; border-bottom:1px solid var(--border); font-weight:700; display:flex; justify-content:space-between; align-items:center; }
-  .panel .hd .count{ font-weight:400; color:var(--muted); font-size:13px; }
+  .panel .hd{ padding:8px 10px; border-bottom:1px solid var(--border); display:flex; justify-content:space-between; align-items:center; gap:8px; }
+  .panel .hd .count{ font-weight:400; color:var(--muted); font-size:12.5px; white-space:nowrap; }
   .panel .bd{ overflow-y:auto; padding:8px 10px; }
   .panel .ft{ padding:8px 10px; border-top:1px solid var(--border); }
   .panel .ft .btn{ width:100%; }
+  .panel-tabs{ display:flex; gap:4px; }
+  .ptab{ font-size:12.5px; font-weight:700; color:var(--muted); background:transparent; border:0; border-radius:7px; padding:7px 10px; cursor:pointer; min-height:32px; }
+  .ptab.on{ background:var(--accent); color:#fff; }
+
+  .lb-row{ display:flex; align-items:center; gap:8px; padding:9px 6px; border-bottom:1px solid var(--border); font-size:13px; }
+  .lb-row.me{ background:#fdf1ea; border-radius:8px; }
+  .lb-rank{ font-weight:800; color:var(--muted); width:24px; flex:none; text-align:center; }
+  .lb-pseudo{ flex:1; font-weight:700; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .lb-pseudo small{ color:var(--muted); font-weight:600; }
+  .lb-pts{ font-weight:800; color:var(--accent-dark); flex:none; font-size:12.5px; }
+  .lb-badges{ display:flex; gap:2px; flex:none; }
+  .lb-badge{ font-size:14px; }
+  .an-author{ font-size:11.5px; color:var(--muted); margin-top:2px; }
 
   .an-card{ border:1px solid var(--border); border-radius:10px; padding:10px 12px; margin-bottom:8px; background:#fff; }
   .an-hd{ display:flex; align-items:center; gap:7px; flex-wrap:wrap; }
@@ -131,6 +147,7 @@
   <span class="badge">Proto</span>
   <h1>Annonces partagées</h1>
   <span class="sub">Signalez un bien à vendre ou à louer · hors app officielle</span>
+  <button type="button" id="pseudo-btn" class="pseudo-pill">👤 Définir un pseudo</button>
 </header>
 
 <div class="controls">
@@ -165,7 +182,13 @@
   </div>
 
   <div class="panel">
-    <div class="hd"><span>Annonces</span><span class="count" id="panel-count">—</span></div>
+    <div class="hd">
+      <div class="panel-tabs">
+        <button type="button" class="ptab on" id="tab-annonces">Annonces</button>
+        <button type="button" class="ptab" id="tab-classement">🏆 Classement</button>
+      </div>
+      <span class="count" id="panel-count">—</span>
+    </div>
     <div class="bd" id="panel-bd"><div class="empty">Chargement…</div></div>
     <div class="ft"><button class="btn btn-g" id="refresh" type="button">Actualiser</button></div>
   </div>
@@ -211,18 +234,42 @@
   const TWO_MONTHS_MS = 60 * 24 * 3600 * 1000;
 
   const communeInput = $('commune'), suggestions = $('suggestions'), statusEl = $('status');
-  const filterType = $('filter-type'), adminBtn = $('admin-gear');
+  const filterType = $('filter-type'), adminBtn = $('admin-gear'), pseudoBtn = $('pseudo-btn');
   const panelBd = $('panel-bd'), panelCount = $('panel-count'), refreshBtn = $('refresh');
+  const tabAnnonces = $('tab-annonces'), tabClassement = $('tab-classement');
   const modal = $('modal'), newAddr = $('new-addr'), newUrl = $('new-url'), newNote = $('new-note');
   const fUrl = $('f-url'), fNote = $('f-note');
 
   let listings = [];
+  let contributors = [];
+  let panelMode = 'annonces';   // 'annonces' | 'classement'
   let markers = new Map();     // id -> L.marker
   let adminKey = '';
   let newType = 'vente', newSource = 'agence';
   let pendingLatLng = null, pendingLabel = null;
   const votedIds = new Set(JSON.parse(localStorage.getItem('an_voted') || '[]'));
   function saveVoted(){ try{ localStorage.setItem('an_voted', JSON.stringify([...votedIds])); }catch(e){} }
+
+  // ---- pseudo (stocké sur cet appareil — pas un compte, juste une attribution) ----
+  let pseudo = '';
+  try{ pseudo = localStorage.getItem('an_pseudo') || ''; }catch(e){}
+  function updatePseudoUI(){ pseudoBtn.textContent = pseudo ? '👤 ' + pseudo : '👤 Définir un pseudo'; }
+  function savePseudo(p){ pseudo = p; try{ localStorage.setItem('an_pseudo', p); }catch(e){} updatePseudoUI(); }
+  updatePseudoUI();
+  // Demande le pseudo au premier partage/vote seulement (jamais imposé juste pour consulter).
+  async function ensurePseudo(){
+    if (pseudo) return pseudo;
+    const p = await askDialog({ title:'Choisissez un pseudo', placeholder:'Ex : Jean53', confirmLabel:'Continuer' });
+    const clean = (p || '').trim();
+    if (clean.length < 2){ setStatus('Un pseudo (2 caractères minimum) est nécessaire pour contribuer.', 'error'); return null; }
+    savePseudo(clean.slice(0, 24));
+    return pseudo;
+  }
+  pseudoBtn.addEventListener('click', async () => {
+    const p = await askDialog({ title:'Votre pseudo', placeholder:'Ex : Jean53', confirmLabel:'Enregistrer', value:pseudo });
+    const clean = (p || '').trim();
+    if (clean.length >= 2) savePseudo(clean.slice(0, 24));
+  });
 
   function setStatus(msg, kind){
     statusEl.className = kind || '';
@@ -233,17 +280,17 @@
   }
   // Petite boîte de dialogue maison (texte ou confirmation) : certains navigateurs/webviews
   // bloquent window.prompt()/confirm(), donc on ne s'appuie pas dessus.
-  function askDialog({ title, placeholder = null, isPassword = false, confirmLabel = 'Valider' }){
+  function askDialog({ title, placeholder = null, isPassword = false, confirmLabel = 'Valider', value = '' }){
     return new Promise((resolve) => {
       const bg = document.createElement('div');
       bg.className = 'modal-bg';
       bg.innerHTML = '<div class="modal-card"><h3>' + esc(title) + '</h3>'
-        + (placeholder != null ? '<div class="field"><input type="' + (isPassword ? 'password' : 'text') + '" id="ask-input" placeholder="' + esc(placeholder) + '" /></div>' : '')
+        + (placeholder != null ? '<div class="field"><input type="' + (isPassword ? 'password' : 'text') + '" id="ask-input" placeholder="' + esc(placeholder) + '" value="' + esc(value) + '" /></div>' : '')
         + '<div class="modal-actions"><button type="button" class="btn btn-g" data-a="cancel">Annuler</button><button type="button" class="btn btn-p" data-a="ok">' + esc(confirmLabel) + '</button></div>'
         + '</div>';
       document.body.appendChild(bg);
       const input = bg.querySelector('#ask-input');
-      if (input) setTimeout(() => input.focus(), 50);
+      if (input) setTimeout(() => { input.focus(); input.select(); }, 50);
       function close(v){ bg.remove(); resolve(v); }
       bg.addEventListener('click', (e) => { if (e.target === bg) close(null); });
       bg.querySelector('[data-a="cancel"]').addEventListener('click', () => close(null));
@@ -334,7 +381,9 @@
 
   $('new-submit').addEventListener('click', async () => {
     if (!pendingLatLng) return;
-    const body = { action:'create', lat:pendingLatLng.lat, lon:pendingLatLng.lng, type:newType, source:newSource, label:pendingLabel };
+    const p = await ensurePseudo();
+    if (!p) return;
+    const body = { action:'create', pseudo:p, lat:pendingLatLng.lat, lon:pendingLatLng.lng, type:newType, source:newSource, label:pendingLabel };
     if (newSource === 'agence') {
       const url = newUrl.value.trim();
       if (!/^https?:\/\//i.test(url)) { setStatus('Merci de renseigner un lien d’annonce valide (commençant par http:// ou https://).', 'error'); return; }
@@ -357,9 +406,11 @@
   // ---- vote / suppression ----
   async function vote(id, v){
     if (votedIds.has(id)) return;
+    const p = await ensurePseudo();
+    if (!p) return;
     votedIds.add(id); saveVoted();
     try{
-      const r = await fetch(API + '/api/annonces', { method:'POST', headers:{ 'Content-Type':'application/json' }, body:JSON.stringify({ action:'vote', id, vote:v }) });
+      const r = await fetch(API + '/api/annonces', { method:'POST', headers:{ 'Content-Type':'application/json' }, body:JSON.stringify({ action:'vote', id, vote:v, pseudo:p }) });
       const d = await r.json();
       if (!r.ok) throw new Error(d.error || 'Erreur.');
       setStatus(d.removed ? 'Annonce retirée (trop de signalements « mauvaise info »).' : 'Vote enregistré, merci !', 'ok');
@@ -398,7 +449,7 @@
     finally{ adminBtn.disabled = false; }
   });
   filterType.addEventListener('change', () => { renderPanel(); renderMarkers(); });
-  refreshBtn.addEventListener('click', loadListings);
+  refreshBtn.addEventListener('click', () => { if (panelMode === 'classement') loadLeaderboard(); else loadListings(); });
 
   // ---- rendu ----
   function filtered(){
@@ -423,7 +474,7 @@
       + (l.label ? '<div class="an-pop-addr">' + esc(l.label) + '</div>' : '')
       + (l.url ? '<div><a href="' + esc(l.url) + '" target="_blank" rel="noopener">Voir l’annonce ↗</a></div>' : '')
       + (l.note ? '<div class="an-pop-note">' + esc(l.note) + '</div>' : '')
-      + '<div class="an-pop-date">Enregistrée le ' + fmtDate(l.createdAt) + '</div>'
+      + '<div class="an-pop-date">Enregistrée le ' + fmtDate(l.createdAt) + (l.author ? ' · par ' + esc(l.author) : '') + '</div>'
       + '<div class="an-pop-votes">'
       +   '<button type="button" class="ok" data-id="' + l.id + '" data-v="ok"' + (already ? ' disabled' : '') + '>👍 Info correcte (' + l.ok + ')</button>'
       +   '<button type="button" class="bad" data-id="' + l.id + '" data-v="bad"' + (already ? ' disabled' : '') + '>👎 Mauvaise info (' + l.bad + ')</button>'
@@ -459,6 +510,7 @@
       + '</div>'
       + (l.label ? '<div class="an-addr">' + esc(l.label) + '</div>' : '')
       + '<div class="an-date">Enregistrée le ' + fmtDate(l.createdAt) + '</div>'
+      + (l.author ? '<div class="an-author">Signalé par ' + esc(l.author) + '</div>' : '')
       + (l.url ? '<div class="an-link"><a href="' + esc(l.url) + '" target="_blank" rel="noopener">Voir l’annonce ↗</a></div>' : '')
       + (l.note ? '<div class="an-note">' + esc(l.note) + '</div>' : '')
       + '<div class="an-votes">'
@@ -469,7 +521,7 @@
       + (adminKey ? '<div class="an-actions"><button type="button" class="an-admin-del">🗑 Supprimer (admin)</button></div>' : '')
       + '</div>';
   }
-  function renderPanel(){
+  function renderAnnoncesPanel(){
     const rows = filtered();
     panelCount.textContent = rows.length + ' annonce(s)';
     panelBd.innerHTML = '';
@@ -490,6 +542,44 @@
     });
   }
 
+  // ---- classement (gamification) ----
+  function samePseudo(a, b){ return a && b && a.trim().toLowerCase() === b.trim().toLowerCase(); }
+  function renderLeaderboardRows(){
+    panelCount.textContent = contributors.length ? contributors.length + ' contributeur(s)' : '—';
+    panelBd.innerHTML = '';
+    if (!contributors.length){ panelBd.innerHTML = '<div class="empty">Personne n’a encore contribué — soyez le premier !</div>'; return; }
+    contributors.forEach((c, i) => {
+      const mine = samePseudo(c.pseudo, pseudo);
+      const row = document.createElement('div');
+      row.className = 'lb-row' + (mine ? ' me' : '');
+      row.innerHTML =
+        '<span class="lb-rank">#' + (i + 1) + '</span>'
+        + '<span class="lb-pseudo">' + esc(c.pseudo) + (mine ? ' <small>(vous)</small>' : '') + '</span>'
+        + '<div class="lb-badges">' + (c.badges || []).map(b => '<span class="lb-badge" title="' + esc(b.label) + '">' + b.icon + '</span>').join('') + '</div>'
+        + '<span class="lb-pts">' + fmtNum(c.points) + ' pts</span>';
+      panelBd.appendChild(row);
+    });
+  }
+  async function loadLeaderboard(){
+    panelBd.innerHTML = '<div class="empty">Chargement du classement…</div>';
+    try{
+      const r = await fetch(API + '/api/annonces?view=leaderboard&limit=50', { cache:'no-store' });
+      const d = await r.json();
+      if (!r.ok) throw new Error(d.error || 'Erreur serveur.');
+      contributors = d.contributors || [];
+      renderLeaderboardRows();
+    }catch(err){ panelBd.innerHTML = '<div class="empty">' + esc(err.message || 'Erreur de chargement.') + '</div>'; }
+  }
+  function renderPanel(){ if (panelMode === 'classement') loadLeaderboard(); else renderAnnoncesPanel(); }
+  function setPanelTab(mode){
+    panelMode = mode;
+    tabAnnonces.classList.toggle('on', mode === 'annonces');
+    tabClassement.classList.toggle('on', mode === 'classement');
+    renderPanel();
+  }
+  tabAnnonces.addEventListener('click', () => { if (panelMode !== 'annonces') setPanelTab('annonces'); });
+  tabClassement.addEventListener('click', () => { if (panelMode !== 'classement') setPanelTab('classement'); });
+
   async function loadListings(){
     setStatus('Chargement des annonces…', 'loading');
     try{
@@ -498,14 +588,14 @@
       if (!r.ok) throw new Error(d.error || 'Erreur serveur.');
       listings = d.listings || [];
       renderMarkers();
-      renderPanel();
+      if (panelMode === 'annonces') renderAnnoncesPanel();
       setStatus(listings.length ? fmtNum(listings.length) + ' annonce(s) au total. Clic sur la carte pour en ajouter une.' : 'Aucune annonce pour l’instant. Clic sur la carte pour en ajouter une.');
     }catch(err){ setStatus(err.message || 'Erreur de chargement.', 'error'); }
   }
   function fmtNum(n){ return Number(n).toLocaleString('fr-FR'); }
 
   loadListings();
-  setInterval(loadListings, 30000);   // actualisation auto pour voir les annonces des autres visiteurs
+  setInterval(() => { loadListings(); if (panelMode === 'classement') loadLeaderboard(); }, 30000);   // actualisation auto pour voir les contributions des autres visiteurs
 })();
 </script>
 </body>
