@@ -174,7 +174,7 @@
   const $ = (id) => document.getElementById(id);
   const communeInput = $('commune'), suggestions = $('suggestions'), statusEl = $('status');
   const legend = $('legend'), panel = $('panel');
-  const API = /^(localhost|127\.0\.0\.1)$/.test(location.hostname) ? '' : 'https://cadastre-inverse.vercel.app';
+  const API = /^(localhost|127\.0\.0\.1)$/.test(location.hostname) ? '' : 'https://arpent-immo.vercel.app';
   const isInsee = (v) => /^(\d{5}|2[AB]\d{3})$/.test(String(v || '').toUpperCase());
 
   const RAMPS = {

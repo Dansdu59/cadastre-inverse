@@ -124,7 +124,7 @@
   const $ = (id) => document.getElementById(id);
   const communeInput = $('commune'), suggestions = $('suggestions');
   const statusEl = $('status'), legend = $('legend'), panel = $('panel');
-  const API = /^(localhost|127\.0\.0\.1)$/.test(location.hostname) ? '' : 'https://cadastre-inverse.vercel.app';
+  const API = /^(localhost|127\.0\.0\.1)$/.test(location.hostname) ? '' : 'https://arpent-immo.vercel.app';
 
   const CATCOL = { U:'#e34a33', AU:'#8856a7', A:'#78c679', N:'#238443', autre:'#969696' };
   const CATNAME = { U:'Zone urbaine (U)', AU:'À urbaniser (AU)', A:'Agricole (A)', N:'Naturelle (N)', autre:'Autre' };

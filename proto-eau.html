@@ -115,7 +115,7 @@
   const $ = (id) => document.getElementById(id);
   const communeInput = $('commune'), suggestions = $('suggestions'), statusEl = $('status');
   const legend = $('legend'), panel = $('panel');
-  const API = /^(localhost|127\.0\.0\.1)$/.test(location.hostname) ? '' : 'https://cadastre-inverse.vercel.app';
+  const API = /^(localhost|127\.0\.0\.1)$/.test(location.hostname) ? '' : 'https://arpent-immo.vercel.app';
 
   let selected = { code:'53130', nom:'Laval', centre:[48.0578,-0.7692] };
   let debounce = null, contour = null, data = null;
