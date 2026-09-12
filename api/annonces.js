@@ -18,7 +18,11 @@
 //   -> { ok:true, existed } (nécessite la clé admin — ANNONCES_ADMIN_KEY en variable
 //       d'environnement Vercel ; valeur par défaut 'admin123' pour ce proto, à changer)
 
-import admin from 'firebase-admin';
+// firebase-admin v9+ utilise une API modulaire (comme le SDK client Firebase v9+) :
+// pas d'objet "admin" namespacé avec admin.firestore()/admin.credential.cert() — il
+// faut importer chaque morceau depuis son sous-module.
+import { initializeApp, cert, getApps } from 'firebase-admin/app';
+import { getFirestore } from 'firebase-admin/firestore';
 
 const OK_THRESHOLD = 5;    // votes « info correcte » avant le badge vérifié
 const BAD_THRESHOLD = 5;   // votes « mauvaise info » avant suppression automatique
@@ -26,18 +30,27 @@ const ADMIN_KEY = process.env.ANNONCES_ADMIN_KEY || 'admin123';
 const MAX_LISTINGS = 5000; // garde-fou anti-abus
 const COL = 'annonces';
 
-if (!admin.apps.length) {
-  admin.initializeApp({
-    credential: admin.credential.cert({
-      projectId: process.env.FIREBASE_PROJECT_ID,
-      clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
-      // Vercel stocke les sauts de ligne échappés (\n littéral) dans les variables d'env :
-      // on les reconvertit en vrais retours à la ligne pour le format PEM.
-      privateKey: (process.env.FIREBASE_PRIVATE_KEY || '').replace(/\\n/g, '\n'),
-    }),
-  });
+// Initialisation paresseuse (appelée dans le try/catch du handler) : si les
+// identifiants sont absents ou mal formés, on veut une réponse JSON 500 propre,
+// pas un crash de la fonction serverless en dehors de toute gestion d'erreur.
+let db = null;
+function getDb() {
+  if (!db) {
+    if (!getApps().length) {
+      initializeApp({
+        credential: cert({
+          projectId: process.env.FIREBASE_PROJECT_ID,
+          clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
+          // Vercel stocke les sauts de ligne échappés (\n littéral) dans les variables d'env :
+          // on les reconvertit en vrais retours à la ligne pour le format PEM.
+          privateKey: (process.env.FIREBASE_PRIVATE_KEY || '').replace(/\\n/g, '\n'),
+        }),
+      });
+    }
+    db = getFirestore();
+  }
+  return db;
 }
-const db = admin.firestore();
 
 function toListing(id, d) {
   return {
@@ -55,6 +68,7 @@ export default async function handler(req, res) {
   if (req.method === 'OPTIONS') { res.status(204).end(); return; }
 
   try {
+    const db = getDb();
     if (req.method === 'GET') {
       res.setHeader('Cache-Control', 'no-store');
       const snap = await db.collection(COL).orderBy('createdAt', 'desc').limit(1000).get();
