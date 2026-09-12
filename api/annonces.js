@@ -28,6 +28,9 @@
 // POST /api/annonces  { action:'delete', id, adminKey }
 //   -> { ok:true, existed } (nécessite la clé admin — ANNONCES_ADMIN_KEY en variable
 //       d'environnement Vercel ; valeur par défaut 'admin123' pour ce proto, à changer)
+// POST /api/annonces  { action:'delete-contributor', pseudo, adminKey }
+//   -> { ok:true, existed } (remet à zéro les points/badges d'un pseudo — nettoyage/abus,
+//       pas de bouton dédié dans l'UI, à utiliser directement via l'API)
 
 // firebase-admin v9+ utilise une API modulaire (comme le SDK client Firebase v9+) :
 // pas d'objet "admin" namespacé avec admin.firestore()/admin.credential.cert() — il
@@ -228,6 +231,20 @@ export default async function handler(req, res) {
       if (String(body.adminKey || '') !== ADMIN_KEY) { res.status(403).json({ error: 'Clé admin invalide.' }); return; }
       const id = String(body.id || '');
       const ref = db.collection(COL).doc(id);
+      const snap = await ref.get();
+      const existed = snap.exists;
+      if (existed) await ref.delete();
+      res.status(200).json({ ok: true, existed });
+      return;
+    }
+
+    // Remet à zéro les stats d'un contributeur (nettoyage/abus) — pas de bouton dédié
+    // dans l'UI pour l'instant, utilisable directement via l'API par un admin.
+    if (action === 'delete-contributor') {
+      if (String(body.adminKey || '') !== ADMIN_KEY) { res.status(403).json({ error: 'Clé admin invalide.' }); return; }
+      const key = pseudoKey(body.pseudo);
+      if (!key) { res.status(400).json({ error: 'Pseudo invalide.' }); return; }
+      const ref = db.collection(CONTRIB_COL).doc(key);
       const snap = await ref.get();
       const existed = snap.exists;
       if (existed) await ref.delete();
