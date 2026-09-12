@@ -32,6 +32,12 @@
   .btn-g{ background:#fff; color:var(--ink); border-color:var(--border); }
   .btn-danger{ background:#fde8e8; color:var(--bad); border-color:#f3c9c9; }
   .btn.on{ background:var(--ink); color:#fff; }
+  .admin-gear{ position:fixed; right:calc(12px + env(safe-area-inset-right)); bottom:calc(12px + env(safe-area-inset-bottom));
+    z-index:2500; width:40px; height:40px; border-radius:50%; border:1px solid var(--border); background:rgba(255,255,255,.85);
+    color:var(--muted); font-size:17px; line-height:1; display:flex; align-items:center; justify-content:center;
+    cursor:pointer; box-shadow:0 2px 8px rgba(0,0,0,.15); opacity:.55; transition:opacity .15s; padding:0; }
+  .admin-gear:hover, .admin-gear:focus-visible{ opacity:1; }
+  .admin-gear.on{ opacity:1; background:var(--ink); border-color:var(--ink); color:#fff; }
   .suggestions{ position:absolute; top:calc(100% + 4px); left:0; right:0; z-index:1200; background:#fff; border:1px solid var(--border);
     border-radius:8px; box-shadow:0 10px 24px rgba(0,0,0,.14); max-height:260px; overflow-y:auto; }
   .suggestions button{ display:flex; flex-direction:column; gap:1px; width:100%; text-align:left; padding:9px 10px; border:0;
@@ -141,10 +147,11 @@
       <option value="location">Location</option>
     </select>
   </div>
-  <button class="btn btn-g" id="admin-toggle" type="button">Mode admin</button>
 </div>
 
 <div id="status">Clic sur la carte pour signaler un bien à vendre ou à louer.</div>
+
+<button type="button" id="admin-gear" class="admin-gear" title="Mode admin" aria-label="Mode admin">⚙️</button>
 
 <main>
   <div id="map"></div>
@@ -204,7 +211,7 @@
   const TWO_MONTHS_MS = 60 * 24 * 3600 * 1000;
 
   const communeInput = $('commune'), suggestions = $('suggestions'), statusEl = $('status');
-  const filterType = $('filter-type'), adminBtn = $('admin-toggle');
+  const filterType = $('filter-type'), adminBtn = $('admin-gear');
   const panelBd = $('panel-bd'), panelCount = $('panel-count'), refreshBtn = $('refresh');
   const modal = $('modal'), newAddr = $('new-addr'), newUrl = $('new-url'), newNote = $('new-note');
   const fUrl = $('f-url'), fNote = $('f-note');
@@ -371,10 +378,24 @@
     }catch(err){ setStatus(err.message || 'Erreur.', 'error'); }
   }
 
+  function setAdminActive(on){
+    adminBtn.classList.toggle('on', on);
+    adminBtn.title = on ? 'Mode admin actif (cliquer pour désactiver)' : 'Mode admin';
+  }
   adminBtn.addEventListener('click', async () => {
-    if (adminKey){ adminKey = ''; adminBtn.classList.remove('on'); adminBtn.textContent = 'Mode admin'; renderPanel(); renderMarkers(); return; }
+    if (adminKey){ adminKey = ''; setAdminActive(false); renderPanel(); renderMarkers(); return; }
     const pw = await askDialog({ title:'Mode admin', placeholder:'Mot de passe admin', isPassword:true, confirmLabel:'Activer' });
-    if (pw){ adminKey = pw; adminBtn.classList.add('on'); adminBtn.textContent = 'Admin actif'; renderPanel(); renderMarkers(); }
+    if (!pw) return;
+    adminBtn.disabled = true;
+    try{
+      const r = await fetch(API + '/api/annonces', { method:'POST', headers:{ 'Content-Type':'application/json' }, body:JSON.stringify({ action:'verify', adminKey:pw }) });
+      if (!r.ok){ setStatus('Mot de passe admin incorrect.', 'error'); return; }
+      adminKey = pw;
+      setAdminActive(true);
+      renderPanel(); renderMarkers();
+      setStatus('Mode admin activé.', 'ok');
+    }catch(err){ setStatus('Erreur de vérification du mot de passe.', 'error'); }
+    finally{ adminBtn.disabled = false; }
   });
   filterType.addEventListener('change', () => { renderPanel(); renderMarkers(); });
   refreshBtn.addEventListener('click', loadListings);

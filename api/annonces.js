@@ -14,6 +14,9 @@
 //   -> { listing }
 // POST /api/annonces  { action:'vote', id, vote:'ok'|'bad' }
 //   -> { listing } ou { listing:null, removed:true } si trop de « mauvaise info »
+// POST /api/annonces  { action:'verify', adminKey }
+//   -> { ok:true } ou 403 si la clé est invalide (sert à activer le mode admin côté
+//       client sans jamais faire de suppression réelle)
 // POST /api/annonces  { action:'delete', id, adminKey }
 //   -> { ok:true, existed } (nécessite la clé admin — ANNONCES_ADMIN_KEY en variable
 //       d'environnement Vercel ; valeur par défaut 'admin123' pour ce proto, à changer)
@@ -131,6 +134,12 @@ export default async function handler(req, res) {
       if (result.notFound) { res.status(404).json({ error: 'Annonce introuvable (déjà supprimée ?).' }); return; }
       if (result.removed) { res.status(200).json({ listing: null, removed: true }); return; }
       res.status(200).json({ listing: toListing(id, result.data) });
+      return;
+    }
+
+    if (action === 'verify') {
+      if (String(body.adminKey || '') !== ADMIN_KEY) { res.status(403).json({ error: 'Clé admin invalide.' }); return; }
+      res.status(200).json({ ok: true });
       return;
     }
 
