@@ -224,6 +224,26 @@
   function esc(s){
     return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c]));
   }
+  // Petite boîte de dialogue maison (texte ou confirmation) : certains navigateurs/webviews
+  // bloquent window.prompt()/confirm(), donc on ne s'appuie pas dessus.
+  function askDialog({ title, placeholder = null, isPassword = false, confirmLabel = 'Valider' }){
+    return new Promise((resolve) => {
+      const bg = document.createElement('div');
+      bg.className = 'modal-bg';
+      bg.innerHTML = '<div class="modal-card"><h3>' + esc(title) + '</h3>'
+        + (placeholder != null ? '<div class="field"><input type="' + (isPassword ? 'password' : 'text') + '" id="ask-input" placeholder="' + esc(placeholder) + '" /></div>' : '')
+        + '<div class="modal-actions"><button type="button" class="btn btn-g" data-a="cancel">Annuler</button><button type="button" class="btn btn-p" data-a="ok">' + esc(confirmLabel) + '</button></div>'
+        + '</div>';
+      document.body.appendChild(bg);
+      const input = bg.querySelector('#ask-input');
+      if (input) setTimeout(() => input.focus(), 50);
+      function close(v){ bg.remove(); resolve(v); }
+      bg.addEventListener('click', (e) => { if (e.target === bg) close(null); });
+      bg.querySelector('[data-a="cancel"]').addEventListener('click', () => close(null));
+      bg.querySelector('[data-a="ok"]').addEventListener('click', () => close(input ? input.value : true));
+      if (input) input.addEventListener('keydown', (e) => { if (e.key === 'Enter') close(input.value); });
+    });
+  }
   function fmtDate(iso){
     const d = new Date(iso);
     return isNaN(d) ? '—' : d.toLocaleDateString('fr-FR', { day:'2-digit', month:'2-digit', year:'numeric' });
@@ -308,7 +328,7 @@
     const body = { action:'create', lat:pendingLatLng.lat, lon:pendingLatLng.lng, type:newType, source:newSource, label:pendingLabel };
     if (newSource === 'agence') {
       const url = newUrl.value.trim();
-      if (!/^https?:\/\//i.test(url)) { alert('Merci de renseigner un lien d’annonce valide (commençant par http:// ou https://).'); return; }
+      if (!/^https?:\/\//i.test(url)) { setStatus('Merci de renseigner un lien d’annonce valide (commençant par http:// ou https://).', 'error'); return; }
       body.url = url;
     } else {
       body.note = newNote.value.trim();
@@ -321,7 +341,7 @@
       closeModal();
       setStatus('Annonce publiée. Merci pour votre contribution !', 'ok');
       await loadListings();
-    }catch(err){ alert(err.message || 'Erreur.'); }
+    }catch(err){ setStatus(err.message || 'Erreur.', 'error'); }
     finally{ btn.disabled = false; }
   });
 
@@ -338,7 +358,8 @@
     }catch(err){ setStatus(err.message || 'Erreur.', 'error'); }
   }
   async function adminDelete(id){
-    if (!confirm('Supprimer définitivement cette annonce ?')) return;
+    const ok = await askDialog({ title:'Supprimer cette annonce ?', confirmLabel:'Supprimer' });
+    if (!ok) return;
     try{
       const r = await fetch(API + '/api/annonces', { method:'POST', headers:{ 'Content-Type':'application/json' }, body:JSON.stringify({ action:'delete', id, adminKey }) });
       const d = await r.json();
@@ -348,9 +369,9 @@
     }catch(err){ setStatus(err.message || 'Erreur.', 'error'); }
   }
 
-  adminBtn.addEventListener('click', () => {
+  adminBtn.addEventListener('click', async () => {
     if (adminKey){ adminKey = ''; adminBtn.classList.remove('on'); adminBtn.textContent = 'Mode admin'; renderPanel(); renderMarkers(); return; }
-    const pw = prompt('Mot de passe admin :');
+    const pw = await askDialog({ title:'Mode admin', placeholder:'Mot de passe admin', isPassword:true, confirmLabel:'Activer' });
     if (pw){ adminKey = pw; adminBtn.classList.add('on'); adminBtn.textContent = 'Admin actif'; renderPanel(); renderMarkers(); }
   });
   filterType.addEventListener('change', () => { renderPanel(); renderMarkers(); });
